@@ -11,34 +11,57 @@ enum STTAuthorisation {
 enum STTError: LocalizedError {
     case unauthorized
     case unavailable
-    case recordingFailed(String)
-    case noRecording
-    case transcriptionFailed(Error)
+    case audioSession(Error)
+    case engineStart(Error)
+    case streamFailed(Error)
 
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Speech recognition isn't authorised."
         case .unavailable: return "Speech recognition is unavailable on this device."
-        case .recordingFailed(let m): return "Couldn't record audio: \(m)"
-        case .noRecording: return "No recording to transcribe."
-        case .transcriptionFailed(let e):
-            return "Transcription failed: \(e.localizedDescription)"
+        case .audioSession(let e): return "Audio session failure: \(e.localizedDescription)"
+        case .engineStart(let e): return "Couldn't start the audio engine: \(e.localizedDescription)"
+        case .streamFailed(let e): return "Recognition stream failed: \(e.localizedDescription)"
         }
     }
 }
 
+/// Streaming speech recogniser. Each `startListening` call gets a FRESH
+/// `AVAudioEngine` instance — keeping a long-lived singleton engine across
+/// sessions causes the audio HAL to crash on some iPads (no .ips report,
+/// watchdog kill ~20 ms after the post-`setActive` `categoryChange` route
+/// notification fires).
 @MainActor
 @Observable
 final class STTService {
     static let shared = STTService()
 
-    private var recorder: AVAudioRecorder?
-    private var recordingURL: URL?
-    private var levelTask: Task<Void, Never>?
+    private var engine: AVAudioEngine?
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var requestRef: RequestRef?
+    private var task: SFSpeechRecognitionTask?
+    private var tappedInput: AVAudioInputNode?
 
-    /// 0…1 normalised meter level (updated while recording).
-    private(set) var level: Float = 0
-    private(set) var isRecording: Bool = false
+    /// Sendable wrapper for the recognition request. The audio tap closure runs
+    /// off the main actor, so it must not capture any @MainActor-isolated value
+    /// directly. Capturing this box lets the closure null out the reference on
+    /// teardown without touching main-actor state.
+    private final class RequestRef: @unchecked Sendable {
+        var value: SFSpeechAudioBufferRecognitionRequest?
+        init(_ v: SFSpeechAudioBufferRecognitionRequest) { self.value = v }
+    }
+
+    /// Same idea for the recognition task callback, which is also invoked off
+    /// the main actor.
+    private final class WeakSelfBox: @unchecked Sendable {
+        weak var value: STTService?
+        init(_ v: STTService) { self.value = v }
+    }
+
+    private(set) var liveTranscript: String = ""
+    private var transcriptHandler: ((String) -> Void)?
+    private var errorHandler: ((Error) -> Void)?
+    private(set) var isListening: Bool = false
 
     func authorisationStatus() -> STTAuthorisation {
         switch SFSpeechRecognizer.authorizationStatus() {
@@ -60,121 +83,120 @@ final class STTService {
         }
     }
 
-    func startRecording() throws {
-        stopRecording()
-        DebugLog.log("STT.startRecording: entering")
+    func startListening(
+        locale: Locale = .current,
+        onTranscript: ((String) -> Void)? = nil,
+        onError: ((Error) -> Void)? = nil
+    ) throws {
+        DebugLog.log("STT.startListening: entering")
+        teardown()
 
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.record, mode: .default)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-            DebugLog.log("STT.recording: session active route=\(session.currentRoute.inputs.first?.portName ?? "none")")
-        } catch {
-            DebugLog.log("STT.recording: session error: \(error)")
-            throw STTError.recordingFailed(error.localizedDescription)
-        }
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("aiquiz-\(UUID().uuidString).m4a")
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 16_000,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
-
-        let recorder: AVAudioRecorder
-        do {
-            recorder = try AVAudioRecorder(url: url, settings: settings)
-        } catch {
-            DebugLog.log("STT.recording: AVAudioRecorder init failed: \(error)")
-            throw STTError.recordingFailed(error.localizedDescription)
-        }
-        recorder.isMeteringEnabled = true
-        guard recorder.prepareToRecord() else {
-            DebugLog.log("STT.recording: prepareToRecord returned false")
-            throw STTError.recordingFailed("prepareToRecord returned false")
-        }
-        guard recorder.record() else {
-            DebugLog.log("STT.recording: record() returned false")
-            throw STTError.recordingFailed("record() returned false")
-        }
-        DebugLog.log("STT.recording: started, url=\(url.lastPathComponent)")
-
-        self.recorder = recorder
-        self.recordingURL = url
-        self.isRecording = true
-        startLevelTimer()
-    }
-
-    func stopRecording() {
-        levelTask?.cancel()
-        levelTask = nil
-        if let r = recorder, r.isRecording {
-            r.stop()
-            DebugLog.log("STT.recording: stopped, duration=\(String(format: "%.2f", r.currentTime))s")
-        }
-        recorder = nil
-        isRecording = false
-        level = 0
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
-    }
-
-    /// Transcribes the most-recent recording via SFSpeechURLRecognitionRequest.
-    func transcribeLastRecording(locale: Locale = .current) async throws -> String {
-        guard let url = recordingURL else { throw STTError.noRecording }
-        DebugLog.log("STT.transcribe: starting on \(url.lastPathComponent)")
-        if authorisationStatus() != .authorized {
-            let result = await requestAuthorisation()
-            guard result == .authorized else { throw STTError.unauthorized }
-        }
+        guard authorisationStatus() == .authorized else { throw STTError.unauthorized }
         guard let recognizer = SFSpeechRecognizer(locale: locale), recognizer.isAvailable else {
             throw STTError.unavailable
         }
 
-        let request = SFSpeechURLRecognitionRequest(url: url)
-        request.shouldReportPartialResults = false
-        if recognizer.supportsOnDeviceRecognition {
-            request.requiresOnDeviceRecognition = true
+        // Audio session: minimal record-only config. No mode, no options. The
+        // simpler this is the better — extra options were what destabilised
+        // the engine in earlier attempts.
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.record)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            DebugLog.log("STT: session active route=\(session.currentRoute.inputs.first?.portName ?? "none")")
+        } catch {
+            throw STTError.audioSession(error)
         }
 
-        let text: String = try await withCheckedThrowingContinuation { cont in
-            nonisolated(unsafe) var resolved = false
-            recognizer.recognitionTask(with: request) { result, error in
-                if resolved { return }
-                if let error {
-                    resolved = true
-                    DebugLog.log("STT.transcribe: error \(error)")
-                    cont.resume(throwing: STTError.transcriptionFailed(error))
-                    return
+        // Fresh engine per session — never reuse.
+        let engine = AVAudioEngine()
+        self.engine = engine
+        let inputNode = engine.inputNode
+        self.tappedInput = inputNode
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        self.request = request
+
+        // The tap closure runs on AVAudioNodeTap::RealtimeMessenger's dispatch
+        // queue. Because STTService is @MainActor-isolated, ANY closure created
+        // inside this method inherits @MainActor isolation — and Swift 6 injects
+        // `swift_task_checkIsolatedSwift` at closure entry, which SIGTRAPs the
+        // moment a buffer arrives off the main actor.
+        //
+        // The fix: declare the closure with an explicit `@Sendable` function
+        // type, which severs the inherited isolation. Captures must be Sendable;
+        // we pass the request via `RequestRef` (`@unchecked Sendable`).
+        let requestRef = RequestRef(request)
+        self.requestRef = requestRef
+        let tapBlock: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = { buffer, _ in
+            requestRef.value?.append(buffer)
+        }
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil, block: tapBlock)
+        DebugLog.log("STT: tap installed (format=nil)")
+
+        self.transcriptHandler = onTranscript
+        self.errorHandler = onError
+        self.liveTranscript = ""
+
+        // Same isolation trap applies to the recognition callback — declare it
+        // as a @Sendable function-typed closure to break inherited @MainActor.
+        let selfBox = WeakSelfBox(self)
+        let resultHandler: @Sendable (SFSpeechRecognitionResult?, Error?) -> Void = { result, error in
+            if let result {
+                let text = result.bestTranscription.formattedString
+                let isFinal = result.isFinal
+                Task { @MainActor in
+                    guard let me = selfBox.value else { return }
+                    me.liveTranscript = text
+                    me.transcriptHandler?(text)
+                    if isFinal { me.teardown() }
                 }
-                if let result, result.isFinal {
-                    resolved = true
-                    let formatted = result.bestTranscription.formattedString
-                    DebugLog.log("STT.transcribe: done (\(formatted.count) chars)")
-                    cont.resume(returning: formatted)
+            }
+            if let error {
+                Task { @MainActor in
+                    guard let me = selfBox.value else { return }
+                    me.errorHandler?(error)
+                    me.teardown()
                 }
             }
         }
+        self.task = recognizer.recognitionTask(with: request, resultHandler: resultHandler)
 
-        // Best-effort cleanup of the temp file.
-        try? FileManager.default.removeItem(at: url)
-        recordingURL = nil
-        return text
+        engine.prepare()
+        do {
+            try engine.start()
+            DebugLog.log("STT: engine started")
+            isListening = true
+        } catch {
+            DebugLog.log("STT: engine.start failed: \(error)")
+            teardown()
+            throw STTError.engineStart(error)
+        }
     }
 
-    private func startLevelTimer() {
-        levelTask?.cancel()
-        levelTask = Task { @MainActor [weak self] in
-            while !Task.isCancelled {
-                guard let recorder = self?.recorder, recorder.isRecording else { return }
-                recorder.updateMeters()
-                let dB = recorder.averagePower(forChannel: 0)
-                // Map -60dB..0dB to 0..1
-                let normalised = max(0, (dB + 60) / 60)
-                self?.level = Float(normalised)
-                try? await Task.sleep(for: .milliseconds(80))
-            }
+    func stopListening() {
+        teardown()
+    }
+
+    private func teardown() {
+        if let engine, engine.isRunning {
+            engine.stop()
         }
+        if let input = tappedInput {
+            input.removeTap(onBus: 0)
+        }
+        tappedInput = nil
+        request?.endAudio()
+        requestRef?.value = nil
+        requestRef = nil
+        task?.cancel()
+        task = nil
+        request = nil
+        engine = nil
+        transcriptHandler = nil
+        errorHandler = nil
+        isListening = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
 }
