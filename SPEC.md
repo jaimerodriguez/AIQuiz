@@ -61,7 +61,7 @@ Hands-free. The app reads each card aloud and advances on its own.
 - Reads the prompt, then the short answer (if present), then the long answer.
 - Each card is repeated *N* times before advancing, where *N* is configurable in Settings (default 1).
 - "Repeat current card" button re-reads the current card from the top.
-- "Hint" button and a spoken **"hint"** voice command both reveal the hint (cards without a hint show a disabled button).
+- "Hint" button reveals the hint inline (disabled when the card has no hint). The spoken "hint" voice command described in earlier drafts is deferred — see `known_issues.md`.
 - Skip, Back, Pause, and Abandon controls are available throughout.
 
 ### 3.2 Study format #2 — User-paced read
@@ -82,8 +82,8 @@ Active recall. The user answers each prompt out loud and grades themselves.
 2. The user taps the mic and speaks an answer; the transcript appears live.
 3. After they stop, a reveal panel shows their transcript next to the correct short and long answers, with three self-grade buttons: **Correct**, **Partial**, **Wrong**.
 4. An **Ask AI to judge** button is also available — it sends the transcript and correct answer to the configured LLM and returns a verdict (correct / partial / wrong) plus a one-sentence reason. The user can override the AI verdict.
-5. A "Flip card" button skips the voice step and reveals the answer; if the user doesn't grade themselves, this counts as Wrong.
-6. The Hint button works as in study modes; the spoken **"hint"** voice command also works here, before the user gives their answer.
+5. A "Show answer" button skips the voice step and reveals the answer; if the user doesn't grade themselves, the card is treated as Wrong.
+6. The Hint button works as in study modes (button-only — the voice "hint" command is deferred; see `known_issues.md`).
 
 Skip, Back, Pause, and Abandon are available throughout.
 
@@ -184,7 +184,7 @@ Out of scope for v1, but the design accommodates it: the user can step out of a 
 - **AI provider** for generation and grading (selectable independently).
 - **API keys** for OpenAI and Claude (stored in Keychain).
 - **Reading size** for quiz and study content (see §7.1 below).
-- **TTS voice**, rate, and language.
+- **TTS voice**, rate, and language. The voice picker groups installed voices by language and labels each with its **quality tier** (Default / Enhanced / Premium). When the user selects a voice that iOS hasn't fully downloaded, the picker shows a diagnostic line ("Asked for X but iOS played Y") after the preview so silent fallbacks are visible.
 - **STT language** (defaults to device locale).
 - **Study #1**: card repeat count (1–5, default 1) and pause between cards.
 - **Study #2**: default display style (flip-card or all-at-once).
