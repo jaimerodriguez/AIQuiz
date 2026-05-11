@@ -7,15 +7,14 @@ import Speech
 final class QuizVoicePlayer {
     enum Phase {
         case awaitingAnswer
-        case recording
-        case transcribing
+        case listening
         case reveal
         case ended
     }
 
     let deck: SessionDeck
     private(set) var phase: Phase = .awaitingAnswer
-    private(set) var transcript: String = ""
+    var transcript: String = ""
     private(set) var hintRevealed: Bool = false
     var sttError: String?
     var aiVerdict: AIVerdict?
@@ -32,11 +31,8 @@ final class QuizVoicePlayer {
         self.stt = stt
     }
 
-    var level: Float { stt.level }
-    var isRecording: Bool { stt.isRecording }
-
-    func startRecording() async {
-        DebugLog.log("QV.startRecording invoked, phase=\(phase)")
+    func startListening() async {
+        DebugLog.log("QV.startListening invoked, phase=\(phase)")
         guard phase == .awaitingAnswer else { return }
         sttError = nil
         transcript = ""
@@ -47,7 +43,6 @@ final class QuizVoicePlayer {
                 cont.resume(returning: granted)
             }
         }
-        DebugLog.log("QV: mic permission granted=\(micGranted)")
         guard micGranted else {
             sttError = "Microphone access denied. Enable it in Settings → AIQuiz."
             return
@@ -55,7 +50,6 @@ final class QuizVoicePlayer {
 
         if stt.authorisationStatus() != .authorized {
             let result = await stt.requestAuthorisation()
-            DebugLog.log("QV: speech auth result=\(result)")
             guard result == .authorized else {
                 sttError = "Speech recognition not authorised."
                 return
@@ -63,30 +57,31 @@ final class QuizVoicePlayer {
         }
 
         do {
-            try stt.startRecording()
-            phase = .recording
+            phase = .listening
+            try stt.startListening(
+                onTranscript: { [weak self] text in
+                    Task { @MainActor in self?.transcript = text }
+                },
+                onError: { [weak self] error in
+                    Task { @MainActor in
+                        self?.sttError = self?.friendlyMessage(for: error) ?? error.localizedDescription
+                        self?.phase = .reveal
+                    }
+                }
+            )
         } catch {
-            DebugLog.log("QV: startRecording threw: \(error)")
             sttError = friendlyMessage(for: error)
+            phase = .awaitingAnswer
         }
     }
 
-    func stopRecordingAndTranscribe() async {
-        DebugLog.log("QV.stopRecording invoked")
-        stt.stopRecording()
-        phase = .transcribing
-        do {
-            let text = try await stt.transcribeLastRecording()
-            transcript = text
-        } catch {
-            transcript = ""
-            sttError = friendlyMessage(for: error)
-        }
+    func stopListeningAndReveal() {
+        stt.stopListening()
         phase = .reveal
     }
 
     func revealAnswerWithoutVoice() {
-        if stt.isRecording { stt.stopRecording() }
+        stt.stopListening()
         phase = .reveal
     }
 
@@ -112,7 +107,7 @@ final class QuizVoicePlayer {
     }
 
     func abandon() {
-        if stt.isRecording { stt.stopRecording() }
+        stt.stopListening()
         deck.abandon()
         phase = .ended
     }
@@ -231,11 +226,7 @@ struct QuizVoiceView: View {
                 .font(typo.promptFont)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            if player.phase == .recording {
-                recordingIndicator
-            } else if player.phase == .transcribing {
-                transcribingIndicator
-            } else if player.phase == .reveal && !player.transcript.isEmpty {
+            if player.phase == .listening || (player.phase == .reveal && !player.transcript.isEmpty) {
                 transcriptBlock(typo: typo)
             }
 
@@ -260,41 +251,21 @@ struct QuizVoiceView: View {
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
     }
 
-    private var recordingIndicator: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "waveform")
-                    .symbolEffect(.variableColor.iterative)
-                    .foregroundStyle(.red)
-                Text("Recording…")
-                    .font(.subheadline.weight(.medium))
-                Spacer()
-            }
-            ProgressView(value: Double(player.level), total: 1.0)
-                .tint(.red)
-        }
-        .padding(10)
-        .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var transcribingIndicator: some View {
-        HStack(spacing: 10) {
-            ProgressView()
-            Text("Transcribing…")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-    }
-
     private func transcriptBlock(typo: QuizFontSize) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Your answer")
-                .font(.caption).foregroundStyle(.secondary)
-            Text(player.transcript.isEmpty ? "(no transcript)" : player.transcript)
+            HStack {
+                Text("Your answer")
+                    .font(.caption).foregroundStyle(.secondary)
+                if player.phase == .listening {
+                    Spacer()
+                    Image(systemName: "waveform")
+                        .symbolEffect(.variableColor.iterative)
+                        .foregroundStyle(.tint)
+                }
+            }
+            Text(player.transcript.isEmpty ? "Listening…" : player.transcript)
                 .font(typo.bodyFont)
+                .foregroundStyle(player.transcript.isEmpty ? .secondary : .primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
                 .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
@@ -336,7 +307,7 @@ struct QuizVoiceView: View {
         case .awaitingAnswer:
             VStack(spacing: 12) {
                 Button {
-                    Task { await player.startRecording() }
+                    Task { await player.startListening() }
                 } label: {
                     Label("Tap to answer", systemImage: "mic.fill")
                         .frame(maxWidth: .infinity)
@@ -363,24 +334,16 @@ struct QuizVoiceView: View {
                     .buttonStyle(.bordered)
                 }
             }
-        case .recording:
+        case .listening:
             Button {
-                Task { await player.stopRecordingAndTranscribe() }
+                player.stopListeningAndReveal()
             } label: {
-                Label("Stop & transcribe", systemImage: "stop.fill")
+                Label("Stop & reveal", systemImage: "stop.fill")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
-        case .transcribing:
-            Button {} label: {
-                Label("Transcribing…", systemImage: "ellipsis")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-            }
-            .buttonStyle(.bordered)
-            .disabled(true)
         case .reveal:
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
