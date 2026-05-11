@@ -1,0 +1,59 @@
+name: AIQuiz
+options:
+  bundleIdPrefix: com.jaimer.aiquiz
+  deploymentTarget:
+    iOS: "18.1"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.1"
+    TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
+    SUPPORTS_MACCATALYST: NO
+    GENERATE_INFOPLIST_FILE: NO
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  AIQuiz:
+    type: application
+    platform: iOS
+    sources:
+      - path: AIQuiz
+        excludes:
+          - "Info.plist"
+    resources:
+      - path: AIQuiz/Resources/SampleQuizzes
+        type: folder
+    info:
+      path: AIQuiz/Info.plist
+      properties:
+        CFBundleDisplayName: AIQuiz
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageName: ""
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSMicrophoneUsageDescription: "AIQuiz uses the microphone so you can answer prompts by speaking."
+        NSSpeechRecognitionUsageDescription: "AIQuiz transcribes your spoken answers and listens for the 'hint' voice command."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jaimerodriguez.aiquiz
+        INFOPLIST_FILE: AIQuiz/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: X824J47H9D
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "0.1.0"
+        SWIFT_OBJC_BRIDGING_HEADER: AIQuiz/AIQuiz-Bridging-Header.h
+        CLANG_ENABLE_OBJC_ARC: YES

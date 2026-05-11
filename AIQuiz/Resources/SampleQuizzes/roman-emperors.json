@@ -1,0 +1,42 @@
+{
+  "quiz": {
+    "name": "Roman Emperors",
+    "cards": [
+      {
+        "prompt": "Who was the first Roman emperor?",
+        "long_answer": "Augustus (Gaius Octavius), who took power in 27 BC after the fall of the Republic and reigned until 14 AD.",
+        "short_answer": "Augustus",
+        "hint": "Adopted son of Julius Caesar."
+      },
+      {
+        "prompt": "Who succeeded Augustus?",
+        "long_answer": "Tiberius, Augustus's stepson, ruled 14–37 AD. He retired to Capri in his later years.",
+        "short_answer": "Tiberius",
+        "hint": "He retired to Capri."
+      },
+      {
+        "prompt": "Which emperor reportedly fiddled while Rome burned?",
+        "long_answer": "Nero, ruling 54–68 AD. The 'fiddling' story is largely a later legend, but the great fire of 64 AD did happen during his reign.",
+        "short_answer": "Nero"
+      },
+      {
+        "prompt": "Who was the philosopher-emperor?",
+        "long_answer": "Marcus Aurelius (161–180 AD), author of the Meditations. He is the last of the so-called 'Five Good Emperors'.",
+        "short_answer": "Marcus Aurelius",
+        "hint": "Author of the Meditations."
+      },
+      {
+        "prompt": "Which emperor split the Roman Empire administratively into East and West?",
+        "long_answer": "Diocletian, in 285 AD, established the tetrarchy: two senior Augusti and two junior Caesars governing different regions.",
+        "short_answer": "Diocletian",
+        "hint": "He created the Tetrarchy."
+      },
+      {
+        "prompt": "Which emperor legalised Christianity in the empire?",
+        "long_answer": "Constantine the Great, via the Edict of Milan in 313 AD, which granted religious tolerance throughout the empire.",
+        "short_answer": "Constantine",
+        "hint": "Edict of Milan."
+      }
+    ]
+  }
+}

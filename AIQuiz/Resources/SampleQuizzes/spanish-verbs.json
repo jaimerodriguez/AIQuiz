@@ -1,0 +1,39 @@
+{
+  "quiz": {
+    "name": "Common Spanish Verbs",
+    "cards": [
+      {
+        "prompt": "What does 'ser' mean?",
+        "long_answer": "To be — used for permanent or essential characteristics: identity, profession, origin, time.",
+        "short_answer": "to be (permanent)",
+        "hint": "Permanent vs estar."
+      },
+      {
+        "prompt": "What does 'estar' mean?",
+        "long_answer": "To be — used for temporary states, locations, and ongoing actions (with the gerund).",
+        "short_answer": "to be (temporary)"
+      },
+      {
+        "prompt": "Conjugate 'tener' in the first person singular present tense.",
+        "long_answer": "Yo tengo. 'Tener' is irregular — the stem changes from 'ten-' to 'teng-' in the yo form.",
+        "short_answer": "tengo"
+      },
+      {
+        "prompt": "What does 'haber' mean?",
+        "long_answer": "There is / there are — used as the auxiliary for compound tenses (he hablado = I have spoken). Impersonal form 'hay' = there is/are.",
+        "short_answer": "to have (auxiliary) / there is",
+        "hint": "Hay = there is."
+      },
+      {
+        "prompt": "Conjugate 'ir' in the first person plural present tense.",
+        "long_answer": "Nosotros vamos. 'Ir' is irregular and uses the suppletive stem 'v-' in the present.",
+        "short_answer": "vamos"
+      },
+      {
+        "prompt": "What's the difference between 'saber' and 'conocer'?",
+        "long_answer": "Both mean 'to know'. 'Saber' is for facts, information, and skills (sé nadar = I know how to swim). 'Conocer' is for being acquainted with people, places, or things (conozco a María = I know María).",
+        "short_answer": "saber = facts/skills; conocer = acquaintance"
+      }
+    ]
+  }
+}

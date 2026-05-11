@@ -1,0 +1,41 @@
+{
+  "quiz": {
+    "name": "Systems Design Fundamentals",
+    "cards": [
+      {
+        "prompt": "What is Amdahl's law?",
+        "long_answer": "If you parallelise or accelerate part of a system, your overall speedup is bounded by the part you didn't speed up. The slowest unaccelerated component caps the total improvement.",
+        "short_answer": "The slowest unaccelerated part caps your total speedup.",
+        "hint": "Think about serial vs parallel sections."
+      },
+      {
+        "prompt": "What does the CAP theorem say?",
+        "long_answer": "In a distributed data store, you can guarantee at most two of: Consistency, Availability, and Partition tolerance. In practice, partitions happen, so the real choice is between consistency and availability during a partition.",
+        "short_answer": "Consistency, Availability, Partition tolerance — pick two.",
+        "hint": "Three letters."
+      },
+      {
+        "prompt": "What is the difference between latency and throughput?",
+        "long_answer": "Latency is the time to complete a single operation (seconds per request). Throughput is the rate of operations completed (requests per second). Adding parallelism can raise throughput without lowering latency.",
+        "short_answer": "Latency = time per op; throughput = ops per second."
+      },
+      {
+        "prompt": "Why is read-after-write consistency hard in a replicated database?",
+        "long_answer": "After a write to the leader, replicas catch up asynchronously. A read routed to a lagging replica may not see the just-written value. Solutions: route reads to the leader, use synchronous replication, or use causal-consistency tokens.",
+        "short_answer": "Replicas lag the leader; lagging reads miss recent writes.",
+        "hint": "Leader and replicas."
+      },
+      {
+        "prompt": "What is a tail latency, and why does it matter?",
+        "long_answer": "Tail latency is the latency of the slowest few percent of requests (e.g. p99). In a service that fans out to many backends, the user-visible latency is dominated by the slowest backend, so even rare slow responses matter a lot.",
+        "short_answer": "Slow tail = slow user, especially with fan-out.",
+        "hint": "p99, fan-out."
+      },
+      {
+        "prompt": "What problem do idempotency keys solve?",
+        "long_answer": "When a client retries a request after a network failure, the server may receive the request twice. An idempotency key lets the server detect the duplicate and return the original result instead of performing the action twice.",
+        "short_answer": "Safely retry without double-applying side effects."
+      }
+    ]
+  }
+}
