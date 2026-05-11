@@ -13,8 +13,9 @@ The app has a study mode and a quiz mode:
 - In quiz mode, you can play a standard flash card game, or you can answer via voice and have an LLM judge your knowledge.  
 
 Here is a quick video of these features. This is a utility, so it is minimalistic and not polished. 
-<video src="https://github.com/jaimerodriguez/randomstorage/blob/main/AIQuiz_1600.mp4" width="1200" controls>
-</video>
+
+https://github.com/user-attachments/assets/e2a43154-0d77-4b82-b561-4aebee12669e
+
 
 
 ## Details
@@ -27,7 +28,7 @@ The entire repo was generated with AI and took only 2 hours
   to a connected iPad.
 
 This started both from the need for a quiz tool and curiosity to see how good Claude Code was for Swift UI. 
-With Swift UI, the code generated had issues at first -crashes due to concurrency - but it read two crash logs and fixed them promptly.   
+With Swift UI, the code generated had issues at first -crashes due to concurrency - but I gave Claude the crash logs and it fixed them promptly.   
 
 ## Build
 
