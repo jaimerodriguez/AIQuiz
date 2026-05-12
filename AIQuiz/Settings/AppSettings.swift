@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Observation
+import SwiftUI
 
 enum StudyReadStyle: String, CaseIterable, Identifiable {
     case flipCard
@@ -12,6 +13,30 @@ enum StudyReadStyle: String, CaseIterable, Identifiable {
         switch self {
         case .flipCard: return "Flip card"
         case .allAtOnce: return "All at once"
+        }
+    }
+}
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
         }
     }
 }
@@ -28,6 +53,7 @@ final class AppSettings {
     private let kTTSVoiceIdentifier = "ttsVoiceIdentifier"
     private let kTTSRate = "ttsRate"
     private let kQuizFontSize = "quizFontSize"
+    private let kAppearanceMode = "appearanceMode"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -60,6 +86,10 @@ final class AppSettings {
         didSet { defaults.set(quizFontSize.rawValue, forKey: kQuizFontSize) }
     }
 
+    var appearanceMode: AppearanceMode {
+        didSet { defaults.set(appearanceMode.rawValue, forKey: kAppearanceMode) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let raw = defaults.string(forKey: kStudyReadStyle) ?? StudyReadStyle.flipCard.rawValue
@@ -81,5 +111,7 @@ final class AppSettings {
         self.ttsRate = Float(storedRate ?? 0.5)
         let fontRaw = defaults.object(forKey: kQuizFontSize) as? Int ?? QuizFontSize.large.rawValue
         self.quizFontSize = QuizFontSize(rawValue: fontRaw) ?? .large
+        let appearanceRaw = defaults.string(forKey: kAppearanceMode) ?? AppearanceMode.system.rawValue
+        self.appearanceMode = AppearanceMode(rawValue: appearanceRaw) ?? .system
     }
 }

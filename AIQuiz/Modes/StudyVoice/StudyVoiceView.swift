@@ -146,6 +146,8 @@ struct StudyVoiceView: View {
             controls
         }
         .padding()
+        .contentShape(Rectangle())
+        .simultaneousGesture(swipeGesture)
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -222,6 +224,20 @@ struct StudyVoiceView: View {
         }
         .padding()
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                let dx = value.translation.width
+                let dy = value.translation.height
+                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
+                if dx > 0 {
+                    player.skip()
+                } else {
+                    if !player.deck.atStart { player.back() }
+                }
+            }
     }
 
     private var controls: some View {

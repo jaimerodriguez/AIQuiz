@@ -63,6 +63,7 @@ Hands-free. The app reads each card aloud and advances on its own.
 - "Repeat current card" button re-reads the current card from the top.
 - "Hint" button reveals the hint inline (disabled when the card has no hint). The spoken "hint" voice command described in earlier drafts is deferred — see `known_issues.md`.
 - Skip, Back, Pause, and Abandon controls are available throughout.
+- **Swipe navigation:** one-finger swipe right on the card acts as Skip (advances to the next card and restarts playback); swipe left acts as Back. Swipes are ignored at the start/end of the deck.
 
 ### 3.2 Study format #2 — User-paced read
 
@@ -73,6 +74,7 @@ Self-paced reading. The user controls advancement with explicit taps.
   - **All-at-once** — prompt + short + long answer all visible immediately.
 - "Next" and "Back" buttons; no auto-advance.
 - "Hint" button reveals the hint inline (no voice command needed in this mode).
+- **Swipe navigation:** one-finger swipe right on the card moves to the next card (or finishes the session on the last card); swipe left moves back. The tap-to-reveal affordance in flip-card mode still works — short taps do not trigger a swipe.
 
 ### 3.3 Quiz format #1 — Voice answer + grade
 
@@ -183,6 +185,7 @@ Out of scope for v1, but the design accommodates it: the user can step out of a 
 
 - **AI provider** for generation and grading (selectable independently).
 - **API keys** for OpenAI and Claude (stored in Keychain).
+- **Appearance** — segmented picker with three options: **System** (default, follows the device's Light/Dark setting), **Light**, **Dark**. The choice applies app-wide, including modal sheets, and is persisted across launches.
 - **Reading size** for quiz and study content (see §7.1 below).
 - **TTS voice**, rate, and language. The voice picker groups installed voices by language and labels each with its **quality tier** (Default / Enhanced / Premium). When the user selects a voice that iOS hasn't fully downloaded, the picker shows a diagnostic line ("Asked for X but iOS played Y") after the preview so silent fallbacks are visible.
 - **STT language** (defaults to device locale).

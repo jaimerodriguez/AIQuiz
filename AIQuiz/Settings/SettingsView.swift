@@ -9,6 +9,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             aiSection
+            appearanceSection
             readingSizeSection
             voiceSection
             voiceTuningSection
@@ -17,6 +18,21 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var appearanceSection: some View {
+        Section {
+            Picker("Theme", selection: $settings.appearanceMode) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("System follows your device's Light/Dark setting. Pick Light or Dark to override it inside AIQuiz.")
+        }
     }
 
     private var readingSizeSection: some View {

@@ -39,7 +39,8 @@ Study format #1: Automated Voice Reading.
 
 Study format #2: User reads the cards:  
 - The app will show one card with the prompt, the short, and long answer for the card.  
-- User has to explicitly touch a button to move to the next card. 
+- User has to explicitly touch a button to move to the next card.
+- In addition to the Next/Back buttons, a one-finger swipe right on the card moves to the next card and a swipe left moves to the previous one. Swipe navigation is also available in Study format #1 (right = skip to next, left = back). 
 
 
 Quiz format #1: 
@@ -51,7 +52,11 @@ Quiz format #1:
 The app will read the json file for each quiz by reading it or importing it from as many places as possible.  
 For example, we can prompt for the quiz, and use the Files functionality in iOS to read it from files.  It should also be able to connect to apps like onedrive, dropbox, etc.  The most storage providers in iOS. 
 
-When a Quiz is read, its name and its file location will be saved in the app so the user can re-read it in a different session. 
+When a Quiz is read, its name and its file location will be saved in the app so the user can re-read it in a different session.
+
+
+Appearance:
+- The app supports an in-app theme override in Settings under "Appearance" — a segmented picker with **System** (default, follows the device's Light/Dark setting), **Light**, and **Dark**. The choice is persisted across launches and applies app-wide, including modal sheets. 
 
 
 

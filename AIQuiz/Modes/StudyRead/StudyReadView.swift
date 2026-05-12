@@ -38,6 +38,8 @@ struct StudyReadView: View {
             controls
         }
         .padding()
+        .contentShape(Rectangle())
+        .simultaneousGesture(swipeGesture)
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -113,6 +115,25 @@ struct StudyReadView: View {
         }
         .padding()
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                let dx = value.translation.width
+                let dy = value.translation.height
+                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
+                if dx > 0 {
+                    if deck.atEnd {
+                        recordIfNeeded()
+                        dismiss()
+                    } else {
+                        deck.next()
+                    }
+                } else {
+                    if !deck.atStart { deck.back() }
+                }
+            }
     }
 
     @ViewBuilder
