@@ -56,39 +56,93 @@ final class AIQuizUITests: XCTestCase {
 
     // MARK: AI endpoints (PLAN Phase 1)
 
-    func testAddCustomEndpointTestAndSave() {
-        let app = launch()
+    /// Library → Settings → AI endpoints → Add → preset. Returns with the editor open.
+    private func openEndpointEditor(_ app: XCUIApplication, preset id: String, label: String) {
         XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
         app.buttons["library.settings"].tap()
         let endpointsLink = button(app, id: "settings.endpoints", label: "AI endpoints")
         XCTAssertTrue(endpointsLink.waitForExistence(timeout: timeout))
         endpointsLink.tap()
-
-        XCTAssertTrue(element(app, "endpoints.row.Fake").waitForExistence(timeout: timeout), "UI-test mode seeds a Fake endpoint")
         let add = button(app, id: "endpoints.add", label: "Add endpoint")
         XCTAssertTrue(add.waitForExistence(timeout: timeout))
         add.tap()
-        let preset = button(app, id: "endpoints.preset.custom", label: "Custom OpenAI-compatible")
+        let preset = button(app, id: "endpoints.preset.\(id)", label: label)
         XCTAssertTrue(preset.waitForExistence(timeout: timeout), "preset menu did not open")
         preset.tap()
+        XCTAssertTrue(app.buttons["endpoints.save"].waitForExistence(timeout: timeout))
+    }
 
+    /// The visible key field wraps, so XCUITest may expose it as a text view.
+    private func keyField(_ app: XCUIApplication) -> XCUIElement {
+        let view = app.textViews["endpoints.key"]
+        return view.waitForExistence(timeout: 2) ? view : app.textFields["endpoints.key"]
+    }
+
+    /// Types the key, then the base URL ending in Return, which dismisses the keyboard.
+    private func fillCustomEndpoint(_ app: XCUIApplication, key: String) {
+        let keyInput = keyField(app)
+        XCTAssertTrue(keyInput.exists, "key field is visible (not secure) by default")
+        keyInput.tap()
+        keyInput.typeText(key)
         let baseURL = app.textFields["endpoints.baseURL"]
-        XCTAssertTrue(baseURL.waitForExistence(timeout: timeout))
         baseURL.tap()
         baseURL.typeText("http://example.local/v1\n")
+    }
 
-        let save = app.buttons["endpoints.save"]
-        XCTAssertTrue(save.isEnabled, "a valid base URL enables Save")
+    func testAddEndpointTestSendsHelloThenSave() {
+        let app = launch()
+        openEndpointEditor(app, preset: "custom", label: "Custom OpenAI-compatible")
+        fillCustomEndpoint(app, key: "local-token")
 
         button(app, id: "endpoints.test", label: "Test connection").tap()
         let result = element(app, "endpoints.testResult")
         XCTAssertTrue(result.waitForExistence(timeout: timeout))
+        XCTAssertTrue(result.label.contains("fake-model-a replied"), "got: \(result.label)")
         XCTAssertTrue(result.label.contains("2 models"), "got: \(result.label)")
-        XCTAssertEqual(app.textFields["endpoints.model"].value as? String, "fake-model-a", "first model is picked automatically")
+        XCTAssertEqual(app.textFields["endpoints.model"].value as? String, "fake-model-a")
 
-        save.tap()
+        app.buttons["endpoints.save"].tap()
         XCTAssertTrue(element(app, "endpoints.row.Custom").waitForExistence(timeout: timeout))
         XCTAssertTrue(element(app, "endpoints.route.generation").exists, "routing appears once endpoints exist")
+    }
+
+    func testSavingANewKeyVerifiesItFirst() {
+        let app = launch()
+        openEndpointEditor(app, preset: "custom", label: "Custom OpenAI-compatible")
+        fillCustomEndpoint(app, key: "local-token")
+        app.buttons["endpoints.save"].tap()
+        XCTAssertTrue(element(app, "endpoints.row.Custom").waitForExistence(timeout: timeout), "a passing hello saves and closes")
+    }
+
+    func testFailedVerificationOffersSaveAnyway() {
+        let app = launch(scenario: "endpointError")
+        openEndpointEditor(app, preset: "custom", label: "Custom OpenAI-compatible")
+        fillCustomEndpoint(app, key: "local-token")
+        app.buttons["endpoints.save"].tap()
+
+        let alert = app.alerts["Couldn't confirm this key"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout))
+        XCTAssertTrue(element(app, "endpoints.testResult").exists, "the failure is also shown inline")
+        alert.buttons["Save anyway"].firstMatch.tap()
+        XCTAssertTrue(element(app, "endpoints.row.Custom").waitForExistence(timeout: timeout))
+    }
+
+    func testKeyWarningAndHideToggle() {
+        let app = launch()
+        openEndpointEditor(app, preset: "anthropic", label: "Anthropic")
+        let keyInput = keyField(app)
+        XCTAssertTrue(keyInput.exists)
+        keyInput.tap()
+        keyInput.typeText("sk-proj-pasted-the-wrong-one")
+
+        let warning = element(app, "endpoints.keyWarning")
+        XCTAssertTrue(warning.waitForExistence(timeout: timeout))
+        XCTAssertTrue(warning.label.contains("sk-ant-"), "got: \(warning.label)")
+
+        app.buttons["endpoints.keyVisibility"].tap()
+        XCTAssertTrue(app.secureTextFields["endpoints.key"].waitForExistence(timeout: timeout), "hide switches to a secure field")
+        app.buttons["endpoints.keyVisibility"].tap()
+        XCTAssertTrue(keyField(app).waitForExistence(timeout: timeout))
     }
 
     func testGenerateWithoutEndpointShowsSetupSheet() {

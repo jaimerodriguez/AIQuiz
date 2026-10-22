@@ -246,13 +246,57 @@ final class AIRouter {
         keychain.clearAll()
     }
 
-    /// Lists models with the given (possibly unsaved) settings. Not metered.
-    func testConnection(_ endpoint: LLMEndpoint, apiKey: String?) async throws -> [String] {
+    /// Result of checking an endpoint with (possibly unsaved) settings.
+    struct Verification: Equatable, Sendable {
+        /// Chat-capable models the endpoint offers.
+        var models: [String]
+        /// The model that answered the hello, or the one that would have if a model were set.
+        var model: String
+        /// The model's reply, or nil when no model was selected so no hello was sent.
+        var reply: String?
+        var seconds: Double?
+    }
+
+    /// The connectivity check sent on Test connection and when a new key is saved (CR-005).
+    /// A few tokens at low effort; not counted in usage.
+    static let helloRequest = ChatRequest(
+        system: "This is a connectivity check from the AIQuiz app.",
+        messages: [.user("Reply with only the word: hello")],
+        maxTokens: 1_024,
+        effort: .low,
+        timeout: 45
+    )
+
+    /// Lists the endpoint's chat models, picks one if none is set (except on OpenAI and
+    /// OpenRouter, whose lists are too long to guess from), then sends a hello and times the reply.
+    func verify(_ endpoint: LLMEndpoint, apiKey: String?) async throws -> Verification {
         let key = (apiKey?.isEmpty ?? true) ? self.key(for: endpoint) : apiKey
         if endpoint.kind == .anthropic, (key ?? "").isEmpty {
             throw LLMError.missingAPIKey(endpoint: endpoint.name)
         }
-        return try await factory(endpoint, key, self).listModels()
+        let models = ModelListFilter.chatModels(try await factory(endpoint, key, self).listModels())
+
+        var target = endpoint
+        let host = endpoint.baseURL?.host ?? ""
+        let longCatalogue = host == "api.openai.com" || host.hasSuffix("openrouter.ai")
+        if target.model.trimmingCharacters(in: .whitespaces).isEmpty, !longCatalogue, let first = models.first {
+            target.model = first
+        }
+        guard !target.model.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return Verification(models: models, model: "", reply: nil, seconds: nil)
+        }
+
+        let clock = ContinuousClock()
+        let start = clock.now
+        let response = try await factory(target, key, self).complete(Self.helloRequest)
+        let elapsed = start.duration(to: clock.now)
+        let reply = response.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reply.isEmpty else {
+            throw LLMError.malformedResponse("the model returned an empty reply")
+        }
+        let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+        Log.ai.info("verified \(target.name) model \(target.model) in \(String(format: "%.2f", seconds))s")
+        return Verification(models: models, model: target.model, reply: String(reply.prefix(60)), seconds: seconds)
     }
 
     func recordJSONSchemaSupport(_ supported: Bool, for id: UUID) {

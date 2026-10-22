@@ -1,7 +1,11 @@
 import SwiftUI
 import LLMKit
 
-/// Add or edit one endpoint: name, address, key, model (from Test connection), limits, prices.
+/// Add or edit one endpoint: name, address, key, model, limits, prices.
+///
+/// The key field is visible by default so paste mistakes are easy to spot, with a toggle to
+/// hide it (CR-005). Test connection, and saving a newly entered key, send a short hello to
+/// the model and show its reply.
 struct EndpointEditView: View {
     let original: LLMEndpoint
     let isNew: Bool
@@ -11,13 +15,19 @@ struct EndpointEditView: View {
     @State private var draft: LLMEndpoint
     @State private var baseURLText: String
     @State private var keyDraft = ""
+    @State private var keyVisible = true
+    @State private var savedKeyRevealed = false
+    @State private var savedKeyRemoved = false
     @State private var models: [String] = []
     @State private var testState: TestState = .idle
+    /// Settings that last passed verification, so Save does not re-send the hello.
+    @State private var verifiedFingerprint: String?
+    @State private var saveFailure: String?
 
     enum TestState: Equatable {
         case idle
         case testing
-        case success(Int)
+        case success(AIRouter.Verification)
         case failure(String)
     }
 
@@ -28,12 +38,13 @@ struct EndpointEditView: View {
         _baseURLText = State(initialValue: original.baseURL?.absoluteString ?? "")
     }
 
-    private var hasStoredKey: Bool { !isNew && router.hasKey(for: original) }
+    private var storedKey: String? { isNew || savedKeyRemoved ? nil : router.key(for: original) }
     private var usesNetwork: Bool { draft.kind == .anthropic || draft.kind == .openAICompatible }
+    private var normalizedKey: String { APIKeyCheck.normalize(keyDraft) }
 
     var body: some View {
         Form {
-            Section("Endpoint") {
+            Section {
                 TextField("Name", text: $draft.name)
                     .accessibilityIdentifier("endpoints.name")
                 if usesNetwork {
@@ -42,15 +53,18 @@ struct EndpointEditView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("endpoints.baseURL")
-                    SecureField(hasStoredKey ? "API key (saved; leave blank to keep)" : keyPlaceholder, text: $keyDraft)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("endpoints.key")
-                    if hasStoredKey {
-                        Button("Remove saved key", role: .destructive) {
-                            router.upsert(original, apiKey: "")
-                        }
+                    keyField
+                    if let storedKey, keyDraft.isEmpty {
+                        savedKeyRow(storedKey)
                     }
+                }
+            } header: {
+                Text("Endpoint")
+            } footer: {
+                if usesNetwork {
+                    Text(storedKey == nil
+                         ? "Paste your key. It's checked with a short hello before saving."
+                         : "Paste a new key to replace the saved one. It's checked with a short hello before saving.")
                 }
             }
 
@@ -69,7 +83,7 @@ struct EndpointEditView: View {
                     .accessibilityIdentifier("endpoints.modelPicker")
                 }
                 Button {
-                    Task { await test() }
+                    Task { await runTest() }
                 } label: {
                     HStack {
                         Label("Test connection", systemImage: "bolt.horizontal")
@@ -85,7 +99,7 @@ struct EndpointEditView: View {
             } header: {
                 Text("Model")
             } footer: {
-                Text("Test connection lists the models this endpoint offers.")
+                Text("Test connection lists the models this endpoint offers and sends the selected model a one-word hello. It uses a few tokens.")
             }
 
             Section {
@@ -109,8 +123,8 @@ struct EndpointEditView: View {
                     .accessibilityIdentifier("endpoints.cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-                    .disabled(!canSave)
+                Button("Save") { Task { await save() } }
+                    .disabled(!canSave || testState == .testing)
                     .accessibilityIdentifier("endpoints.save")
             }
         }
@@ -120,22 +134,109 @@ struct EndpointEditView: View {
                 draft.priceOutPerMTok = price.output
             }
         }
+        .alert("Couldn't confirm this key", isPresented: Binding(
+            get: { saveFailure != nil },
+            set: { if !$0 { saveFailure = nil } }
+        )) {
+            Button("Save anyway", role: .destructive) { commit() }
+                .accessibilityIdentifier("endpoints.saveAnyway")
+            Button("Keep editing", role: .cancel) {}
+        } message: {
+            Text(saveFailure ?? "")
+        }
+    }
+
+    // MARK: Key entry
+
+    private var keyField: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Group {
+                    if keyVisible {
+                        TextField(keyPlaceholder, text: $keyDraft, axis: .vertical)
+                            .lineLimit(1...3)
+                            .font(.body.monospaced())
+                    } else {
+                        SecureField(keyPlaceholder, text: $keyDraft)
+                    }
+                }
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityIdentifier("endpoints.key")
+
+                Button {
+                    keyVisible.toggle()
+                } label: {
+                    Image(systemName: keyVisible ? "eye.slash" : "eye")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(keyVisible ? "Hide key" : "Show key")
+                .accessibilityIdentifier("endpoints.keyVisibility")
+            }
+            if let warning = APIKeyCheck.warning(for: normalizedKey, kind: draft.kind, baseURL: resolvedBaseURL) {
+                Label(warning, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("endpoints.keyWarning")
+            }
+        }
+    }
+
+    private func savedKeyRow(_ key: String) -> some View {
+        HStack {
+            LabeledContent("Saved key") {
+                Text(savedKeyRevealed ? key : APIKeyCheck.masked(key))
+                    .font(.footnote.monospaced())
+                    .textSelection(.enabled)
+                    .lineLimit(savedKeyRevealed ? 3 : 1)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("endpoints.savedKey")
+            Button {
+                savedKeyRevealed.toggle()
+            } label: {
+                Image(systemName: savedKeyRevealed ? "eye.slash" : "eye")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(savedKeyRevealed ? "Hide saved key" : "Show saved key")
+            Button("Remove", role: .destructive) {
+                router.upsert(original, apiKey: "")
+                savedKeyRemoved = true
+            }
+            .buttonStyle(.borderless)
+        }
     }
 
     private var keyPlaceholder: String {
-        draft.kind == .anthropic ? "API key" : "API key (optional for local servers)"
+        draft.kind == .anthropic ? "API key (sk-ant-…)" : "API key (optional for local servers)"
     }
+
+    // MARK: Status
 
     @ViewBuilder
     private var testStatus: some View {
         switch testState {
         case .idle, .testing:
             EmptyView()
-        case .success(let count):
-            Label("Connected · \(count) model\(count == 1 ? "" : "s") available", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("endpoints.testResult")
+        case .success(let v):
+            VStack(alignment: .leading, spacing: 2) {
+                if let reply = v.reply {
+                    Label("\(v.model) replied “\(reply)”", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("\(v.models.count) model\(v.models.count == 1 ? "" : "s") available · \(String(format: "%.1f", v.seconds ?? 0)) s")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Label("Connected · \(v.models.count) model\(v.models.count == 1 ? "" : "s") available", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Pick a model, then test again to send it a hello.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("endpoints.testResult")
         case .failure(let message):
             Label(message, systemImage: "xmark.octagon")
                 .foregroundStyle(.red)
@@ -152,6 +253,8 @@ struct EndpointEditView: View {
                 .frame(maxWidth: 120)
         }
     }
+
+    // MARK: Actions
 
     private var resolvedBaseURL: URL? {
         let trimmed = baseURLText.trimmingCharacters(in: .whitespaces)
@@ -172,22 +275,42 @@ struct EndpointEditView: View {
         return e
     }
 
-    private func test() async {
+    private var fingerprint: String {
+        let e = endpointForSaving
+        return [e.baseURL?.absoluteString ?? "", e.model, normalizedKey].joined(separator: "|")
+    }
+
+    /// Runs the check and applies its result to the form. Returns the failure message, if any.
+    @discardableResult
+    private func runTest() async -> String? {
         testState = .testing
         do {
-            let found = try await router.testConnection(endpointForSaving, apiKey: keyDraft)
-            models = found
-            if draft.model.isEmpty, let first = found.first {
-                draft.model = first
-            }
-            testState = .success(found.count)
+            let v = try await router.verify(endpointForSaving, apiKey: normalizedKey)
+            models = v.models
+            if !v.model.isEmpty { draft.model = v.model }
+            testState = .success(v)
+            if v.reply != nil { verifiedFingerprint = fingerprint }
+            return nil
         } catch {
-            testState = .failure((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            testState = .failure(message)
+            return message
         }
     }
 
-    private func save() {
-        router.upsert(endpointForSaving, apiKey: keyDraft.isEmpty ? nil : keyDraft)
+    /// A newly entered key is verified before saving unless these exact settings already passed.
+    private func save() async {
+        if !normalizedKey.isEmpty, verifiedFingerprint != fingerprint {
+            if let failure = await runTest() {
+                saveFailure = failure
+                return
+            }
+        }
+        commit()
+    }
+
+    private func commit() {
+        router.upsert(endpointForSaving, apiKey: normalizedKey.isEmpty ? nil : normalizedKey)
         dismiss()
     }
 }

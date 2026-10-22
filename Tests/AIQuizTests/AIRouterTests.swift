@@ -203,20 +203,83 @@ final class AIRouterTests: XCTestCase {
         XCTAssertFalse(makeRouter().endpoints[0].supportsJSONSchema)
     }
 
-    func testConnectionUsesDraftSettingsAndRequiresAnthropicKey() async throws {
+    func testVerifyListsModelsPicksOneAndSendsHello() async throws {
+        let recorder = RequestRecorder()
         let router = makeRouter(factory: { endpoint, _, _ in
-            FakeLLMClient(endpoint: endpoint, models: ["m1", "m2", "m3"]) { _ in "" }
+            FakeLLMClient(endpoint: endpoint, models: ["text-embedding-x", "m1", "m2"], recorder: recorder) { _ in "  hello\n" }
         })
         var local = EndpointPreset.ollama.make()
         local.baseURL = URL(string: "http://10.0.0.2:11434/v1")
-        let models = try await router.testConnection(local, apiKey: nil)
-        XCTAssertEqual(models, ["m1", "m2", "m3"])
+        let v = try await router.verify(local, apiKey: nil)
+        XCTAssertEqual(v.models, ["m1", "m2"], "non-chat models are filtered out")
+        XCTAssertEqual(v.model, "m1", "first model is picked for local servers")
+        XCTAssertEqual(v.reply, "hello")
+        XCTAssertNotNil(v.seconds)
+        let sent = try XCTUnwrap(recorder.requests.first)
+        XCTAssertEqual(sent, AIRouter.helloRequest)
+        XCTAssertEqual(sent.effort, .low)
+        XCTAssertNil(sent.responseFormat)
+    }
+
+    func testVerifyDoesNotGuessAnOpenAIModel() async throws {
+        let recorder = RequestRecorder()
+        let router = makeRouter(factory: { endpoint, _, _ in
+            FakeLLMClient(endpoint: endpoint, models: ["gpt-a", "gpt-b"], recorder: recorder) { _ in "hello" }
+        })
+        let v = try await router.verify(EndpointPreset.openAI.make(), apiKey: "sk-x")
+        XCTAssertEqual(v.models, ["gpt-a", "gpt-b"])
+        XCTAssertNil(v.reply, "no hello without a chosen model")
+        XCTAssertEqual(recorder.count, 0)
+    }
+
+    func testVerifyUsesTheSelectedModel() async throws {
+        let router = makeRouter(factory: { endpoint, _, _ in
+            FakeLLMClient(endpoint: endpoint) { _ in "hello from \(endpoint.model)" }
+        })
+        var openAI = EndpointPreset.openAI.make()
+        openAI.model = "gpt-chosen"
+        let v = try await router.verify(openAI, apiKey: "sk-x")
+        XCTAssertEqual(v.reply, "hello from gpt-chosen")
+    }
+
+    func testVerifyFailuresPropagate() async {
+        let router = makeRouter(factory: { endpoint, _, _ in
+            FakeLLMClient.scripted([.failure(.unauthorized)], endpoint: endpoint)
+        })
+        var e = EndpointPreset.anthropic.make()
+        e.model = "claude-opus-5-5"
+        do {
+            _ = try await router.verify(e, apiKey: "sk-ant-bad")
+            XCTFail("expected unauthorized")
+        } catch let error as LLMError {
+            XCTAssertEqual(error, .unauthorized)
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
 
         do {
-            _ = try await router.testConnection(EndpointPreset.anthropic.make(), apiKey: "")
+            _ = try await router.verify(EndpointPreset.anthropic.make(), apiKey: "")
             XCTFail("expected missing key")
         } catch let error as LLMError {
             XCTAssertEqual(error, .missingAPIKey(endpoint: "Anthropic"))
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+    }
+
+    func testVerifyRejectsAnEmptyReply() async {
+        let router = makeRouter(factory: { endpoint, _, _ in
+            FakeLLMClient(endpoint: endpoint) { _ in "   " }
+        })
+        var e = EndpointPreset.lmStudio.make()
+        e.model = "m"
+        do {
+            _ = try await router.verify(e, apiKey: nil)
+            XCTFail("expected malformed")
+        } catch let error as LLMError {
+            if case .malformedResponse = error {} else { XCTFail("got \(error)") }
+        } catch {
+            XCTFail("unexpected \(error)")
         }
     }
 

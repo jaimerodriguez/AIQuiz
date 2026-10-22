@@ -29,6 +29,9 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - First launch migrates v1 API keys and provider choices into endpoints automatically. A migrated OpenAI endpoint asks you to pick a model once.
   - Local-network endpoints allowed (`NSAllowsLocalNetworking`, local network usage description).
   - Removed the v1 provider layer (`LLMProvider`, `ProviderRegistry`, three providers, provider settings screen).
+  - API keys are visible while you enter them, with a hide toggle, so paste mistakes are easy to spot; saved keys show their first and last characters. Pasted whitespace and quotes are trimmed, and a key with the wrong prefix or an inner space is flagged (CR-005).
+  - Test connection sends the model a one-word hello and shows its reply and response time. Saving a new key runs the same check first, with a Save anyway option if it fails (CR-005).
+  - The model picker hides embedding, speech, image and moderation models.
 
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.
