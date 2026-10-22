@@ -1,9 +1,11 @@
 import SwiftUI
+import AIQuizCore
 import AVFoundation
 import UIKit
 
 struct SettingsView: View {
-    @Bindable private var settings = AppSettings.shared
+    @Environment(AppSettings.self) private var settings
+    @Environment(ProviderRegistry.self) private var registry
     @State private var voicePreviewing: String?
 
     var body: some View {
@@ -21,13 +23,15 @@ struct SettingsView: View {
     }
 
     private var appearanceSection: some View {
-        Section {
+        @Bindable var settings = settings
+        return Section {
             Picker("Theme", selection: $settings.appearanceMode) {
                 ForEach(AppearanceMode.allCases) { mode in
                     Text(mode.label).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.appearance")
         } header: {
             Text("Appearance")
         } footer: {
@@ -36,13 +40,15 @@ struct SettingsView: View {
     }
 
     private var readingSizeSection: some View {
-        Section {
+        @Bindable var settings = settings
+        return Section {
             Picker("Size", selection: $settings.quizFontSize) {
                 ForEach(QuizFontSize.allCases) { size in
                     Text(size.label).tag(size)
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.readingSize")
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Sample prompt: who succeeded Augustus?")
@@ -66,8 +72,9 @@ struct SettingsView: View {
             NavigationLink {
                 ProviderSettingsView()
             } label: {
-                LabeledContent("AI providers", value: ProviderRegistry.shared.generationProvider.label)
+                LabeledContent("AI providers", value: registry.generationProvider.label)
             }
+            .accessibilityIdentifier("settings.endpoints")
         } header: {
             Text("AI")
         } footer: {
@@ -76,7 +83,8 @@ struct SettingsView: View {
     }
 
     private var voiceSection: some View {
-        Section {
+        @Bindable var settings = settings
+        return Section {
             if !VoiceCatalog.hasAnyPremiumOrEnhanced {
                 premiumVoicesHint
             }
@@ -138,7 +146,8 @@ struct SettingsView: View {
     }
 
     private var studyVoiceSection: some View {
-        Section("Study — Voice auto-read") {
+        @Bindable var settings = settings
+        return Section("Study — Voice auto-read") {
             Stepper(value: $settings.studyVoiceRepeatCount, in: 1...5) {
                 Text("Repeat each card \(settings.studyVoiceRepeatCount)×")
             }
@@ -153,7 +162,8 @@ struct SettingsView: View {
     }
 
     private var studyReadSection: some View {
-        Section("Study — User-paced read") {
+        @Bindable var settings = settings
+        return Section("Study — User-paced read") {
             Picker("Default style", selection: $settings.studyReadStyle) {
                 ForEach(StudyReadStyle.allCases) { s in Text(s.label).tag(s) }
             }

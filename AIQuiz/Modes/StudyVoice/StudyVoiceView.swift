@@ -1,4 +1,5 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 
 @Observable @MainActor
@@ -13,12 +14,11 @@ final class StudyVoicePlayer {
     private let pauseSeconds: Double
     private let repeatCount: Int
 
-    init(deck: SessionDeck, tts: TTSService = .shared) {
+    init(deck: SessionDeck, tts: TTSService, pauseSeconds: Double, repeatCount: Int) {
         self.deck = deck
         self.tts = tts
-        let s = AppSettings.shared
-        self.pauseSeconds = s.studyVoicePauseSeconds
-        self.repeatCount = s.studyVoiceRepeatCount
+        self.pauseSeconds = pauseSeconds
+        self.repeatCount = max(1, repeatCount)
     }
 
     func start() {
@@ -114,19 +114,40 @@ final class StudyVoicePlayer {
     }
 }
 
+/// Builds the player from environment-provided settings, then hands off to the session view.
 struct StudyVoiceView: View {
     let quiz: QuizRecord
+    @Environment(AppSettings.self) private var settings
+    @State private var player: StudyVoicePlayer?
+
+    var body: some View {
+        Group {
+            if let player {
+                StudyVoiceSessionView(quiz: quiz, player: player)
+            } else {
+                ProgressView()
+            }
+        }
+        .onAppear {
+            guard player == nil else { return }
+            player = StudyVoicePlayer(
+                deck: ScoreStore.makeDeck(for: quiz),
+                tts: .shared,
+                pauseSeconds: settings.studyVoicePauseSeconds,
+                repeatCount: settings.studyVoiceRepeatCount
+            )
+        }
+    }
+}
+
+struct StudyVoiceSessionView: View {
+    let quiz: QuizRecord
+    let player: StudyVoicePlayer
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @State private var player: StudyVoicePlayer
+    @Environment(AppSettings.self) private var settings
     @State private var showAbandonAlert: Bool = false
     @State private var sessionRecorded: Bool = false
-
-    init(quiz: QuizRecord) {
-        self.quiz = quiz
-        let deck = ScoreStore.makeDeck(for: quiz)
-        _player = State(wrappedValue: StudyVoicePlayer(deck: deck))
-    }
 
     private func recordIfNeeded() {
         guard !sessionRecorded, !player.deck.abandoned else { return }
@@ -157,6 +178,7 @@ struct StudyVoiceView: View {
                 } label: {
                     Label("End", systemImage: "xmark.circle")
                 }
+                .accessibilityIdentifier("session.end")
             }
         }
         .onAppear { player.start() }
@@ -185,8 +207,10 @@ struct StudyVoiceView: View {
             ProgressView(value: Double(progress.current), total: Double(progress.total))
             HStack {
                 Text("Card \(progress.current) of \(progress.total)")
+                    .accessibilityIdentifier("session.progress")
                 Spacer()
                 Text(stateLabel).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("studyVoice.state")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -203,16 +227,19 @@ struct StudyVoiceView: View {
     }
 
     @ViewBuilder
-    private func cardView(_ card: CardRecord) -> some View {
-        let typo = AppSettings.shared.quizFontSize
+    private func cardView(_ card: CardSnapshot) -> some View {
+        let typo = settings.quizFontSize
         VStack(alignment: .leading, spacing: 16) {
             Text(card.prompt)
                 .font(typo.promptFont)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("session.card.prompt")
             if let s = card.shortAnswer {
                 Text(s).font(typo.emphasisFont).foregroundStyle(.tint)
+                    .accessibilityIdentifier("session.card.shortAnswer")
             }
             Text(card.longAnswer).font(typo.bodyFont)
+                .accessibilityIdentifier("session.card.longAnswer")
             if player.hintRevealed, let hint = card.hint {
                 Text(hint)
                     .font(typo.bodyFont)
@@ -243,17 +270,17 @@ struct StudyVoiceView: View {
     private var controls: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                controlButton("Back", systemImage: "backward.fill") { player.back() }
+                controlButton("Back", systemImage: "backward.fill", id: "studyVoice.back") { player.back() }
                     .disabled(player.deck.atStart)
-                controlButton("Repeat", systemImage: "arrow.counterclockwise") { player.repeatCard() }
+                controlButton("Repeat", systemImage: "arrow.counterclockwise", id: "studyVoice.repeat") { player.repeatCard() }
                 if player.state == .playing {
-                    controlButton("Pause", systemImage: "pause.fill") { player.pause() }
+                    controlButton("Pause", systemImage: "pause.fill", id: "studyVoice.pause") { player.pause() }
                 } else {
-                    controlButton("Play", systemImage: "play.fill") {
+                    controlButton("Play", systemImage: "play.fill", id: "studyVoice.play") {
                         if player.state == .paused { player.resume() } else { player.start() }
                     }
                 }
-                controlButton("Skip", systemImage: "forward.fill") { player.skip() }
+                controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip") { player.skip() }
             }
             Button {
                 player.revealHint()
@@ -263,10 +290,11 @@ struct StudyVoiceView: View {
             }
             .buttonStyle(.bordered)
             .disabled(player.deck.current?.hint == nil)
+            .accessibilityIdentifier("session.hint")
         }
     }
 
-    private func controlButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func controlButton(_ title: String, systemImage: String, id: String, action: @escaping () -> Void) -> some View {
         Button {
             action()
         } label: {
@@ -276,5 +304,6 @@ struct StudyVoiceView: View {
                 .padding(.vertical, 8)
         }
         .buttonStyle(.bordered)
+        .accessibilityIdentifier(id)
     }
 }

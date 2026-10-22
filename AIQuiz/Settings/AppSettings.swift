@@ -1,4 +1,5 @@
 import AVFoundation
+import AIQuizCore
 import Foundation
 import Observation
 import SwiftUI
@@ -44,7 +45,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 @Observable
 @MainActor
 final class AppSettings {
-    static let shared = AppSettings()
+    static let shared = AppSettings(defaults: AppEnvironment.defaults)
 
     private let defaults: UserDefaults
     private let kStudyReadStyle = "studyReadStyle"

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import AIQuizCore
 
 @Model
 final class QuizRecord {
@@ -64,33 +65,24 @@ final class CardRecord {
         self.partialCount = 0
         self.wrongCount = 0
     }
-}
 
-enum SessionMode: String, Codable {
-    case studyVoice
-    case studyRead
-    case quizVoice
-}
-
-enum CardVerdict: String, Codable {
-    case correct
-    case partial
-    case wrong
-    case skipped
-
-    var score: Double? {
-        switch self {
-        case .correct: return 1.0
-        case .partial: return 0.5
-        case .wrong: return 0.0
-        case .skipped: return nil
-        }
+    /// History in the shape the ordering algorithm consumes.
+    var history: SmartOrdering.History {
+        .init(correct: correctCount, partial: partialCount, wrong: wrongCount, lastSeenAt: lastSeenAt)
     }
 }
 
-struct CardOutcome: Codable, Hashable {
-    var cardId: UUID
-    var verdict: CardVerdict
+extension CardSnapshot {
+    /// Copy a card's content for use in a session (DECISIONS ADR-009).
+    init(_ record: CardRecord) {
+        self.init(
+            id: record.id,
+            prompt: record.prompt,
+            longAnswer: record.longAnswer,
+            shortAnswer: record.shortAnswer,
+            hint: record.hint
+        )
+    }
 }
 
 @Model
@@ -133,14 +125,13 @@ final class SessionRecord {
 
 extension QuizRecord {
     var bestScore: Double? {
-        let valid = sessions.filter { !$0.abandoned && $0.scorePercent != nil }
-        return valid.map { $0.scorePercent! }.max()
+        sessions.filter { !$0.abandoned }.compactMap(\.scorePercent).max()
     }
 
     var averageScore: Double? {
-        let valid = sessions.filter { !$0.abandoned && $0.scorePercent != nil }
+        let valid = sessions.filter { !$0.abandoned }.compactMap(\.scorePercent)
         guard !valid.isEmpty else { return nil }
-        return valid.map { $0.scorePercent! }.reduce(0, +) / Double(valid.count)
+        return valid.reduce(0, +) / Double(valid.count)
     }
 
     var sessionCount: Int {

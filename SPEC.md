@@ -266,7 +266,18 @@ FSRS (Free Spaced Repetition Scheduler) with the published default parameters, i
 | S-15 | Privacy: Clear API keys, Clear session history, Clear quiz library (each with confirmation) | — |
 | S-16 | Usage: tokens and estimated cost per endpoint this month, reset button | — |
 
-Accessibility identifier convention: `library.addButton`, `library.row.<quizId>`, `library.dueToday`, `detail.mode.studyVoice`, `detail.mode.studyRead`, `detail.mode.quizVoice`, `detail.mode.quizChoice`, `session.progress`, `session.card.prompt`, `session.hint`, `session.end`, `quiz.tapToAnswer`, `quiz.stopReveal`, `quiz.showAnswer`, `quiz.grade.wrong`, `quiz.grade.partial`, `quiz.grade.correct`, `quiz.aiVerdict`, `quiz.whyWrong`, `summary.score`, `summary.practiceMissed`, `summary.done`, `generate.source`, `generate.topic`, `generate.run`, `generate.progress`, `settings.endpoints`, `endpoints.add`, `endpoints.test`, `endpoints.save`, `chat.input`, `chat.send`. New screens follow the same pattern and are listed in `PLAN.md` when added.
+Accessibility identifier convention `screen.element`. Every interactive control and every text a test asserts on carries one. Current list (keep in sync when adding screens):
+
+- **Library:** `library.addButton`, `library.generate`, `library.import`, `library.settings`, `library.row.<quizId>`, `library.dueToday` (Phase 7).
+- **Quiz detail:** `detail.mode.studyVoice`, `detail.mode.studyRead`, `detail.mode.quizVoice`, `detail.mode.quizChoice` (Phase 6).
+- **Any session:** `session.progress` (text "Card n of N"), `session.card.prompt`, `session.card.shortAnswer`, `session.card.longAnswer`, `session.hint`, `session.end`.
+- **Study read:** `studyRead.style`, `studyRead.reveal`, `studyRead.next`, `studyRead.back`.
+- **Study voice:** `studyVoice.state`, `studyVoice.back`, `studyVoice.repeat`, `studyVoice.play`, `studyVoice.pause`, `studyVoice.skip`.
+- **Quiz voice:** `quiz.tapToAnswer`, `quiz.stopReveal`, `quiz.showAnswer`, `quiz.grade.wrong`, `quiz.grade.partial`, `quiz.grade.correct`, `quiz.askAI`, `quiz.aiVerdict`, `quiz.aiError`, `quiz.whyWrong` (Phase 4).
+- **Summary:** `summary.score`, `summary.count.correct|partial|wrong|skipped`, `summary.practiceMissed`, `summary.done`.
+- **Generate:** `generate.source`, `generate.topic`, `generate.run`, `generate.error`, `generate.cancel`, `generate.saveJSON`, `generate.openLibrary`, `generate.progress` (Phase 5).
+- **Settings:** `settings.appearance`, `settings.readingSize`, `settings.endpoints`; endpoints screen (Phase 1): `endpoints.add`, `endpoints.test`, `endpoints.save`.
+- **Chat (Phase 8):** `chat.input`, `chat.send`.
 
 ---
 

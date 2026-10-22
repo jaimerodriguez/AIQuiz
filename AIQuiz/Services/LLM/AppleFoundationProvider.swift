@@ -1,4 +1,5 @@
 import Foundation
+import AIQuizCore
 
 #if canImport(FoundationModels)
 import FoundationModels

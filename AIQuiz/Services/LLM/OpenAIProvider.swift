@@ -1,4 +1,5 @@
 import Foundation
+import AIQuizCore
 
 struct OpenAIProvider: LLMProvider {
     var id: ProviderID { .openAI }

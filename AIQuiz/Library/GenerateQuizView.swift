@@ -1,4 +1,5 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 import UniformTypeIdentifiers
 
@@ -44,6 +45,7 @@ struct GenerateQuizView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(ProviderRegistry.self) private var registry
 
     @State private var source: Source = .topic
     @State private var topic: String = ""
@@ -81,18 +83,13 @@ struct GenerateQuizView: View {
             }
 
             generateSection
-
-            if let err = errorMessage {
-                Section {
-                    Text(err).font(.footnote).foregroundStyle(.red)
-                }
-            }
         }
         .navigationTitle("Generate quiz")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Cancel") { dismiss() }
+                    .accessibilityIdentifier("generate.cancel")
             }
         }
         .fileImporter(
@@ -138,6 +135,7 @@ struct GenerateQuizView: View {
                 }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier("generate.source")
         } header: {
             Text("Source")
         } footer: {
@@ -150,6 +148,7 @@ struct GenerateQuizView: View {
     private var topicSection: some View {
         Section("Topic") {
             TextField("e.g. Roman emperors", text: $topic)
+                .accessibilityIdentifier("generate.topic")
             Stepper(value: $cardCount, in: 5...50) {
                 Text("\(cardCount) cards")
             }
@@ -221,8 +220,9 @@ struct GenerateQuizView: View {
                 }
             }
             .disabled(generating || !canGenerate)
+            .accessibilityIdentifier("generate.run")
 
-            if let id = generatedQuizId {
+            if generatedQuizId != nil {
                 Button {
                     if exportingJSON != nil {
                         exporting = true
@@ -231,17 +231,23 @@ struct GenerateQuizView: View {
                     Label("Also save JSON to Files", systemImage: "square.and.arrow.up")
                 }
                 .disabled(exportingJSON == nil)
+                .accessibilityIdentifier("generate.saveJSON")
                 Button {
                     dismiss()
                 } label: {
                     Label("Open in library", systemImage: "checkmark.circle")
                 }
-                .id(id)
+                .accessibilityIdentifier("generate.openLibrary")
+            }
+
+            if let err = errorMessage {
+                Text(err).font(.footnote).foregroundStyle(.red)
+                    .accessibilityIdentifier("generate.error")
             }
         } header: {
             Text("Generate")
         } footer: {
-            Text("Provider: \(ProviderRegistry.shared.generationProvider.label)")
+            Text("Provider: \(registry.generationProvider.label)")
                 .font(.footnote)
         }
     }
@@ -274,7 +280,7 @@ struct GenerateQuizView: View {
         generatedQuizId = nil
         exportingJSON = nil
 
-        if let validation = ProviderRegistry.shared.validate(for: .generation) {
+        if let validation = registry.validate(for: .generation) {
             switch validation {
             case .missingAPIKey, .providerUnavailable, .noProviderConfigured:
                 showProviderSetup = true
@@ -296,7 +302,7 @@ struct GenerateQuizView: View {
         generating = true
         defer { generating = false }
         do {
-            let provider = ProviderRegistry.shared.provider(for: .generation)
+            let provider = registry.provider(for: .generation)
             let payload = try await provider.generateQuiz(request)
             try saveQuiz(payload)
         } catch {

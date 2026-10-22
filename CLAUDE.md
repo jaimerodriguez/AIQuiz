@@ -54,6 +54,12 @@ Crash reports from the iPad: Xcode → Window → Devices and Simulators → Vie
 
 Voice capture (microphone + speech recognition) is only trusted on the physical iPad. The simulator is fine for everything else.
 
+XCUITest gotchas seen in this project:
+- On iPad, form sheets (Generate quiz) are short and the keyboard shortens them further. `tap()` on an element below the fold does nothing and raises no error. Scroll first; `AIQuizUITests.scrollGenerateForm` drags on a static text in the form until the target is hittable. Never drag on a text field (it starts text selection).
+- A failing `waitForExistence` right after a tap usually means the tap did not land, not that the view is missing.
+- Test bundles need `GENERATE_INFOPLIST_FILE: YES` in `Project.yml`; the app target sets it to NO.
+- `scripts/test.sh` runs under macOS bash 3.2: expand optional arrays as `${ARR[@]+"${ARR[@]}"}` with `set -u`.
+
 ## Change tracking 
 1. For major features, while in development. Keep a Changelog 1.1.0, date-stamped records in `CHANGELOG.md`
 2. Document all decisions and feature chagnes as we go. keep track of these in SPEC.md as Change requests.   
@@ -87,7 +93,7 @@ Voice capture (microphone + speech recognition) is only trusted on the physical 
 ## Git
 - **Integration branch is `claude`.** Nothing Claude produces is committed to `main` directly. Every milestone/phase gets its own branch cut from `claude` (`phase-N-short-title`) and merges back into `claude` via PR. Merging `claude` into `main` is the owner's call.
 - One PR per phase unless the plan says otherwise.
-- Commit messages: imperative, first line ≤ 72 chars, body explains why. End with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` when Claude wrote it.
+- Commit messages: imperative, first line ≤ 72 chars, body explains why. When Claude wrote it, end with a `Co-Authored-By: Claude <model name> <noreply@anthropic.com>` line naming the model that actually did the work (for example `Claude Opus 5.5`).
 - Never commit `build/`, `build-device/`, `*.ips`, `debug.log` (already in `.gitignore`).
 
 ## Owner context

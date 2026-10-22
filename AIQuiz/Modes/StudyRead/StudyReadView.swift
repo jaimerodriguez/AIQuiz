@@ -1,12 +1,15 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 
 struct StudyReadView: View {
     let quiz: QuizRecord
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @State private var deck: SessionDeck
-    @State private var style: StudyReadStyle
+    @State private var style: StudyReadStyle = .flipCard
+    @State private var styleInitialised: Bool = false
     @State private var revealed: Bool = false
     @State private var showAbandonAlert: Bool = false
     @State private var sessionRecorded: Bool = false
@@ -14,7 +17,6 @@ struct StudyReadView: View {
     init(quiz: QuizRecord) {
         self.quiz = quiz
         _deck = State(wrappedValue: ScoreStore.makeDeck(for: quiz))
-        _style = State(wrappedValue: AppSettings.shared.studyReadStyle)
     }
 
     private func recordIfNeeded() {
@@ -51,6 +53,7 @@ struct StudyReadView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 220)
+                .accessibilityIdentifier("studyRead.style")
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button(role: .destructive) {
@@ -58,6 +61,13 @@ struct StudyReadView: View {
                 } label: {
                     Label("End", systemImage: "xmark.circle")
                 }
+                .accessibilityIdentifier("session.end")
+            }
+        }
+        .onAppear {
+            if !styleInitialised {
+                style = settings.studyReadStyle
+                styleInitialised = true
             }
         }
         .onChange(of: style) { _, _ in revealed = false }
@@ -80,16 +90,18 @@ struct StudyReadView: View {
             Text("Card \(progress.current) of \(progress.total)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("session.progress")
         }
     }
 
     @ViewBuilder
-    private func cardView(_ card: CardRecord) -> some View {
-        let typo = AppSettings.shared.quizFontSize
+    private func cardView(_ card: CardSnapshot) -> some View {
+        let typo = settings.quizFontSize
         VStack(alignment: .leading, spacing: 16) {
             Text(card.prompt)
                 .font(typo.promptFont)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("session.card.prompt")
 
             switch style {
             case .flipCard:
@@ -106,6 +118,7 @@ struct StudyReadView: View {
                             .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("studyRead.reveal")
                 }
             case .allAtOnce:
                 answerBlock(card, typo: typo)
@@ -137,15 +150,17 @@ struct StudyReadView: View {
     }
 
     @ViewBuilder
-    private func answerBlock(_ card: CardRecord, typo: QuizFontSize) -> some View {
+    private func answerBlock(_ card: CardSnapshot, typo: QuizFontSize) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let s = card.shortAnswer {
                 Text(s)
                     .font(typo.emphasisFont)
                     .foregroundStyle(.tint)
+                    .accessibilityIdentifier("session.card.shortAnswer")
             }
             Text(card.longAnswer)
                 .font(typo.bodyFont)
+                .accessibilityIdentifier("session.card.longAnswer")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -160,6 +175,7 @@ struct StudyReadView: View {
             }
             .buttonStyle(.bordered)
             .disabled(deck.atStart)
+            .accessibilityIdentifier("studyRead.back")
 
             Button {
                 if deck.atEnd {
@@ -173,6 +189,7 @@ struct StudyReadView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("studyRead.next")
         }
     }
 }

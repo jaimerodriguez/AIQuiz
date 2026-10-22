@@ -4,13 +4,16 @@ import SwiftData
 @main
 struct AIQuizApp: App {
     let container: ModelContainer
+    private let environment = AppEnvironment.current
     @State private var settings = AppSettings.shared
+    @State private var registry = ProviderRegistry.shared
 
     init() {
         do {
+            let config = ModelConfiguration(isStoredInMemoryOnly: AppEnvironment.current.isUITest)
             container = try ModelContainer(
                 for: QuizRecord.self, CardRecord.self, SessionRecord.self,
-                configurations: ModelConfiguration()
+                configurations: config
             )
         } catch {
             fatalError("Failed to create SwiftData container: \(error)")
@@ -21,10 +24,16 @@ struct AIQuizApp: App {
         WindowGroup {
             RootView()
                 .modelContainer(container)
+                .environment(settings)
+                .environment(registry)
                 .preferredColorScheme(settings.appearanceMode.colorScheme)
                 .task {
-                    DebugLog.log("AIQuiz launched")
-                    await SampleQuizzes.seedIfNeeded(in: container.mainContext)
+                    Log.app.info("AIQuiz launched (uiTest=\(environment.isUITest), scenario=\(environment.scenario.rawValue))")
+                    if environment.isUITest {
+                        await UITestFixtures.seed(scenario: environment.scenario, in: container.mainContext)
+                    } else {
+                        await SampleQuizzes.seedIfNeeded(in: container.mainContext)
+                    }
                 }
         }
     }
