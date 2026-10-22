@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import LLMKit
 
@@ -32,6 +33,27 @@ private let judgeTask = StructuredTask<Verdict>(
     effort: .low
 )
 
+/// Same shape as the quiz schema's optional fields: required but nullable (`anyOf: [T, null]`).
+private struct CardLike: Decodable, Sendable {
+    let prompt: String
+    let hint: String?
+}
+
+private let nullableTask = StructuredTask<CardLike>(
+    name: "card",
+    system: "You write one flashcard as JSON.",
+    user: "Write a flashcard about the capital of France. Set hint to null.",
+    schema: .object(properties: [
+        .init("prompt", .string()),
+        .init("hint", .nullable(.string()))
+    ]),
+    maxTokens: 4096,
+    effort: .low
+)
+
+/// Records whether the OpenAI client had to step down from strict json_schema.
+private let schemaDowngrades = Mutex<Int>(0)
+
 private func liveClients() -> [LLMClient] {
     var clients: [LLMClient] = []
     if let key = env["AIQuiz_Ant_test_key"], !key.isEmpty {
@@ -44,7 +66,10 @@ private func liveClients() -> [LLMClient] {
     if let key = env["AIQuiz_Oai_test_key"], !key.isEmpty, let model = env["AIQuiz_Oai_test_model"], !model.isEmpty {
         clients.append(OpenAICompatibleClient(
             endpoint: LLMEndpoint(kind: .openAICompatible, name: "OpenAI", baseURL: URL(string: "https://api.openai.com/v1"), model: model, contextWindowTokens: 128_000),
-            apiKey: key
+            apiKey: key,
+            onJSONSchemaSupport: { supported in
+                if !supported { schemaDowngrades.withLock { $0 += 1 } }
+            }
         ))
     }
     return clients
@@ -68,8 +93,13 @@ struct LiveTests {
             let v = try await client.run(judgeTask)
             #expect(v.verdict == "correct", "\(client.endpoint.name) judged \(v.verdict): \(v.reason)")
 
+            let card = try await client.run(nullableTask)
+            #expect(!card.prompt.isEmpty)
+            #expect(card.hint == nil, "\(client.endpoint.name) returned hint \(card.hint ?? "")")
+
             let models = try await client.listModels()
             #expect(!models.isEmpty)
         }
+        #expect(schemaDowngrades.withLock { $0 } == 0, "OpenAI rejected strict json_schema and fell back to a looser mode")
     }
 }

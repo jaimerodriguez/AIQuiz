@@ -7,10 +7,14 @@
 #   security add-generic-password -U -a "$USER" -s AIQuiz_Oai_test_key -w
 #
 # Usage:
-#   scripts/live-test.sh                      # Anthropic only
-#   scripts/live-test.sh -m <openai-model>    # also OpenAI, with this chat model
-#   AIQuiz_Oai_test_model=<model> scripts/live-test.sh
-#   AIQuiz_Ant_test_model=claude-haiku-5-5 scripts/live-test.sh   # override the Anthropic model
+#   scripts/live-test.sh                      # both providers, default models below
+#   scripts/live-test.sh -m <openai-model>    # override the OpenAI chat model
+#   AIQuiz_Ant_test_model=claude-opus-5-5 scripts/live-test.sh    # override the Anthropic model
+#
+# Default test models, chosen by the owner on 2026-10-22: the latest Sonnet and gpt-6-luna.
+# These are test defaults only; the app itself hardcodes no OpenAI model (ADR-008).
+DEFAULT_ANT_MODEL="claude-sonnet-5-5"
+DEFAULT_OAI_MODEL="gpt-6-luna"
 #
 # Remove the keys:
 #   security delete-generic-password -s AIQuiz_Ant_test_key
@@ -33,11 +37,11 @@ read_key() {
 
 ANT_KEY="$(read_key AIQuiz_Ant_test_key)"
 OAI_KEY="$(read_key AIQuiz_Oai_test_key)"
-OAI_MODEL="${OPENAI_MODEL_ARG:-${AIQuiz_Oai_test_model:-}}"
-ANT_MODEL="${AIQuiz_Ant_test_model:-}"
+OAI_MODEL="${OPENAI_MODEL_ARG:-${AIQuiz_Oai_test_model:-$DEFAULT_OAI_MODEL}}"
+ANT_MODEL="${AIQuiz_Ant_test_model:-$DEFAULT_ANT_MODEL}"
 
 if [ -n "$ANT_KEY" ]; then
-  echo "Anthropic: key found in Keychain (model ${ANT_MODEL:-claude-opus-5-5})"
+  echo "Anthropic: key found in Keychain (model $ANT_MODEL)"
 else
   echo "Anthropic: no AIQuiz_Ant_test_key in Keychain, skipping"
 fi
