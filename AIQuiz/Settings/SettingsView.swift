@@ -5,7 +5,7 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
-    @Environment(ProviderRegistry.self) private var registry
+    @Environment(AIRouter.self) private var router
     @State private var voicePreviewing: String?
 
     var body: some View {
@@ -70,15 +70,15 @@ struct SettingsView: View {
     private var aiSection: some View {
         Section {
             NavigationLink {
-                ProviderSettingsView()
+                EndpointsListView()
             } label: {
-                LabeledContent("AI providers", value: registry.generationProvider.label)
+                LabeledContent("AI endpoints", value: router.summary(for: .generation))
             }
             .accessibilityIdentifier("settings.endpoints")
         } header: {
             Text("AI")
         } footer: {
-            Text("Pick which model generates quizzes and grades your spoken answers. Cloud models need API keys; Apple on-device runs free on supported devices.")
+            Text("Add Anthropic, OpenAI, local-network servers such as Ollama, or Apple on-device, then choose which one handles each task.")
         }
     }
 

@@ -7,14 +7,18 @@ let package = Package(
     products: [
         .library(name: "AIQuizCore", targets: ["AIQuizCore"])
     ],
+    dependencies: [
+        .package(path: "../LLMKit")
+    ],
     targets: [
         .target(
             name: "AIQuizCore",
+            dependencies: [.product(name: "LLMKit", package: "LLMKit")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "AIQuizCoreTests",
-            dependencies: ["AIQuizCore"],
+            dependencies: ["AIQuizCore", .product(name: "LLMKit", package: "LLMKit")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

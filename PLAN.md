@@ -13,8 +13,8 @@ How to use this document:
 
 | Phase | Title | Status | PR |
 |---|---|---|---|
-| 0 | Test scaffolding and packages | in review | phase-0-test-scaffolding |
-| 1 | LLMKit foundation and endpoint settings | not started | |
+| 0 | Test scaffolding and packages | in review | jaimerodriguez/AIQuiz#2 |
+| 1 | LLMKit foundation and endpoint settings | in review | phase-1-llmkit, stacked on #2 |
 | 2 | Schema v2 and migration | not started | |
 | 3 | Session UI consolidation and v1 drift fixes | not started | |
 | 4 | AI grading, explanations, hints, lint | not started | |
