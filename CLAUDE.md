@@ -32,10 +32,11 @@ swift test --package-path Packages/AIQuizCore
 swift test --package-path Packages/LLMKit
 ```
 
-Live API tests (spend real money; never in CI). Set the keys in your shell first; `OPENAI_MODEL` is required for OpenAI because no model is hardcoded:
+Live API tests (spend real money, a few cents a run; never in CI). Keys live in the macOS login Keychain under `AIQuiz_Ant_test_key` and `AIQuiz_Oai_test_key`; the script reads them, never prints them, and skips a provider whose key is missing. OpenAI also needs a chat model because none is hardcoded:
 ```bash
-AIQUIZ_LIVE_TESTS=1 swift test --package-path Packages/LLMKit --filter Live
+scripts/live-test.sh -m <openai-chat-model>
 ```
+The owner stores the keys; agents never ask for them, read them, or type them anywhere. Run the live tests at the end of any phase that changes `Packages/LLMKit` or a client.
 
 App tests alone:
 ```bash

@@ -32,6 +32,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - API keys are visible while you enter them, with a hide toggle, so paste mistakes are easy to spot; saved keys show their first and last characters. Pasted whitespace and quotes are trimmed, and a key with the wrong prefix or an inner space is flagged (CR-005).
   - Test connection sends the model a one-word hello and shows its reply and response time. Saving a new key runs the same check first, with a Save anyway option if it fails (CR-005).
   - The model picker hides embedding, speech, image and moderation models.
+  - `scripts/live-test.sh` runs the opt-in live API tests with keys read from the macOS login Keychain (`AIQuiz_Ant_test_key`, `AIQuiz_Oai_test_key`). The test variables use these names instead of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` so no other tool picks up the test keys.
 
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.

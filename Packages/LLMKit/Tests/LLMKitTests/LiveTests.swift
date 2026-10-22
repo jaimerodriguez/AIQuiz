@@ -3,11 +3,15 @@ import Testing
 @testable import LLMKit
 
 /// Opt-in tests against real APIs (PLAN §1.6). They spend real money, so they only run with
-/// `AIQUIZ_LIVE_TESTS=1`. Anthropic needs `ANTHROPIC_API_KEY`; OpenAI needs `OPENAI_API_KEY`
-/// and `OPENAI_MODEL` (no OpenAI model is hardcoded, DECISIONS ADR-008). Optional
-/// `ANTHROPIC_MODEL` overrides the default `claude-opus-5-5`.
+/// `AIQUIZ_LIVE_TESTS=1`. Run them with `scripts/live-test.sh`, which reads the keys from the
+/// macOS login Keychain and passes them in these variables:
 ///
-///     AIQUIZ_LIVE_TESTS=1 ANTHROPIC_API_KEY=... swift test --package-path Packages/LLMKit --filter Live
+/// - `AIQuiz_Ant_test_key`: Anthropic key. Optional `AIQuiz_Ant_test_model` overrides `claude-opus-5-5`.
+/// - `AIQuiz_Oai_test_key` and `AIQuiz_Oai_test_model`: OpenAI key and chat model (no OpenAI
+///   model is hardcoded, DECISIONS ADR-008).
+///
+/// The names deliberately differ from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` so no other tool
+/// picks up the test keys.
 private let env = ProcessInfo.processInfo.environment
 private let liveEnabled = env["AIQUIZ_LIVE_TESTS"] == "1"
 
@@ -30,14 +34,14 @@ private let judgeTask = StructuredTask<Verdict>(
 
 private func liveClients() -> [LLMClient] {
     var clients: [LLMClient] = []
-    if let key = env["ANTHROPIC_API_KEY"], !key.isEmpty {
-        let model = env["ANTHROPIC_MODEL"] ?? "claude-opus-5-5"
+    if let key = env["AIQuiz_Ant_test_key"], !key.isEmpty {
+        let model = env["AIQuiz_Ant_test_model"].flatMap { $0.isEmpty ? nil : $0 } ?? "claude-opus-5-5"
         clients.append(AnthropicClient(
             endpoint: LLMEndpoint(kind: .anthropic, name: "Anthropic", model: model, contextWindowTokens: 1_000_000),
             apiKey: key
         ))
     }
-    if let key = env["OPENAI_API_KEY"], !key.isEmpty, let model = env["OPENAI_MODEL"], !model.isEmpty {
+    if let key = env["AIQuiz_Oai_test_key"], !key.isEmpty, let model = env["AIQuiz_Oai_test_model"], !model.isEmpty {
         clients.append(OpenAICompatibleClient(
             endpoint: LLMEndpoint(kind: .openAICompatible, name: "OpenAI", baseURL: URL(string: "https://api.openai.com/v1"), model: model, contextWindowTokens: 128_000),
             apiKey: key
@@ -51,7 +55,7 @@ struct LiveTests {
     @Test("complete, stream, structured and listModels against every configured provider")
     func everyProvider() async throws {
         let clients = liveClients()
-        try #require(!clients.isEmpty, "set ANTHROPIC_API_KEY and/or OPENAI_API_KEY + OPENAI_MODEL")
+        try #require(!clients.isEmpty, "set AIQuiz_Ant_test_key and/or AIQuiz_Oai_test_key + AIQuiz_Oai_test_model")
         for client in clients {
             let simple = ChatRequest(system: "Be terse.", messages: [.user("Reply with exactly: OK")], maxTokens: 2048, effort: .low)
             let r = try await client.complete(simple)
