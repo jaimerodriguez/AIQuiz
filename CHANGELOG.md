@@ -62,7 +62,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Fixed:** in Study — User-paced read, a revealed hint stayed open on the next card. Every mode now resets the hint per card.
   - **Fixed:** deleted sample quizzes came back on every launch. Samples are now added on first launch only.
   - **New look (CR-011):** one blue accent color marks the main action on every screen: the round + button, Generate, Save in editors, Play / Pause, Next and Tap to answer. Red, orange and green are kept for grades and destructive actions.
-  - **Welcome screens redesigned:** illustrations and tiles for the three study modes, the four kinds of source, and the AI providers. They fit on iPhone, lay out side by side on iPad, and end with *Let's get started*.
+  - **Welcome screens redesigned:** illustrations and tiles for the three study modes, the four kinds of source, and the AI providers, with the official Anthropic and OpenAI marks in light and dark versions. They fit on iPhone, lay out side by side on iPad, and end with *Let's get started*.
   - **Library:** sort sits above the list next to the quiz count instead of in the toolbar, so the + button stands on its own.
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue, and a line says what's missing.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.

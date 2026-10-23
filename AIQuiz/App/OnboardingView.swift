@@ -350,8 +350,9 @@ struct ProviderMark: View {
 
     @ViewBuilder
     private var logo: some View {
-        if let asset = provider.assetName, let image = UIImage(named: asset) {
-            Image(uiImage: image).resizable().scaledToFit()
+        if let asset = provider.assetName, UIImage(named: asset) != nil {
+            // The SwiftUI image follows light and dark mode; the asset holds both variants.
+            Image(asset).resizable().scaledToFit()
         } else {
             switch provider {
             case .apple:

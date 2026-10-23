@@ -197,6 +197,10 @@ One entry per decision that shapes the codebase. Each records the conversation w
 - Explanatory screens use tiles and icons rather than paragraphs.
 - Each screen is checked on iPad and iPhone.
 
-**Logos.** Provider tiles use the official Anthropic and OpenAI logos only when their image sets are added to the asset catalog. Agents don't download or redraw brand marks, so a neutral monogram stands in until then. Apple uses the `apple.logo` SF Symbol, which refers to Apple's own on-device model.
+**Logos.** Provider tiles use official marks, never redrawn ones. On 2026-10-22, with Jaime's approval, I downloaded these:
+- `logo-anthropic`: the Anthropic symbol in Slate (light mode) and Ivory (dark mode), from the press kit linked on anthropic.com/news. The kit contains no usage terms.
+- `logo-openai`: the OpenAI Blossom in black (light mode) and white (dark mode), from `cdn.openai.com/brand/openai-logos.zip` on openai.com/brand. Jaime accepted OpenAI's Marks usage terms for this. The SVG keeps OpenAI's built-in clear space, so the Blossom looks a little smaller than the other marks; that is intentional.
+
+The files are used unmodified, next to the provider's name and only to identify the provider. If an image set is removed, the tile falls back to a neutral monogram. Apple uses the `apple.logo` SF Symbol, which refers to Apple's own on-device model.
 
 **Consequences.** Later screens follow N-9. Phase 6's choice buttons and Phase 7's due badge will use the accent only for the selected or primary state.

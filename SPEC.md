@@ -288,7 +288,7 @@ Accessibility identifier convention `screen.element`. Every interactive control 
 ---
 
 ## 13. First run and onboarding (F-60)
-Three illustrated screens (CR-011): *Three ways to study* (a tile per mode), *Make quizzes from anything* (the four source types, then the deck and the kept original), *Bring your own AI* (Anthropic, OpenAI, Apple on-device and your own server, plus a note that keys stay in the Keychain). Tiles sit side by side on iPad and stack on iPhone. The last screen ends with *Let's get started*; endpoints are added later from Settings. Skippable. Shown once (flag in UserDefaults). Samples are seeded regardless. Provider tiles show official logos when `logo-anthropic` / `logo-openai` image sets are in the asset catalog, otherwise a neutral monogram.
+Three illustrated screens (CR-011): *Three ways to study* (a tile per mode), *Make quizzes from anything* (the four source types, then the deck and the kept original), *Bring your own AI* (Anthropic, OpenAI, Apple on-device and your own server, plus a note that keys stay in the Keychain). Tiles sit side by side on iPad and stack on iPhone. The last screen ends with *Let's get started*; endpoints are added later from Settings. Skippable. Shown once (flag in UserDefaults). Samples are seeded regardless. Provider tiles show the official Anthropic symbol and OpenAI Blossom (asset catalog `logo-anthropic`, `logo-openai`, light and dark variants, unmodified; provenance in ADR-016), Apple's `apple.logo` symbol, and a server symbol.
 
 ---
 
