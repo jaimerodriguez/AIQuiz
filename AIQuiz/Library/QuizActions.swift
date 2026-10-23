@@ -216,6 +216,7 @@ struct QuizDetailsEditor: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
+                    .primaryActionStyle()
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("quizEdit.save")
             }

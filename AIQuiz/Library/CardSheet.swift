@@ -163,6 +163,7 @@ struct CardEditView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
+                    .primaryActionStyle()
                     .disabled(problem != nil)
                     .accessibilityIdentifier("cardEdit.save")
             }

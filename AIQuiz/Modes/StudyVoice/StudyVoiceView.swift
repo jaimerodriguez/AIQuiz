@@ -82,9 +82,9 @@ private struct StudyVoiceSession: View {
                     .disabled(player.deck.atStart)
                 controlButton("Repeat", systemImage: "arrow.counterclockwise", id: "studyVoice.repeat", action: player.repeatCard)
                 if player.state == .playing {
-                    controlButton("Pause", systemImage: "pause.fill", id: "studyVoice.pause", action: player.pause)
+                    controlButton("Pause", systemImage: "pause.fill", id: "studyVoice.pause", prominent: true, action: player.pause)
                 } else {
-                    controlButton("Play", systemImage: "play.fill", id: "studyVoice.play", action: player.start)
+                    controlButton("Play", systemImage: "play.fill", id: "studyVoice.play", prominent: true, action: player.start)
                 }
                 controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip", action: player.skip)
             }
@@ -92,14 +92,18 @@ private struct StudyVoiceSession: View {
         }
     }
 
-    private func controlButton(_ title: String, systemImage: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    /// Play / Pause is the main control, so it carries the accent.
+    @ViewBuilder
+    private func controlButton(_ title: String, systemImage: String, id: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        let button = Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
         }
-        .buttonStyle(.bordered)
+        Group {
+            if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
+        }
         .accessibilityIdentifier(id)
     }
 }

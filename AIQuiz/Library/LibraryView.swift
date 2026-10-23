@@ -33,6 +33,7 @@ struct LibraryView: View {
             } else {
                 LibraryList(
                     sort: settings.librarySort,
+                    sortSelection: Bindable(settings).librarySort,
                     search: searchText,
                     tag: selectedTag,
                     tags: activeQuizzes.count > Self.tagChipThreshold ? allTags : [],
@@ -53,19 +54,7 @@ struct LibraryView: View {
                 }
                 .accessibilityIdentifier("library.settings")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort by", selection: Bindable(settings).librarySort) {
-                        ForEach(LibrarySort.allCases) { sort in
-                            Text(sort.label).tag(sort)
-                                .accessibilityIdentifier("library.sort.\(sort.rawValue)")
-                        }
-                    }
-                } label: {
-                    Label("Sort", systemImage: "arrow.up.arrow.down")
-                }
-                .accessibilityIdentifier("library.sort")
-            }
+            // The app's main action: an accent circle without the toolbar's glass (CR-011).
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
@@ -81,10 +70,16 @@ struct LibraryView: View {
                     }
                     .accessibilityIdentifier("library.import")
                 } label: {
-                    Label("Add Quiz", systemImage: "plus")
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.accent.gradient, in: Circle())
+                        .accessibilityLabel("Add Quiz")
                 }
                 .accessibilityIdentifier("library.addButton")
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .sheet(isPresented: $generating) {
             NavigationStack {
@@ -136,6 +131,7 @@ struct LibraryView: View {
 private struct LibraryList: View {
     @Query private var quizzes: [QuizRecord]
     @Query private var archived: [QuizRecord]
+    @Binding var sortSelection: LibrarySort
     let tags: [String]
     @Binding var selectedTag: String?
     let actions: QuizActions
@@ -143,7 +139,7 @@ private struct LibraryList: View {
     @State private var showArchived = false
     @State private var launchMilliseconds: Int?
 
-    init(sort: LibrarySort, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
+    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
         let term = search.trimmingCharacters(in: .whitespaces).lowercased()
         let needle = tag.map(TagsSearch.needle(forTag:)) ?? ""
         _quizzes = Query(
@@ -161,6 +157,7 @@ private struct LibraryList: View {
             sort: [SortDescriptor(\QuizRecord.name, comparator: .localizedStandard)]
         )
         self.tags = tags
+        _sortSelection = sortSelection
         _selectedTag = selectedTag
         self.actions = actions
         self.sourceStatus = sourceStatus
@@ -182,13 +179,17 @@ private struct LibraryList: View {
             if !tags.isEmpty {
                 tagChips
             }
-            ForEach(quizzes) { quiz in
-                row(quiz)
-            }
-            if quizzes.isEmpty {
-                Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("library.noMatches")
+            Section {
+                ForEach(quizzes) { quiz in
+                    row(quiz)
+                }
+                if quizzes.isEmpty {
+                    Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("library.noMatches")
+                }
+            } header: {
+                listHeader
             }
             if !archived.isEmpty {
                 Section {
@@ -239,8 +240,32 @@ private struct LibraryList: View {
             } label: {
                 Label(quiz.isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
             }
-            .tint(.indigo)
+            .tint(.gray)
         }
+    }
+
+    /// Count and sort, at the top of the list rather than in the toolbar, so the add button
+    /// stands alone (CR-011).
+    private var listHeader: some View {
+        HStack {
+            Text(quizzes.count == 1 ? "1 quiz" : "\(quizzes.count) quizzes")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Menu {
+                Picker("Sort by", selection: $sortSelection) {
+                    ForEach(LibrarySort.allCases) { sort in
+                        Text(sort.label).tag(sort)
+                            .accessibilityIdentifier("library.sort.\(sort.rawValue)")
+                    }
+                }
+            } label: {
+                Label(sortSelection.label, systemImage: "arrow.up.arrow.down")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityIdentifier("library.sort")
+        }
+        .font(.subheadline)
+        .textCase(nil)
     }
 
     private var tagChips: some View {

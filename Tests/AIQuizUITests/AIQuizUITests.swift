@@ -578,26 +578,35 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["onboarding.next"].tap()
         XCTAssertTrue(element(app, "onboarding.title.1").waitForExistence(timeout: timeout))
         app.buttons["onboarding.next"].tap()
-        XCTAssertTrue(app.buttons["onboarding.later"].waitForExistence(timeout: timeout))
-        XCTAssertTrue(app.buttons["onboarding.addEndpoint"].exists)
-        app.buttons["onboarding.later"].tap()
+        let start = app.buttons["onboarding.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: timeout), "the last page ends with Let's get started")
+        XCTAssertEqual(start.label, "Let's get started")
+        XCTAssertFalse(app.buttons["onboarding.addEndpoint"].exists, "no Add endpoint or Later on the last page")
+        start.tap()
         XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout), "the library shows; samples were seeded regardless")
     }
 
-    func testOnboardingSkipAndAddEndpointNow() {
-        var app = launch(extra: ["-UITestOnboarding"])
+    func testOnboardingSkip() {
+        let app = launch(extra: ["-UITestOnboarding"])
         XCTAssertTrue(app.buttons["onboarding.skip"].waitForExistence(timeout: timeout))
         app.buttons["onboarding.skip"].tap()
         XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
-        app.terminate()
+    }
 
-        app = launch(extra: ["-UITestOnboarding"])
-        XCTAssertTrue(app.buttons["onboarding.next"].waitForExistence(timeout: timeout))
-        app.buttons["onboarding.next"].tap()
-        app.buttons["onboarding.next"].tap()
-        XCTAssertTrue(app.buttons["onboarding.addEndpoint"].waitForExistence(timeout: timeout))
-        app.buttons["onboarding.addEndpoint"].tap()
-        XCTAssertTrue(button(app, id: "endpoints.add", label: "Add endpoint").waitForExistence(timeout: timeout), "the endpoint list opens")
+    func testGenerateIsDisabledUntilTheSourceIsReady() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        app.buttons["library.generate"].tap()
+        let run = app.buttons["generate.run"]
+        XCTAssertTrue(run.waitForExistence(timeout: timeout))
+        XCTAssertFalse(run.isEnabled, "nothing to generate from yet")
+        let cancel = app.buttons["generate.cancel"]
+        XCTAssertLessThan(cancel.frame.minX, run.frame.minX, "Cancel is on the left, Generate on the right")
+        let topic = app.textFields["generate.topic"]
+        topic.tap()
+        topic.typeText("Roman emperors")
+        XCTAssertTrue(run.isEnabled, "a topic makes the quiz ready")
     }
 
     func testOnboardingIsNotShownByDefaultInTests() {

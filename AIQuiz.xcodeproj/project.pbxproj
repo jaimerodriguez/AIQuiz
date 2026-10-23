@@ -19,6 +19,7 @@
 		28751B99627685B308BA3B82 /* SourceLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E08F624C4E300935A4F257 /* SourceLink.swift */; };
 		29C68614638BC6B1F59AC9C2 /* StudyVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 296ED178BCC9A487FF10EDB3 /* StudyVoiceView.swift */; };
 		2BB5C92D401A47E1D5B2B5B7 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8EC7CA7F7EA1F07EB03CF1 /* MarkdownView.swift */; };
+		2E3D205EEE41377D396217A6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3799AAA6A76E684B6E045702 /* Theme.swift */; };
 		31CC847629E35568C2D5F195 /* GenerateQuizView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EEE8AAC9E0A9558F61270E3 /* GenerateQuizView.swift */; };
 		3438ACC07C701B14A9F29211 /* VoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6A37609DF37FF529F1AA69 /* VoiceCatalog.swift */; };
 		34D72F1DEF4FFF77DC5155C0 /* SampleQuizzes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB6E1F1F443E71C0ABAB663 /* SampleQuizzes.swift */; };
@@ -56,6 +57,7 @@
 		AD48888F65116ED762DCBDFC /* QuizActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93E844E12C1C3DA145638FC4 /* QuizActions.swift */; };
 		B48FF7E78EF6023F67C56647 /* AppleOnDeviceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D28B72860AC6EBE457A07 /* AppleOnDeviceClient.swift */; };
 		B570928955CC17BE6008F911 /* MigrationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7AA54547B5C2D490C387D6 /* MigrationPlan.swift */; };
+		B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 775A3D3AB206AE6D55095940 /* Assets.xcassets */; };
 		B9D576550FA3934444914E3F /* LibraryMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB829CAF9AB6CE095EC1B3D3 /* LibraryMaintenance.swift */; };
 		C1C14165E5BA07C10ED3A441 /* Phase3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C28E49651C0164B5E875085 /* Phase3Tests.swift */; };
 		C468BFD511100035470AF527 /* LargeLibraryPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71943BE354597EF7135A1AFE /* LargeLibraryPerformanceTests.swift */; };
@@ -103,6 +105,7 @@
 		2835F1C92830DEF63381F07A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		296ED178BCC9A487FF10EDB3 /* StudyVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyVoiceView.swift; sourceTree = "<group>"; };
 		2A544B34F4F4FDB7EDD478EB /* QuizVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizVoiceView.swift; sourceTree = "<group>"; };
+		3799AAA6A76E684B6E045702 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3B36DE7F994236DC1DE4DE67 /* SchemaV0.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemaV0.swift; sourceTree = "<group>"; };
 		3CBF322BC20DB68106549B7A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		4128E1EDC648587162B4D3B2 /* AIPurpose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPurpose.swift; sourceTree = "<group>"; };
@@ -118,6 +121,7 @@
 		6AAFA9F08A6512D133406B57 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		6E47022E7D7DAD97D78A2995 /* AIRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRouter.swift; sourceTree = "<group>"; };
 		71943BE354597EF7135A1AFE /* LargeLibraryPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeLibraryPerformanceTests.swift; sourceTree = "<group>"; };
+		775A3D3AB206AE6D55095940 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7862E67270BF62CAD90BE99E /* CardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSheet.swift; sourceTree = "<group>"; };
 		7895E8EFAB9524D36DBB934C /* SchemaV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemaV2.swift; sourceTree = "<group>"; };
 		79850B49D0CA55854ABFD654 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -206,6 +210,7 @@
 		12CD61947D7A4319BDD0489A /* AIQuiz */ = {
 			isa = PBXGroup;
 			children = (
+				775A3D3AB206AE6D55095940 /* Assets.xcassets */,
 				F543C21AF45D2FAE48E132B8 /* App */,
 				0B6AB723031761FAFAA2CC11 /* Library */,
 				1AA22310391BBBE012682D0E /* Models */,
@@ -415,6 +420,7 @@
 				20C30346E7CF1C649B3785F1 /* LaunchMetric.swift */,
 				ED6E3287C013FDDAE7D6B6BB /* OnboardingView.swift */,
 				3CBF322BC20DB68106549B7A /* RootView.swift */,
+				3799AAA6A76E684B6E045702 /* Theme.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -545,6 +551,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */,
 				FF238F421C7742CA0274B080 /* generation.json in Resources */,
 				C91BD863995F54DF7B6BDCD9 /* grading.json in Resources */,
 				3CCF180D2B0258BC5179FC25 /* roman-emperors.json in Resources */,
@@ -605,6 +612,7 @@
 				ED67EB9B19E3312215882781 /* StudyReadView.swift in Sources */,
 				29C68614638BC6B1F59AC9C2 /* StudyVoiceView.swift in Sources */,
 				6D8567BCDCB7931BCE39E608 /* TTSService.swift in Sources */,
+				2E3D205EEE41377D396217A6 /* Theme.swift in Sources */,
 				5F4AF0C566D373163F1C35EF /* UITestAIFixtures.swift in Sources */,
 				13B77D7963FFAE9206940AC5 /* UITestFixtures.swift in Sources */,
 				3438ACC07C701B14A9F29211 /* VoiceCatalog.swift in Sources */,
@@ -804,7 +812,8 @@
 		7CB56D4C2C444FB4B3034CEB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -843,7 +852,8 @@
 		B6D1A5487CE4A91ED6825C9B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;

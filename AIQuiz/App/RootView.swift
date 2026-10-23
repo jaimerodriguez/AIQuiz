@@ -5,7 +5,6 @@ struct RootView: View {
     @Environment(AppSettings.self) private var settings
     @State private var showRecovery = false
     @State private var showOnboarding = false
-    @State private var showEndpoints = false
 
     var body: some View {
         NavigationStack {
@@ -21,15 +20,9 @@ struct RootView: View {
             Text("AIQuiz started a new, empty library. A copy of the old one was kept in the app's data (Backups › \(recoveredBackup?.lastPathComponent ?? "")) so it can be recovered.")
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView { addEndpoint in
+            OnboardingView {
                 settings.onboardingDone = true
                 showOnboarding = false
-                if addEndpoint { showEndpoints = true }
-            }
-        }
-        .sheet(isPresented: $showEndpoints) {
-            NavigationStack {
-                EndpointsListView(showsDoneButton: true)
             }
         }
     }

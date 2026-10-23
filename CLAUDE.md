@@ -85,6 +85,13 @@ SwiftData gotchas seen in this project:
 - The schemas in `AIQuiz/Models/Schema/` are frozen once shipped. A model change means a new `SchemaVn`, a stage in `AIQuizMigrationPlan`, and a test that opens the previous shape (ADR-014).
 - To prove a migration against the owner's real data, copy the iPad store (see below) and run `TEST_RUNNER_AIQUIZ_REAL_STORES=<folder>[:<folder>] ONLY=AIQuizTests/MigrationTests scripts/test.sh`.
 
+## Visual design (SPEC N-9, ADR-016)
+- One accent color (`AccentColor`, blue). Use it for the single primary action on a screen (`primaryActionStyle()`, disabled and grey until it can run) and for feature icons (`AccentIcon`). Nowhere else.
+- Red, orange and green only when they mean something: destructive, recording, Wrong / Partial / Correct.
+- Explain with icons and tiles, not paragraphs. Use `Theme` radii and readable width.
+- iOS 26 toolbars render buttons as monochrome glass; a toolbar `Menu` ignores button styles. For an accent toolbar control, draw it and hide the shared background (see the library's add button).
+- Check every changed screen on iPad Pro 13-inch and iPhone 17 Pro, and put both in the PR.
+
 ## Change tracking 
 1. For major features, while in development. Keep a Changelog 1.1.0, date-stamped records in `CHANGELOG.md`
 2. Document all decisions and feature chagnes as we go. keep track of these in SPEC.md as Change requests.   

@@ -182,3 +182,21 @@ One entry per decision that shapes the codebase. Each records the conversation w
 **Decision.** (b). `SpeechSynthesizing` and `SpeechRecognizing` are `@MainActor` protocols in AIQuizCore, next to `ScriptedSynthesizer` and `ScriptedRecognizer`. `TTSService` and `STTService` conform in the app. `STTService`'s audio tap and recognition callbacks are untouched (known_issues §1); only its transcript callback now says whether a result is final. The composition root builds a `SpeechServices` value: Apple's services normally, scripted ones in UI-test mode.
 
 **Consequences.** Player logic runs in `swift test` in under a second (14 player tests). The simulator exercises Study voice and Quiz voice end to end, including a voice answer. Real audio still needs the iPad: hearing TTS and seeing a live transcript are owner checks, since an agent can neither hear nor speak. Phase 8's audio coordinator plugs in behind the same protocols.
+
+## ADR-016 — One accent color and a small Theme
+**Date:** 2026-10-22. **Status:** accepted (CR-011, SPEC N-9).
+
+**Context.** Jaime found the app plain and said critical controls didn't stand out. On iOS 26 toolbar buttons are monochrome glass, so the add button, the generate action and the editors' Save looked like everything else. The welcome screens were paragraphs. Jaime asked for a cohesive theme with one accent color, applied from now on.
+
+**Options.** (a) Rely on the system tint. It is blue already, but most actions used bordered or glass styles, so it rarely showed. (b) Several brand colors per feature. This is lively, but it competes with the meaning of red, orange and green for grades. (c) One accent color, used deliberately, plus a few shared building blocks.
+
+**Decision.** (c). `AccentColor` in a new asset catalog is a deeper blue in light mode and a lighter one in dark mode, and it is set as the global accent. `Theme` holds the corner radii and readable width, `primaryActionStyle()` (filled accent, grey while disabled) and `AccentIcon` (a symbol in a soft accent circle). Rules:
+- The accent marks one primary action per screen, and feature icons.
+- Red, orange and green are kept for meaning only.
+- Everything else stays neutral.
+- Explanatory screens use tiles and icons rather than paragraphs.
+- Each screen is checked on iPad and iPhone.
+
+**Logos.** Provider tiles use the official Anthropic and OpenAI logos only when their image sets are added to the asset catalog. Agents don't download or redraw brand marks, so a neutral monogram stands in until then. Apple uses the `apple.logo` SF Symbol, which refers to Apple's own on-device model.
+
+**Consequences.** Later screens follow N-9. Phase 6's choice buttons and Phase 7's due badge will use the accent only for the selected or primary state.

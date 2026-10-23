@@ -99,9 +99,25 @@ struct GenerateQuizView: View {
         .navigationTitle("Generate quiz")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
                     .accessibilityIdentifier("generate.cancel")
+            }
+            // The primary action: greyed out until the source is filled in, then accent (CR-011).
+            ToolbarItem(placement: .confirmationAction) {
+                if generating {
+                    ProgressView()
+                        .accessibilityIdentifier("generate.progress")
+                } else {
+                    Button {
+                        Task { await generate() }
+                    } label: {
+                        Text("Generate").fontWeight(.semibold)
+                    }
+                    .primaryActionStyle()
+                    .disabled(!canGenerate)
+                    .accessibilityIdentifier("generate.run")
+                }
             }
         }
         .fileImporter(
@@ -221,21 +237,18 @@ struct GenerateQuizView: View {
 
     private var generateSection: some View {
         Section {
-            Button {
-                Task { await generate() }
-            } label: {
-                HStack {
-                    if generating {
-                        ProgressView()
-                        Text("Generating…")
-                    } else {
-                        Label("Generate quiz", systemImage: "sparkles")
-                    }
-                    Spacer()
+            if generating {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Generating…")
                 }
+            } else if generatedQuizId == nil && errorMessage == nil {
+                Label(canGenerate ? "Ready. Tap Generate at the top." : readinessHint,
+                      systemImage: canGenerate ? "checkmark.circle.fill" : "circle.dashed")
+                    .foregroundStyle(canGenerate ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(.secondary))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("generate.readiness")
             }
-            .disabled(generating || !canGenerate)
-            .accessibilityIdentifier("generate.run")
 
             if generatedQuizId != nil {
                 Button {
@@ -275,6 +288,16 @@ struct GenerateQuizView: View {
     }
 
     private static let resultAnchor = "generate.result"
+
+    /// What is still missing before Generate turns on.
+    private var readinessHint: String {
+        switch source {
+        case .topic: return "Enter a topic to generate a quiz."
+        case .markdown: return "Pick a Markdown file to generate a quiz."
+        case .paste: return "Paste some text to generate a quiz."
+        case .url: return "Enter a web address starting with https://."
+        }
+    }
 
     private var canGenerate: Bool {
         switch source {
