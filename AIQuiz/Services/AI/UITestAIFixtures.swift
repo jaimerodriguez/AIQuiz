@@ -17,7 +17,7 @@ enum UITestAIFixtures {
                 throw LLMError.server(status: 503)
             case .malformedJSON:
                 return "{ this is not valid json"
-            case .standard, .emptyLibrary, .noEndpoints:
+            case .standard, .emptyLibrary, .noEndpoints, .largeLibrary:
                 break
             }
             switch request.responseFormat?.name {

@@ -37,6 +37,6 @@ enum SampleQuizzes {
 
     @MainActor
     private static func insert(quiz: QuizPayload, bundledId: String?, into context: ModelContext) {
-        context.insert(QuizRecord.make(from: quiz, bundledSampleId: bundledId))
+        context.insert(QuizRecord.make(from: quiz, origin: .bundled, bundledSampleId: bundledId))
     }
 }

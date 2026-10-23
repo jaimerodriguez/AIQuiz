@@ -369,4 +369,204 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(error.waitForExistence(timeout: timeout))
         XCTAssertFalse(app.buttons["generate.openLibrary"].exists)
     }
+
+    // MARK: Library and card management (PLAN Phase 2)
+
+    private func longPress(_ app: XCUIApplication, quiz name: String) {
+        let row = app.staticTexts[name]
+        XCTAssertTrue(row.waitForExistence(timeout: timeout), "quiz row \(name) not found")
+        row.press(forDuration: 1.2)
+    }
+
+    private func firstRowLabel(_ app: XCUIApplication) -> String {
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library.row.'"))
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: timeout))
+        return rows.firstMatch.label
+    }
+
+    func testEditACard() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let card = app.buttons["detail.card.0"]
+        XCTAssertTrue(card.waitForExistence(timeout: timeout))
+        card.tap()
+        XCTAssertTrue(element(app, "card.prompt").waitForExistence(timeout: timeout), "the card sheet opens")
+        app.buttons["card.edit"].tap()
+
+        let prompt = app.textViews["cardEdit.prompt"].exists ? app.textViews["cardEdit.prompt"] : app.textFields["cardEdit.prompt"]
+        XCTAssertTrue(prompt.waitForExistence(timeout: timeout))
+        prompt.tap()
+        prompt.press(forDuration: 1.0)
+        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
+        prompt.typeText("Edited prompt")
+        app.buttons["cardEdit.save"].tap()
+
+        XCTAssertTrue(app.staticTexts["Edited prompt"].waitForExistence(timeout: timeout), "the sheet shows the edit")
+        app.buttons["card.done"].tap()
+        XCTAssertTrue(app.buttons["detail.card.0"].staticTexts["Edited prompt"].waitForExistence(timeout: timeout), "the card list shows the edit")
+    }
+
+    func testCardEditRejectsAMultipleChoiceCardWithoutOptions() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.card.0"].tap()
+        XCTAssertTrue(app.buttons["card.edit"].waitForExistence(timeout: timeout))
+        app.buttons["card.edit"].tap()
+        let kind = app.buttons["cardEdit.kind"]
+        XCTAssertTrue(kind.waitForExistence(timeout: timeout))
+        kind.tap()
+        let mcq = app.buttons["Multiple choice"]
+        XCTAssertTrue(mcq.waitForExistence(timeout: timeout))
+        mcq.tap()
+        XCTAssertTrue(element(app, "cardEdit.problem").waitForExistence(timeout: timeout), "the D-2 rule is explained")
+        XCTAssertFalse(app.buttons["cardEdit.save"].isEnabled, "Save is disabled while the card is invalid")
+    }
+
+    func testDeleteACard() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.card.0"].tap()
+        let delete = app.buttons["card.delete"]
+        let anchor = element(app, "card.longAnswer")
+        XCTAssertTrue(anchor.waitForExistence(timeout: timeout))
+        for _ in 0..<4 where !(delete.exists && delete.isHittable) {
+            anchor.swipeUp()
+        }
+        XCTAssertTrue(delete.waitForExistence(timeout: timeout))
+        delete.tap()
+        // The confirmation dialog copies the identifier onto its wrapper; tap the first match.
+        let confirm = app.buttons.matching(identifier: "card.confirmDelete").firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: timeout))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Fixture prompt two"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.staticTexts["Fixture prompt one"].exists, "the card is gone")
+        let cards = element(app, "detail.stat.cards")
+        XCTAssertTrue(cards.waitForExistence(timeout: timeout))
+        XCTAssertTrue("\(cards.label) \(cards.value ?? "")".contains("5"), "the stored card count drops to 5: \(cards.label)")
+    }
+
+    func testRenameAQuizFromTheLibrary() {
+        let app = launch()
+        longPress(app, quiz: "UITest Deck")
+        let rename = button(app, id: "library.rename", label: "Rename")
+        XCTAssertTrue(rename.waitForExistence(timeout: timeout), "context menu opens")
+        rename.tap()
+        let name = app.textFields["quizEdit.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: timeout))
+        name.tap()
+        if let value = name.value as? String {
+            name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
+        }
+        name.typeText("Renamed Deck")
+        app.buttons["quizEdit.save"].tap()
+        XCTAssertTrue(app.staticTexts["Renamed Deck"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.staticTexts["UITest Deck"].exists)
+    }
+
+    func testEditTagsThenSearchByTag() {
+        let app = launch()
+        longPress(app, quiz: "UITest Deck")
+        let editTags = button(app, id: "library.editTags", label: "Edit tags")
+        XCTAssertTrue(editTags.waitForExistence(timeout: timeout))
+        editTags.tap()
+        let tags = app.textFields["quizEdit.tags"]
+        XCTAssertTrue(tags.waitForExistence(timeout: timeout))
+        tags.tap()
+        tags.typeText(", zebra")
+        app.buttons["quizEdit.save"].tap()
+        XCTAssertTrue(app.staticTexts["#fixture #zebra"].waitForExistence(timeout: timeout), "the row shows the tags")
+
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("#zebra")
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.staticTexts["Roman Emperors"].exists, "search filters on tags")
+    }
+
+    func testArchiveMovesAQuizToTheArchivedSection() {
+        let app = launch()
+        longPress(app, quiz: "UITest Deck")
+        let archive = button(app, id: "library.archive", label: "Archive")
+        XCTAssertTrue(archive.waitForExistence(timeout: timeout))
+        archive.tap()
+        let archived = element(app, "library.archived")
+        XCTAssertTrue(archived.waitForExistence(timeout: timeout), "an Archived section appears")
+        XCTAssertFalse(app.staticTexts["UITest Deck"].isHittable && app.staticTexts["UITest Deck"].exists, "collapsed by default")
+        app.buttons["library.archived"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout), "expanding shows it")
+    }
+
+    func testSortByName() {
+        let app = launch()
+        let sort = app.buttons["library.sort"]
+        XCTAssertTrue(sort.waitForExistence(timeout: timeout))
+        sort.tap()
+        let byName = button(app, id: "library.sort.name", label: "Name")
+        XCTAssertTrue(byName.waitForExistence(timeout: timeout))
+        byName.tap()
+        XCTAssertTrue(firstRowLabel(app).hasPrefix("Common Spanish Verbs"), "first row is \(firstRowLabel(app))")
+    }
+
+    func testExportJSONOpensTheFileExporter() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let more = app.buttons["detail.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: timeout))
+        more.tap()
+        let export = button(app, id: "detail.export", label: "Export JSON")
+        XCTAssertTrue(export.waitForExistence(timeout: timeout))
+        export.tap()
+        // The system document picker runs out of process; its buttons show up under the app.
+        let picker = app.buttons["Move"].exists ? app.buttons["Move"] : app.navigationBars.buttons["Save"]
+        let appeared = picker.waitForExistence(timeout: timeout)
+            || app.buttons["Save"].waitForExistence(timeout: 2)
+            || app.buttons["Cancel"].waitForExistence(timeout: 2)
+        XCTAssertTrue(appeared, "the file exporter appears")
+    }
+
+    // MARK: Scale (SPEC N-8, scenario largeLibrary)
+
+    func testLargeLibraryLaunchScrollSortAndSearch() throws {
+        // First launch seeds the on-disk library (slow, once); the second measures a cold start.
+        var app = launch(scenario: "largeLibrary")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library.row.'")).firstMatch.waitForExistence(timeout: 180))
+        app.terminate()
+        app = launch(scenario: "largeLibrary")
+        let metric = element(app, "library.launchMetric")
+        XCTAssertTrue(metric.waitForExistence(timeout: 30))
+        let ms = Int(metric.label.filter(\.isNumber)) ?? Int.max
+        print("PERF cold launch to first library row: \(ms) ms")
+        XCTAssertLessThan(ms, 1500, "cold launch to first row")
+
+        let list = app.collectionViews.firstMatch
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        measure(metrics: [XCTOSSignpostMetric.scrollDecelerationMetric], options: options) {
+            list.swipeUp(velocity: .fast)
+            list.swipeDown(velocity: .fast)
+        }
+        for _ in 0..<8 { list.swipeUp(velocity: .fast) }
+        for _ in 0..<8 { list.swipeDown(velocity: .fast) }
+
+        let sort = app.buttons["library.sort"]
+        sort.tap()
+        button(app, id: "library.sort.name", label: "Name").tap()
+        let start = Date()
+        let first = app.staticTexts["Large quiz 000"]
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        print("PERF sort by name visible after \(Int(Date().timeIntervalSince(start) * 1000)) ms (includes XCUITest polling)")
+
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("quiz 19")
+        let searchStart = Date()
+        XCTAssertTrue(app.staticTexts["Large quiz 199"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Large quiz 000"].exists)
+        print("PERF search result visible after \(Int(Date().timeIntervalSince(searchStart) * 1000)) ms (includes XCUITest polling)")
+
+        let chip = app.buttons["library.tag.history"]
+        XCTAssertTrue(chip.exists || app.buttons["#history"].exists, "tag chips show above a library of more than 10 quizzes")
+    }
 }

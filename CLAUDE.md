@@ -76,6 +76,14 @@ XCUITest gotchas seen in this project:
 - To read why a UI test failed, export the xcresult attachments: `xcrun xcresulttool export attachments --path <xcresult> --output-path <dir>`; the `.txt` files hold the element hierarchy at failure.
 - Test bundles need `GENERATE_INFOPLIST_FILE: YES` in `Project.yml`; the app target sets it to NO.
 - `scripts/test.sh` runs under macOS bash 3.2: expand optional arrays as `${ARR[@]+"${ARR[@]}"}` with `set -u`.
+- Rows of a `List` or `Form` that are off screen do not exist for XCUITest. Put anything a test must find near the top, or swipe on a static text until it is hittable.
+- `Text("\(number)")` localizes the number (`1,177`). Use `Text(verbatim:)` for values a test parses.
+- A `confirmationDialog` button's identifier matches twice; tap `app.buttons.matching(identifier:).firstMatch`.
+
+SwiftData gotchas seen in this project:
+- `#Predicate` cannot force-unwrap. Write `(card.dueAt ?? distantPast) <= now` with `distantPast` captured as a local.
+- The schemas in `AIQuiz/Models/Schema/` are frozen once shipped. A model change means a new `SchemaVn`, a stage in `AIQuizMigrationPlan`, and a test that opens the previous shape (ADR-014).
+- To prove a migration against the owner's real data, copy the iPad store (see below) and run `TEST_RUNNER_AIQUIZ_REAL_STORES=<folder>[:<folder>] ONLY=AIQuizTests/MigrationTests scripts/test.sh`.
 
 ## Change tracking 
 1. For major features, while in development. Keep a Changelog 1.1.0, date-stamped records in `CHANGELOG.md`

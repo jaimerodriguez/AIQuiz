@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Launch arguments:
 /// - `-UITestMode`            in-memory store, seeded fixtures, fake AI provider, throwaway defaults
-/// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`, `noEndpoints`
+/// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`, `noEndpoints`, `largeLibrary`
 struct AppEnvironment: Sendable {
     enum Scenario: String, Sendable, CaseIterable {
         case standard
@@ -14,6 +14,9 @@ struct AppEnvironment: Sendable {
         case malformedJSON
         /// No AI endpoint configured, to exercise the lazy setup sheet.
         case noEndpoints
+        /// 200 quizzes, 10 000 cards and 5 000 sessions in an on-disk store that survives
+        /// relaunches, for the SPEC N-8 scale checks.
+        case largeLibrary
     }
 
     let isUITest: Bool
@@ -31,6 +34,14 @@ struct AppEnvironment: Sendable {
         d.removePersistentDomain(forName: suite)
         return d
     }()
+
+    /// Where the library lives: the real store, nothing (in memory) for UI tests, or a
+    /// reusable on-disk store for the large-library scenario.
+    var storeURL: URL? {
+        guard isUITest else { return StoreLoader.defaultStoreURL }
+        guard scenario == .largeLibrary else { return nil }
+        return URL.cachesDirectory.appending(path: "uitest-largeLibrary/default.store")
+    }
 
     init(arguments: [String]) {
         isUITest = arguments.contains("-UITestMode")

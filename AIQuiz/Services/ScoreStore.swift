@@ -53,6 +53,7 @@ enum ScoreStore {
         )
         session.quiz = quiz
         quiz.sessions.append(session)
+        QuizStats.refresh(quiz)
 
         do {
             try context.save()

@@ -42,6 +42,23 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// Library sort order (SPEC F-1). *Most due* arrives with scheduling in Phase 7.
+enum LibrarySort: String, CaseIterable, Identifiable {
+    case recent
+    case name
+    case newest
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .recent: return "Recently studied"
+        case .name: return "Name"
+        case .newest: return "Newest"
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class AppSettings {
@@ -55,6 +72,7 @@ final class AppSettings {
     private let kTTSRate = "ttsRate"
     private let kQuizFontSize = "quizFontSize"
     private let kAppearanceMode = "appearanceMode"
+    private let kLibrarySort = "librarySort"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -91,6 +109,10 @@ final class AppSettings {
         didSet { defaults.set(appearanceMode.rawValue, forKey: kAppearanceMode) }
     }
 
+    var librarySort: LibrarySort {
+        didSet { defaults.set(librarySort.rawValue, forKey: kLibrarySort) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let raw = defaults.string(forKey: kStudyReadStyle) ?? StudyReadStyle.flipCard.rawValue
@@ -114,5 +136,6 @@ final class AppSettings {
         self.quizFontSize = QuizFontSize(rawValue: fontRaw) ?? .large
         let appearanceRaw = defaults.string(forKey: kAppearanceMode) ?? AppearanceMode.system.rawValue
         self.appearanceMode = AppearanceMode(rawValue: appearanceRaw) ?? .system
+        self.librarySort = LibrarySort(rawValue: defaults.string(forKey: kLibrarySort) ?? "") ?? .recent
     }
 }
