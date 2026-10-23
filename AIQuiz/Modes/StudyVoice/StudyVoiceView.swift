@@ -2,128 +2,17 @@ import SwiftUI
 import AIQuizCore
 import SwiftData
 
-@Observable @MainActor
-final class StudyVoicePlayer {
-    enum State { case idle, playing, paused, ended }
-
-    let deck: SessionDeck
-    private(set) var state: State = .idle
-    private(set) var hintRevealed: Bool = false
-    private var task: Task<Void, Never>?
-    private let tts: TTSService
-    private let pauseSeconds: Double
-    private let repeatCount: Int
-
-    init(deck: SessionDeck, tts: TTSService, pauseSeconds: Double, repeatCount: Int) {
-        self.deck = deck
-        self.tts = tts
-        self.pauseSeconds = pauseSeconds
-        self.repeatCount = max(1, repeatCount)
-    }
-
-    func start() {
-        guard state != .playing else { return }
-        state = .playing
-        runLoop()
-    }
-
-    func pause() {
-        guard state == .playing else { return }
-        state = .paused
-        tts.pause()
-    }
-
-    func resume() {
-        guard state == .paused else { return }
-        state = .playing
-        tts.resume()
-    }
-
-    func stop() {
-        task?.cancel()
-        tts.stop()
-        state = .ended
-    }
-
-    func repeatCard() {
-        task?.cancel()
-        tts.stop()
-        hintRevealed = false
-        state = .playing
-        runLoop()
-    }
-
-    func skip() {
-        task?.cancel()
-        tts.stop()
-        hintRevealed = false
-        deck.next()
-        if deck.ended {
-            state = .ended
-        } else {
-            state = .playing
-            runLoop()
-        }
-    }
-
-    func back() {
-        guard !deck.atStart else { return }
-        task?.cancel()
-        tts.stop()
-        hintRevealed = false
-        deck.back()
-        state = .playing
-        runLoop()
-    }
-
-    func revealHint() {
-        hintRevealed = true
-        Task { await tts.speak("Hint.") }
-    }
-
-    private func runLoop() {
-        task?.cancel()
-        task = Task { [weak self] in
-            guard let self else { return }
-            await self.playCurrentCard()
-        }
-    }
-
-    private func playCurrentCard() async {
-        while !Task.isCancelled, let card = deck.current {
-            for _ in 0..<repeatCount {
-                if Task.isCancelled { return }
-                await tts.speak(card.prompt)
-                if Task.isCancelled { return }
-                try? await Task.sleep(for: .seconds(pauseSeconds))
-                if let short = card.shortAnswer, !short.isEmpty {
-                    if Task.isCancelled { return }
-                    await tts.speak(short)
-                    if Task.isCancelled { return }
-                    try? await Task.sleep(for: .seconds(pauseSeconds))
-                }
-                if Task.isCancelled { return }
-                await tts.speak(card.longAnswer)
-                if Task.isCancelled { return }
-                try? await Task.sleep(for: .seconds(pauseSeconds))
-            }
-            hintRevealed = false
-            deck.next()
-            if deck.ended { state = .ended; return }
-        }
-    }
-}
-
-/// Builds the player from environment-provided settings, then hands off to the session view.
+/// Study — Voice auto-read (SPEC F-11). State lives in `StudyVoicePlayer`.
 struct StudyVoiceView: View {
     let quiz: QuizRecord
     @Environment(AppSettings.self) private var settings
+    @Environment(SpeechServices.self) private var speech
     @State private var player: StudyVoicePlayer?
 
     var body: some View {
         Group {
             if let player {
-                StudyVoiceSessionView(quiz: quiz, player: player)
+                StudyVoiceSession(quiz: quiz, player: player)
             } else {
                 ProgressView()
             }
@@ -132,7 +21,7 @@ struct StudyVoiceView: View {
             guard player == nil else { return }
             player = StudyVoicePlayer(
                 deck: ScoreStore.makeDeck(for: quiz),
-                tts: .shared,
+                speech: speech.synthesizer,
                 pauseSeconds: settings.studyVoicePauseSeconds,
                 repeatCount: settings.studyVoiceRepeatCount
             )
@@ -140,26 +29,20 @@ struct StudyVoiceView: View {
     }
 }
 
-struct StudyVoiceSessionView: View {
+private struct StudyVoiceSession: View {
     let quiz: QuizRecord
     let player: StudyVoicePlayer
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppSettings.self) private var settings
-    @State private var showAbandonAlert: Bool = false
-    @State private var sessionRecorded: Bool = false
-
-    private func recordIfNeeded() {
-        guard !sessionRecorded, !player.deck.abandoned else { return }
-        sessionRecorded = true
-        ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .studyVoice, in: context)
-    }
 
     var body: some View {
         VStack(spacing: 16) {
-            header
+            SessionProgressHeader(deck: player.deck) {
+                Text(stateLabel)
+                    .accessibilityIdentifier("studyVoice.state")
+            }
             if let card = player.deck.current {
-                cardView(card)
+                CardFaceView(card: card, showsAnswer: true, hintRevealed: player.hintRevealed)
             } else {
                 ContentUnavailableView("Empty quiz", systemImage: "tray")
             }
@@ -167,53 +50,19 @@ struct StudyVoiceSessionView: View {
             controls
         }
         .padding()
-        .contentShape(Rectangle())
-        .simultaneousGesture(swipeGesture)
+        .swipeToNavigate(onNext: player.skip, onBack: player.back)
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button(role: .destructive) {
-                    showAbandonAlert = true
-                } label: {
-                    Label("End", systemImage: "xmark.circle")
-                }
-                .accessibilityIdentifier("session.end")
-            }
+        .endSessionConfirmation {
+            player.abandon()
+            dismiss()
         }
         .onAppear { player.start() }
         .onDisappear { player.stop() }
-        .onChange(of: player.state) { _, new in
-            if new == .ended {
-                recordIfNeeded()
-                dismiss()
-            }
-        }
-        .alert("End session?", isPresented: $showAbandonAlert) {
-            Button("End", role: .destructive) {
-                player.stop()
-                player.deck.abandon()
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your progress in this session won't be saved.")
-        }
-    }
-
-    private var header: some View {
-        let progress = player.deck.progress
-        return VStack(spacing: 4) {
-            ProgressView(value: Double(progress.current), total: Double(progress.total))
-            HStack {
-                Text("Card \(progress.current) of \(progress.total)")
-                    .accessibilityIdentifier("session.progress")
-                Spacer()
-                Text(stateLabel).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("studyVoice.state")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        .onChange(of: player.state) { _, state in
+            guard state == .ended, !player.deck.abandoned else { return }
+            ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .studyVoice, in: context)
+            dismiss()
         }
     }
 
@@ -226,84 +75,35 @@ struct StudyVoiceSessionView: View {
         }
     }
 
-    @ViewBuilder
-    private func cardView(_ card: CardSnapshot) -> some View {
-        let typo = settings.quizFontSize
-        VStack(alignment: .leading, spacing: 16) {
-            Text(card.prompt)
-                .font(typo.promptFont)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("session.card.prompt")
-            if let s = card.shortAnswer {
-                Text(s).font(typo.emphasisFont).foregroundStyle(.tint)
-                    .accessibilityIdentifier("session.card.shortAnswer")
-            }
-            Text(card.longAnswer).font(typo.bodyFont)
-                .accessibilityIdentifier("session.card.longAnswer")
-            if player.hintRevealed, let hint = card.hint {
-                Text(hint)
-                    .font(typo.bodyFont)
-                    .foregroundStyle(.secondary)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.yellow.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-            }
-        }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onEnded { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
-                if dx > 0 {
-                    player.skip()
-                } else {
-                    if !player.deck.atStart { player.back() }
-                }
-            }
-    }
-
     private var controls: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                controlButton("Back", systemImage: "backward.fill", id: "studyVoice.back") { player.back() }
+                controlButton("Back", systemImage: "backward.fill", id: "studyVoice.back", action: player.back)
                     .disabled(player.deck.atStart)
-                controlButton("Repeat", systemImage: "arrow.counterclockwise", id: "studyVoice.repeat") { player.repeatCard() }
+                controlButton("Repeat", systemImage: "arrow.counterclockwise", id: "studyVoice.repeat", action: player.repeatCard)
                 if player.state == .playing {
-                    controlButton("Pause", systemImage: "pause.fill", id: "studyVoice.pause") { player.pause() }
+                    controlButton("Pause", systemImage: "pause.fill", id: "studyVoice.pause", prominent: true, action: player.pause)
                 } else {
-                    controlButton("Play", systemImage: "play.fill", id: "studyVoice.play") {
-                        if player.state == .paused { player.resume() } else { player.start() }
-                    }
+                    controlButton("Play", systemImage: "play.fill", id: "studyVoice.play", prominent: true, action: player.start)
                 }
-                controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip") { player.skip() }
+                controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip", action: player.skip)
             }
-            Button {
-                player.revealHint()
-            } label: {
-                Label(player.hintRevealed ? "Hint shown" : "Hint", systemImage: "lightbulb")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .disabled(player.deck.current?.hint == nil)
-            .accessibilityIdentifier("session.hint")
+            HintButton(hint: player.deck.current?.hint, revealed: player.hintRevealed, action: player.toggleHint)
         }
     }
 
-    private func controlButton(_ title: String, systemImage: String, id: String, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-        } label: {
+    /// Play / Pause is the main control, so it carries the accent.
+    @ViewBuilder
+    private func controlButton(_ title: String, systemImage: String, id: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        let button = Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
         }
-        .buttonStyle(.bordered)
+        Group {
+            if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
+        }
         .accessibilityIdentifier(id)
     }
 }

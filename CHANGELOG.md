@@ -54,5 +54,18 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Speed:** counts and scores are stored on each quiz, so the library never loads cards or sessions. With 200 quizzes, 10 000 cards and 5 000 sessions on the simulator, the library fetch takes 8 ms, the due count 1.5 ms, search 4 ms, and a cold launch reaches the first row in about 1.2 s.
   - Generated quizzes record the endpoint and model that made them, shown under About on the quiz screen.
 
+- **Phase 3 (session UI and v1 drift fixes), branch `phase-3-session-ui`:**
+  - **Practice missed cards** now works: after a voice quiz, it starts a session with only the cards you got wrong or partly right, and that session is recorded like any other.
+  - **Welcome screens** on first launch explain the modes, AI generation and endpoints, and offer to add an endpoint. Skippable, shown once; *Show the introduction again* is in Settings.
+  - **Source missing:** an imported quiz or Markdown-file quiz whose file was moved or deleted shows a *Source missing* badge, and its menu offers *Re-link file*. The cards keep working either way.
+  - **Settings:** choose the language voice answers are recognised in; turn on *Debug logging* and share or delete the log; *Clear API keys*, *Clear session history* and *Clear quiz library*, each confirmed first.
+  - **Fixed:** in Study — User-paced read, a revealed hint stayed open on the next card. Every mode now resets the hint per card.
+  - **Fixed:** deleted sample quizzes came back on every launch. Samples are now added on first launch only.
+  - **New look (CR-011):** one blue accent color marks the main action on every screen: the round + button, Generate, Save in editors, Play / Pause, Next and Tap to answer. Red, orange and green are kept for grades and destructive actions.
+  - **Welcome screens redesigned:** illustrations and tiles for the three study modes, the four kinds of source, and the AI providers, with the official Anthropic and OpenAI marks in light and dark versions. They fit on iPhone, lay out side by side on iPad, and end with *Let's get started*.
+  - **Library:** sort sits above the list next to the quiz count instead of in the toolbar, so the + button stands on its own. On iPad the search field moved into that row too.
+  - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
+  - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
+
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.

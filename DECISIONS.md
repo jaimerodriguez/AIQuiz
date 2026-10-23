@@ -171,3 +171,36 @@ One entry per decision that shapes the codebase. Each records the conversation w
 **Verification.** Unit tests build V0 and V1 stores on disk and check every field after migration. Opening twice is idempotent, and an unreadable store is backed up and replaced. Two real copies of the iPad library also migrate in a test with no loss: the v0.1 copy from earlier on 2026-10-22 (7 quizzes, 207 cards) and the CR-007 copy (8 quizzes, 226 cards). The test runs when `AIQUIZ_REAL_STORES` lists the folders.
 
 **Consequences.** Every later schema change adds a `SchemaV3` and a stage; the frozen schemas are never edited. The backup folder lives in the app's data, not in Files. Recovering a backup means copying it back over the store, for example with `devicectl`. The `studyNotes` column stays until Jaime agrees to drop it.
+
+## ADR-015 — Players and speech protocols live in AIQuizCore; UI tests use scripted speech
+**Date:** 2026-10-22. **Status:** accepted (PLAN Phase 3, SPEC F-51, CR-010).
+
+**Context.** REVIEW §4.4 asked for every mode to be a dumb view over a player. PLAN put the speech protocols in the app with the players tested in `AIQuizTests`. Two of the three players depended on the concrete `TTSService` and `STTService` singletons, so no test could drive them, and the voice flows could not run in UI tests at all.
+
+**Options.** (a) Protocols and players in the app target, tested on the simulator. (b) Protocols and players in AIQuizCore, with Apple implementations in the app. (c) Keep concrete services and test only through UI tests.
+
+**Decision.** (b). `SpeechSynthesizing` and `SpeechRecognizing` are `@MainActor` protocols in AIQuizCore, next to `ScriptedSynthesizer` and `ScriptedRecognizer`. `TTSService` and `STTService` conform in the app. `STTService`'s audio tap and recognition callbacks are untouched (known_issues §1); only its transcript callback now says whether a result is final. The composition root builds a `SpeechServices` value: Apple's services normally, scripted ones in UI-test mode.
+
+**Consequences.** Player logic runs in `swift test` in under a second (14 player tests). The simulator exercises Study voice and Quiz voice end to end, including a voice answer. Real audio still needs the iPad: hearing TTS and seeing a live transcript are owner checks, since an agent can neither hear nor speak. Phase 8's audio coordinator plugs in behind the same protocols.
+
+## ADR-016 — One accent color and a small Theme
+**Date:** 2026-10-22. **Status:** accepted (CR-011, SPEC N-9).
+
+**Context.** Jaime found the app plain and said critical controls didn't stand out. On iOS 26 toolbar buttons are monochrome glass, so the add button, the generate action and the editors' Save looked like everything else. The welcome screens were paragraphs. Jaime asked for a cohesive theme with one accent color, applied from now on.
+
+**Options.** (a) Rely on the system tint. It is blue already, but most actions used bordered or glass styles, so it rarely showed. (b) Several brand colors per feature. This is lively, but it competes with the meaning of red, orange and green for grades. (c) One accent color, used deliberately, plus a few shared building blocks.
+
+**Decision.** (c). `AccentColor` in a new asset catalog is a deeper blue in light mode and a lighter one in dark mode, and it is set as the global accent. `Theme` holds the corner radii and readable width, `primaryActionStyle()` (filled accent, grey while disabled) and `AccentIcon` (a symbol in a soft accent circle). Rules:
+- The accent marks one primary action per screen, and feature icons.
+- Red, orange and green are kept for meaning only.
+- Everything else stays neutral.
+- Explanatory screens use tiles and icons rather than paragraphs.
+- Each screen is checked on iPad and iPhone.
+
+**Logos.** Provider tiles use official marks, never redrawn ones. On 2026-10-22, with Jaime's approval, I downloaded these:
+- `logo-anthropic`: the Anthropic symbol in Slate (light mode) and Ivory (dark mode), from the press kit linked on anthropic.com/news. The kit contains no usage terms.
+- `logo-openai`: the OpenAI Blossom in black (light mode) and white (dark mode), from `cdn.openai.com/brand/openai-logos.zip` on openai.com/brand. Jaime accepted OpenAI's Marks usage terms for this. The SVG keeps OpenAI's built-in clear space, so the Blossom looks a little smaller than the other marks; that is intentional.
+
+The files are used unmodified, next to the provider's name and only to identify the provider. If an image set is removed, the tile falls back to a neutral monogram. Apple uses the `apple.logo` SF Symbol, which refers to Apple's own on-device model.
+
+**Consequences.** Later screens follow N-9. Phase 6's choice buttons and Phase 7's due badge will use the accent only for the selected or primary state.

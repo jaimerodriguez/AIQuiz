@@ -2,190 +2,102 @@ import SwiftUI
 import AIQuizCore
 import SwiftData
 
+/// Study — User-paced read (SPEC F-13). State lives in `StudyReadPlayer`.
 struct StudyReadView: View {
     let quiz: QuizRecord
+    @Environment(AppSettings.self) private var settings
+    @State private var player: StudyReadPlayer?
+
+    var body: some View {
+        Group {
+            if let player {
+                StudyReadSession(quiz: quiz, player: player)
+            } else {
+                ProgressView()
+            }
+        }
+        .onAppear {
+            if player == nil {
+                player = StudyReadPlayer(deck: ScoreStore.makeDeck(for: quiz), style: settings.studyReadStyle)
+            }
+        }
+    }
+}
+
+private struct StudyReadSession: View {
+    let quiz: QuizRecord
+    @Bindable var player: StudyReadPlayer
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppSettings.self) private var settings
-    @State private var deck: SessionDeck
-    @State private var style: StudyReadStyle = .flipCard
-    @State private var styleInitialised: Bool = false
-    @State private var revealed: Bool = false
-    @State private var showAbandonAlert: Bool = false
-    @State private var sessionRecorded: Bool = false
-
-    init(quiz: QuizRecord) {
-        self.quiz = quiz
-        _deck = State(wrappedValue: ScoreStore.makeDeck(for: quiz))
-    }
-
-    private func recordIfNeeded() {
-        guard !sessionRecorded, !deck.abandoned else { return }
-        sessionRecorded = true
-        ScoreStore.recordSession(for: quiz, deck: deck, mode: .studyRead, in: context)
-    }
 
     var body: some View {
         VStack(spacing: 16) {
-            header
-
-            if let card = deck.current {
-                cardView(card)
+            SessionProgressHeader(deck: player.deck)
+            if let card = player.deck.current {
+                CardFaceView(card: card, showsAnswer: player.showsAnswer, answerCaption: nil, hintRevealed: player.hintRevealed) {
+                    EmptyView()
+                } footer: {
+                    if !player.showsAnswer {
+                        Button {
+                            withAnimation { player.reveal() }
+                        } label: {
+                            Label("Tap to reveal", systemImage: "hand.tap")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("studyRead.reveal")
+                    }
+                    HintButton(hint: card.hint, revealed: player.hintRevealed) {
+                        withAnimation { player.toggleHint() }
+                    }
+                }
             } else {
                 ContentUnavailableView("Empty quiz", systemImage: "tray")
             }
-
             Spacer()
-
             controls
         }
         .padding()
-        .contentShape(Rectangle())
-        .simultaneousGesture(swipeGesture)
+        .swipeToNavigate(onNext: player.next, onBack: player.back)
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Picker("Style", selection: $style) {
-                    ForEach(StudyReadStyle.allCases) { s in
-                        Text(s.label).tag(s)
+                Picker("Style", selection: $player.style) {
+                    ForEach(StudyReadStyle.allCases) { style in
+                        Text(style.label).tag(style)
                     }
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 220)
                 .accessibilityIdentifier("studyRead.style")
             }
-            ToolbarItem(placement: .topBarLeading) {
-                Button(role: .destructive) {
-                    showAbandonAlert = true
-                } label: {
-                    Label("End", systemImage: "xmark.circle")
-                }
-                .accessibilityIdentifier("session.end")
-            }
         }
-        .onAppear {
-            if !styleInitialised {
-                style = settings.studyReadStyle
-                styleInitialised = true
-            }
+        .endSessionConfirmation {
+            player.abandon()
+            dismiss()
         }
-        .onChange(of: style) { _, _ in revealed = false }
-        .onChange(of: deck.index) { _, _ in revealed = false }
-        .alert("End session?", isPresented: $showAbandonAlert) {
-            Button("End", role: .destructive) {
-                deck.abandon()
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your progress in this session won't be saved.")
+        .onChange(of: player.finished) { _, finished in
+            guard finished else { return }
+            ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .studyRead, in: context)
+            dismiss()
         }
-    }
-
-    private var header: some View {
-        let progress = deck.progress
-        return VStack(spacing: 4) {
-            ProgressView(value: Double(progress.current), total: Double(progress.total))
-            Text("Card \(progress.current) of \(progress.total)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("session.progress")
-        }
-    }
-
-    @ViewBuilder
-    private func cardView(_ card: CardSnapshot) -> some View {
-        let typo = settings.quizFontSize
-        VStack(alignment: .leading, spacing: 16) {
-            Text(card.prompt)
-                .font(typo.promptFont)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("session.card.prompt")
-
-            switch style {
-            case .flipCard:
-                if revealed {
-                    answerBlock(card, typo: typo)
-                } else {
-                    Button {
-                        withAnimation { revealed = true }
-                    } label: {
-                        Label("Tap to reveal", systemImage: "hand.tap")
-                            .font(typo.bodyFont)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("studyRead.reveal")
-                }
-            case .allAtOnce:
-                answerBlock(card, typo: typo)
-            }
-
-            HintButton(hint: card.hint)
-        }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onEnded { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-                guard abs(dx) > 50, abs(dx) > abs(dy) * 1.5 else { return }
-                if dx > 0 {
-                    if deck.atEnd {
-                        recordIfNeeded()
-                        dismiss()
-                    } else {
-                        deck.next()
-                    }
-                } else {
-                    if !deck.atStart { deck.back() }
-                }
-            }
-    }
-
-    @ViewBuilder
-    private func answerBlock(_ card: CardSnapshot, typo: QuizFontSize) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let s = card.shortAnswer {
-                Text(s)
-                    .font(typo.emphasisFont)
-                    .foregroundStyle(.tint)
-                    .accessibilityIdentifier("session.card.shortAnswer")
-            }
-            Text(card.longAnswer)
-                .font(typo.bodyFont)
-                .accessibilityIdentifier("session.card.longAnswer")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var controls: some View {
         HStack(spacing: 12) {
-            Button {
-                deck.back()
-            } label: {
+            Button(action: player.back) {
                 Label("Back", systemImage: "chevron.left")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(deck.atStart)
+            .disabled(player.deck.atStart)
             .accessibilityIdentifier("studyRead.back")
 
-            Button {
-                if deck.atEnd {
-                    recordIfNeeded()
-                    dismiss()
-                } else {
-                    deck.next()
-                }
-            } label: {
-                Label(deck.atEnd ? "Done" : "Next", systemImage: "chevron.right")
+            Button(action: player.next) {
+                Label(player.deck.atEnd ? "Done" : "Next", systemImage: "chevron.right")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

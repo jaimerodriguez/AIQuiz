@@ -7,6 +7,7 @@ import SwiftData
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// Active quizzes, for the empty state and the tag chips. Reads stored attributes only.
     @Query(filter: #Predicate<QuizRecord> { !$0.isArchived }) private var activeQuizzes: [QuizRecord]
     @Query(filter: #Predicate<QuizRecord> { $0.isArchived }) private var archivedQuizzes: [QuizRecord]
@@ -17,6 +18,7 @@ struct LibraryView: View {
     @State private var importError: String?
     @State private var generating = false
     @State private var actions = QuizActions()
+    @State private var sourceStatus = SourceStatus()
 
     /// Tag chips appear once the library is big enough to need them (F-1).
     static let tagChipThreshold = 10
@@ -30,15 +32,24 @@ struct LibraryView: View {
                     description: Text("Import a JSON quiz from Files or generate one with AI.")
                 )
             } else {
-                LibraryList(
+                let list = LibraryList(
                     sort: settings.librarySort,
+                    sortSelection: Bindable(settings).librarySort,
                     search: searchText,
+                    // iPad: search sits in the header row next to sort (CR-012).
+                    inlineSearch: sizeClass == .regular ? $searchText : nil,
                     tag: selectedTag,
                     tags: activeQuizzes.count > Self.tagChipThreshold ? allTags : [],
                     selectedTag: $selectedTag,
-                    actions: actions
+                    actions: actions,
+                    sourceStatus: sourceStatus
                 )
-                .searchable(text: $searchText, prompt: "Search names and #tags")
+                if sizeClass == .regular {
+                    list
+                } else {
+                    // iPhone: the system search bar at the bottom.
+                    list.searchable(text: $searchText, prompt: "Search names and #tags")
+                }
             }
         }
         .navigationTitle("AIQuiz")
@@ -51,19 +62,7 @@ struct LibraryView: View {
                 }
                 .accessibilityIdentifier("library.settings")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort by", selection: Bindable(settings).librarySort) {
-                        ForEach(LibrarySort.allCases) { sort in
-                            Text(sort.label).tag(sort)
-                                .accessibilityIdentifier("library.sort.\(sort.rawValue)")
-                        }
-                    }
-                } label: {
-                    Label("Sort", systemImage: "arrow.up.arrow.down")
-                }
-                .accessibilityIdentifier("library.sort")
-            }
+            // The app's main action: an accent circle without the toolbar's glass (CR-011).
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
@@ -79,10 +78,16 @@ struct LibraryView: View {
                     }
                     .accessibilityIdentifier("library.import")
                 } label: {
-                    Label("Add Quiz", systemImage: "plus")
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Theme.accent.gradient, in: Circle())
+                        .accessibilityLabel("Add Quiz")
                 }
                 .accessibilityIdentifier("library.addButton")
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .sheet(isPresented: $generating) {
             NavigationStack {
@@ -117,6 +122,7 @@ struct LibraryView: View {
             Text(importError ?? "")
         }
         .quizActions(actions)
+        .onAppear { actions.sourceStatus = sourceStatus }
     }
 
     /// Every tag on an active quiz, most used first.
@@ -133,13 +139,16 @@ struct LibraryView: View {
 private struct LibraryList: View {
     @Query private var quizzes: [QuizRecord]
     @Query private var archived: [QuizRecord]
+    @Binding var sortSelection: LibrarySort
+    let inlineSearch: Binding<String>?
     let tags: [String]
     @Binding var selectedTag: String?
     let actions: QuizActions
+    let sourceStatus: SourceStatus
     @State private var showArchived = false
     @State private var launchMilliseconds: Int?
 
-    init(sort: LibrarySort, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions) {
+    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, inlineSearch: Binding<String>?, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
         let term = search.trimmingCharacters(in: .whitespaces).lowercased()
         let needle = tag.map(TagsSearch.needle(forTag:)) ?? ""
         _quizzes = Query(
@@ -157,8 +166,11 @@ private struct LibraryList: View {
             sort: [SortDescriptor(\QuizRecord.name, comparator: .localizedStandard)]
         )
         self.tags = tags
+        _sortSelection = sortSelection
+        self.inlineSearch = inlineSearch
         _selectedTag = selectedTag
         self.actions = actions
+        self.sourceStatus = sourceStatus
     }
 
     static func sortDescriptors(_ sort: LibrarySort) -> [SortDescriptor<QuizRecord>] {
@@ -177,13 +189,17 @@ private struct LibraryList: View {
             if !tags.isEmpty {
                 tagChips
             }
-            ForEach(quizzes) { quiz in
-                row(quiz)
-            }
-            if quizzes.isEmpty {
-                Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("library.noMatches")
+            Section {
+                ForEach(quizzes) { quiz in
+                    row(quiz)
+                }
+                if quizzes.isEmpty {
+                    Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("library.noMatches")
+                }
+            } header: {
+                listHeader
             }
             if !archived.isEmpty {
                 Section {
@@ -211,8 +227,9 @@ private struct LibraryList: View {
 
     private func row(_ quiz: QuizRecord) -> some View {
         NavigationLink(value: quiz) {
-            QuizRow(quiz: quiz)
+            QuizRow(quiz: quiz, sourceMissing: sourceStatus.isMissing(quiz))
         }
+        .task(id: quiz.sourceBookmark) { await sourceStatus.check(quiz) }
         .accessibilityIdentifier("library.row.\(quiz.id.uuidString)")
         .onAppear {
             if AppEnvironment.current.isUITest, launchMilliseconds == nil {
@@ -220,7 +237,7 @@ private struct LibraryList: View {
                 launchMilliseconds = LaunchMetric.firstRowMilliseconds
             }
         }
-        .contextMenu { actions.menu(for: quiz, idPrefix: "library") }
+        .contextMenu { actions.menu(for: quiz, idPrefix: "library", sourceMissing: sourceStatus.isMissing(quiz)) }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 actions.confirmDelete(quiz)
@@ -233,8 +250,36 @@ private struct LibraryList: View {
             } label: {
                 Label(quiz.isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
             }
-            .tint(.indigo)
+            .tint(.gray)
         }
+    }
+
+    /// Count and sort, at the top of the list rather than in the toolbar, so the add button
+    /// stands alone (CR-011).
+    private var listHeader: some View {
+        HStack(spacing: 16) {
+            if let inlineSearch {
+                InlineSearchField(text: inlineSearch)
+                    .frame(maxWidth: 420)
+            }
+            Text(quizzes.count == 1 ? "1 quiz" : "\(quizzes.count) quizzes")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Menu {
+                Picker("Sort by", selection: $sortSelection) {
+                    ForEach(LibrarySort.allCases) { sort in
+                        Text(sort.label).tag(sort)
+                            .accessibilityIdentifier("library.sort.\(sort.rawValue)")
+                    }
+                }
+            } label: {
+                Label(sortSelection.label, systemImage: "arrow.up.arrow.down")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityIdentifier("library.sort")
+        }
+        .font(.subheadline)
+        .textCase(nil)
     }
 
     private var tagChips: some View {
@@ -266,10 +311,20 @@ private struct LibraryList: View {
 /// One library row: stored fields only (SPEC D-11, N-8).
 private struct QuizRow: View {
     let quiz: QuizRecord
+    var sourceMissing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(quiz.name).font(.headline)
+            HStack {
+                Text(quiz.name).font(.headline)
+                if sourceMissing {
+                    Label("Source missing", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("library.sourceMissing")
+                }
+            }
             HStack(spacing: 12) {
                 Label("\(quiz.cardCount) cards", systemImage: "rectangle.on.rectangle")
                 if let best = quiz.bestScore {
@@ -293,5 +348,42 @@ private struct QuizRow: View {
 
     private func percentText(_ v: Double) -> String {
         "\(Int((v * 100).rounded()))%"
+    }
+}
+
+/// The iPad library's search field, in the row above the list (CR-012).
+private struct InlineSearchField: View {
+    @Binding var text: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search names and #tags", text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($focused)
+                .accessibilityIdentifier("library.search")
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+                .accessibilityIdentifier("library.search.clear")
+            }
+        }
+        .font(.body)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.background, in: Capsule())
+        .overlay(Capsule().stroke(.separator, lineWidth: 0.5))
+        .contentShape(Capsule())
+        .onTapGesture { focused = true }
     }
 }

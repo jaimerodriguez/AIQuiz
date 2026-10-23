@@ -4,20 +4,6 @@ import Foundation
 import Observation
 import SwiftUI
 
-enum StudyReadStyle: String, CaseIterable, Identifiable {
-    case flipCard
-    case allAtOnce
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .flipCard: return "Flip card"
-        case .allAtOnce: return "All at once"
-        }
-    }
-}
-
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
     case light
@@ -73,6 +59,9 @@ final class AppSettings {
     private let kQuizFontSize = "quizFontSize"
     private let kAppearanceMode = "appearanceMode"
     private let kLibrarySort = "librarySort"
+    private let kSTTLocale = "sttLocaleIdentifier"
+    private let kDebugLogging = "debugLogging"
+    private let kOnboardingDone = "onboardingDone"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -113,6 +102,30 @@ final class AppSettings {
         didSet { defaults.set(librarySort.rawValue, forKey: kLibrarySort) }
     }
 
+    /// Speech-to-text language (S-5); nil follows the device.
+    var sttLocaleIdentifier: String? {
+        didSet {
+            if let id = sttLocaleIdentifier { defaults.set(id, forKey: kSTTLocale) } else { defaults.removeObject(forKey: kSTTLocale) }
+        }
+    }
+
+    var sttLocale: Locale {
+        sttLocaleIdentifier.map(Locale.init(identifier:)) ?? .current
+    }
+
+    /// Debug logging to a file (S-14). Off by default; see `DebugLogFile`.
+    var debugLogging: Bool {
+        didSet {
+            defaults.set(debugLogging, forKey: kDebugLogging)
+            Log.file.isEnabled = debugLogging
+        }
+    }
+
+    /// Onboarding (F-60) is shown once.
+    var onboardingDone: Bool {
+        didSet { defaults.set(onboardingDone, forKey: kOnboardingDone) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let raw = defaults.string(forKey: kStudyReadStyle) ?? StudyReadStyle.flipCard.rawValue
@@ -137,5 +150,9 @@ final class AppSettings {
         let appearanceRaw = defaults.string(forKey: kAppearanceMode) ?? AppearanceMode.system.rawValue
         self.appearanceMode = AppearanceMode(rawValue: appearanceRaw) ?? .system
         self.librarySort = LibrarySort(rawValue: defaults.string(forKey: kLibrarySort) ?? "") ?? .recent
+        self.sttLocaleIdentifier = defaults.string(forKey: kSTTLocale)
+        self.debugLogging = defaults.bool(forKey: kDebugLogging)
+        self.onboardingDone = defaults.bool(forKey: kOnboardingDone)
+        Log.file.isEnabled = debugLogging
     }
 }

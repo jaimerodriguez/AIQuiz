@@ -99,9 +99,25 @@ struct GenerateQuizView: View {
         .navigationTitle("Generate quiz")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
                     .accessibilityIdentifier("generate.cancel")
+            }
+            // The primary action: greyed out until the source is filled in, then accent (CR-011).
+            ToolbarItem(placement: .confirmationAction) {
+                if generating {
+                    ProgressView()
+                        .accessibilityIdentifier("generate.progress")
+                } else {
+                    Button {
+                        Task { await generate() }
+                    } label: {
+                        Text("Generate").fontWeight(.semibold)
+                    }
+                    .primaryActionStyle()
+                    .disabled(!canGenerate)
+                    .accessibilityIdentifier("generate.run")
+                }
             }
         }
         .fileImporter(
@@ -185,7 +201,7 @@ struct GenerateQuizView: View {
             Button {
                 pickingMarkdown = true
             } label: {
-                Label(pickedMarkdownURL?.lastPathComponent ?? "Pick a .md file from Files",
+                Label(pickedMarkdownURL?.lastPathComponent ?? "Pick a markdown file",
                       systemImage: "doc.text")
             }
             if let content = markdownContent {
@@ -221,21 +237,12 @@ struct GenerateQuizView: View {
 
     private var generateSection: some View {
         Section {
-            Button {
-                Task { await generate() }
-            } label: {
-                HStack {
-                    if generating {
-                        ProgressView()
-                        Text("Generating…")
-                    } else {
-                        Label("Generate quiz", systemImage: "sparkles")
-                    }
-                    Spacer()
+            if generating {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Generating…")
                 }
             }
-            .disabled(generating || !canGenerate)
-            .accessibilityIdentifier("generate.run")
 
             if generatedQuizId != nil {
                 Button {
@@ -261,12 +268,12 @@ struct GenerateQuizView: View {
                     .accessibilityIdentifier("generate.error")
                     .id(Self.resultAnchor)
             }
-        } header: {
-            Text("Generate")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 if source != .topic {
-                    Text("The original \(source == .url ? "page link" : source == .markdown ? "file link" : "text") is kept with the quiz so you can read it later.")
+                    Text(source == .paste
+                         ? "We keep the original text so you can review it later."
+                         : "We keep a link to the original \(source == .url ? "page" : "file") so you can review it later.")
                 }
                 Text("Endpoint: \(router.summary(for: .generation))")
             }

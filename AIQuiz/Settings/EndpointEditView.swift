@@ -124,6 +124,7 @@ struct EndpointEditView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }
+                    .primaryActionStyle()
                     .disabled(!canSave || testState == .testing)
                     .accessibilityIdentifier("endpoints.save")
             }
