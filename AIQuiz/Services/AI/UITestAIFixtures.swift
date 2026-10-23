@@ -20,10 +20,12 @@ enum UITestAIFixtures {
             case .standard, .emptyLibrary, .noEndpoints, .largeLibrary:
                 break
             }
+            // One fixture per structured task, named after it (Phase 4 adds the card features).
             switch request.responseFormat?.name {
-            case "quiz": return try fixture("generation")
-            case "judge": return try fixture("grading")
-            default: return "OK"
+            case "quiz"?: return try fixture("generation")
+            case "judge"?: return try fixture("grading")
+            case let name?: return try fixture(name)
+            case nil: return "OK"
             }
         }
     }

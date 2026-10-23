@@ -42,7 +42,7 @@ private struct StudyVoiceSession: View {
                     .accessibilityIdentifier("studyVoice.state")
             }
             if let card = player.deck.current {
-                CardFaceView(card: card, showsAnswer: true, hintRevealed: player.hintRevealed)
+                CardFaceView(card: card, showsAnswer: true, hints: player.hints.shown)
             } else {
                 ContentUnavailableView("Empty quiz", systemImage: "tray")
             }
@@ -88,7 +88,7 @@ private struct StudyVoiceSession: View {
                 }
                 controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip", action: player.skip)
             }
-            HintButton(hint: player.deck.current?.hint, revealed: player.hintRevealed, action: player.toggleHint)
+            HintButton(progress: player.hints, action: player.toggleHint)
         }
     }
 

@@ -62,6 +62,7 @@ final class AppSettings {
     private let kSTTLocale = "sttLocaleIdentifier"
     private let kDebugLogging = "debugLogging"
     private let kOnboardingDone = "onboardingDone"
+    private let kAutoGrade = "autoGrade"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -121,6 +122,11 @@ final class AppSettings {
         }
     }
 
+    /// Auto-grade spoken answers with AI (S-3). Takes effect only when a grading endpoint exists.
+    var autoGrade: Bool {
+        didSet { defaults.set(autoGrade, forKey: kAutoGrade) }
+    }
+
     /// Onboarding (F-60) is shown once.
     var onboardingDone: Bool {
         didSet { defaults.set(onboardingDone, forKey: kOnboardingDone) }
@@ -153,6 +159,7 @@ final class AppSettings {
         self.sttLocaleIdentifier = defaults.string(forKey: kSTTLocale)
         self.debugLogging = defaults.bool(forKey: kDebugLogging)
         self.onboardingDone = defaults.bool(forKey: kOnboardingDone)
+        self.autoGrade = defaults.object(forKey: kAutoGrade) as? Bool ?? true
         Log.file.isEnabled = debugLogging
     }
 }

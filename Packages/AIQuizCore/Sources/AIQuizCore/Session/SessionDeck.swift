@@ -12,6 +12,9 @@ public final class SessionDeck {
     public private(set) var outcomes: [UUID: CardVerdict] = [:]
     public private(set) var ended: Bool = false
     public private(set) var abandoned: Bool = false
+    /// AI grades and "why wrong" explanations, by card (F-15, F-16).
+    public private(set) var aiGrades: [UUID: AIGrade] = [:]
+    public private(set) var explanations: [UUID: String] = [:]
     /// Set once the session has been saved, so no screen records it twice.
     public private(set) var recorded: Bool = false
 
@@ -30,10 +33,16 @@ public final class SessionDeck {
     public var isEmpty: Bool { cards.isEmpty }
     public var progress: (current: Int, total: Int) { (min(index + 1, cards.count), cards.count) }
 
-    /// Record a verdict for the current card. Overwrites any earlier verdict for it.
-    public func record(_ verdict: CardVerdict) {
+    /// Record a verdict for the current card, with the AI's grade when there was one.
+    /// Overwrites any earlier verdict for it.
+    public func record(_ verdict: CardVerdict, ai: AIGrade? = nil) {
         guard let card = current else { return }
         outcomes[card.id] = verdict
+        if let ai { aiGrades[card.id] = ai } else { aiGrades[card.id] = nil }
+    }
+
+    public func setExplanation(_ text: String, for cardId: UUID) {
+        explanations[cardId] = text
     }
 
     /// Advance. On the last card the deck ends instead.
@@ -70,7 +79,15 @@ public final class SessionDeck {
     public func toCardOutcomes() -> [CardOutcome] {
         cards.compactMap { card in
             guard let verdict = outcomes[card.id] else { return nil }
-            return CardOutcome(cardId: card.id, verdict: verdict)
+            let ai = aiGrades[card.id]
+            return CardOutcome(
+                cardId: card.id,
+                verdict: verdict,
+                aiVerdict: ai?.verdict,
+                aiReason: ai?.reason,
+                userOverrode: ai.map { $0.verdict != verdict } ?? false,
+                explanation: explanations[card.id]
+            )
         }
     }
 

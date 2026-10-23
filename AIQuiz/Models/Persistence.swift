@@ -13,6 +13,12 @@ extension CardRecord {
         set { kind = newValue.rawValue }
     }
 
+    /// Stored AI hints, weakest first (F-24).
+    var aiHints: [String] {
+        get { aiHintsData.flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? [] }
+        set { aiHintsData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
+    }
+
     var options: [String]? {
         get { optionsData.flatMap { try? JSONDecoder().decode([String].self, from: $0) } }
         set { optionsData = newValue.flatMap { try? JSONEncoder().encode($0) } }
@@ -55,7 +61,8 @@ extension CardSnapshot {
             prompt: record.prompt,
             longAnswer: record.longAnswer,
             shortAnswer: record.shortAnswer,
-            hint: record.hint
+            hint: record.hint,
+            aiHints: record.aiHints
         )
     }
 }
@@ -148,6 +155,20 @@ extension QuizRecord {
         }
         QuizStats.refresh(record)
         return record
+    }
+
+    /// Inserts new cards right after `card` (F-27 Expand), shifting later cards down.
+    func insertCards(_ payloads: [CardPayload], after card: CardRecord) {
+        let position = card.orderIndex
+        for existing in cards where existing.orderIndex > position {
+            existing.orderIndex += payloads.count
+        }
+        for (offset, payload) in payloads.enumerated() {
+            let new = CardRecord(payload, orderIndex: position + 1 + offset)
+            new.quiz = self
+            cards.append(new)
+        }
+        QuizStats.refresh(self)
     }
 
     var sortedCards: [CardRecord] {

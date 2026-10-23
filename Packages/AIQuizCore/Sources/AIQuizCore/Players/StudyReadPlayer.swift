@@ -25,13 +25,15 @@ public final class StudyReadPlayer {
         didSet { if style != oldValue { revealed = false } }
     }
     public private(set) var revealed = false
-    public private(set) var hintRevealed = false
+    public private(set) var hints = HintProgress(hints: [])
+    public var hintRevealed: Bool { hints.level > 0 }
     /// Set when the user goes past the last card.
     public private(set) var finished = false
 
     public init(deck: SessionDeck, style: StudyReadStyle) {
         self.deck = deck
         self.style = style
+        hints = HintProgress(hints: deck.current?.hints ?? [])
     }
 
     /// Whether the answer shows on the current card.
@@ -39,9 +41,9 @@ public final class StudyReadPlayer {
 
     public func reveal() { revealed = true }
 
+    /// Reveals the next hint (F-24); after the last, hides them.
     public func toggleHint() {
-        guard deck.current?.hint != nil else { return }
-        hintRevealed.toggle()
+        hints.advance()
     }
 
     /// Next card, or finish on the last one.
@@ -66,6 +68,6 @@ public final class StudyReadPlayer {
 
     private func resetCard() {
         revealed = false
-        hintRevealed = false
+        hints = HintProgress(hints: deck.current?.hints ?? [])
     }
 }

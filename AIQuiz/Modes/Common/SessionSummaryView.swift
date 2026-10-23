@@ -5,8 +5,13 @@ struct SessionSummaryView: View {
     let deck: SessionDeck
     let onDone: () -> Void
     let onPracticeMissed: (([CardSnapshot]) -> Void)?
+    /// F-44: fetches the recap; nil when no grading endpoint is ready.
+    var recap: (() async throws -> String)? = nil
+    var onRecap: ((String) -> Void)? = nil
 
     @Environment(AppSettings.self) private var settings
+    @State private var recapText: String?
+    @State private var recapFailed = false
 
     var body: some View {
         ScrollView {
@@ -14,6 +19,10 @@ struct SessionSummaryView: View {
                 scoreHeadline
 
                 statsGrid
+
+                if recap != nil {
+                    recapBlock
+                }
 
                 if !deck.missedCards.isEmpty {
                     missedList
@@ -26,6 +35,37 @@ struct SessionSummaryView: View {
         .navigationTitle("Session complete")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .task {
+            guard let recap, recapText == nil else { return }
+            do {
+                let text = try await recap()
+                recapText = text
+                onRecap?(text)
+            } catch {
+                recapFailed = true
+            }
+        }
+    }
+
+    /// The recap arrives in the background; failing quietly never blocks the summary.
+    @ViewBuilder
+    private var recapBlock: some View {
+        if let recapText {
+            Label(recapText, systemImage: "sparkles")
+                .font(settings.quizFontSize.bodyFont)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("summary.recap")
+        } else if !recapFailed {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Writing a recap…").font(.footnote).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("summary.recapLoading")
+        }
     }
 
     @ViewBuilder
@@ -93,6 +133,11 @@ struct SessionSummaryView: View {
                         Text(s).font(typo.bodyFont).foregroundStyle(.tint)
                     }
                     Text(entry.card.longAnswer).font(typo.bodyFont).foregroundStyle(.secondary)
+                    if let explanation = deck.explanations[entry.card.id] {
+                        Label(explanation, systemImage: "questionmark.bubble")
+                            .font(.footnote)
+                            .padding(.top, 2)
+                    }
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)

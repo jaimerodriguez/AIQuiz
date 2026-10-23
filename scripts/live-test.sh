@@ -60,14 +60,20 @@ if [ -z "$ANT_KEY" ] && [ -z "$OAI_KEY" ]; then
   exit 1
 fi
 
-set +e
-AIQUIZ_LIVE_TESTS=1 \
-AIQuiz_Ant_test_key="$ANT_KEY" AIQuiz_Ant_test_model="$ANT_MODEL" \
-AIQuiz_Oai_test_key="$OAI_KEY" AIQuiz_Oai_test_model="$OAI_MODEL" \
-  swift test --package-path Packages/LLMKit --filter Live 2>&1 \
-  | grep -E "✔ Test|✘|Issue|error:|Test run with" | grep -v "started"
-STATUS=${PIPESTATUS[0]}
-set -e
+# Both packages: LLMKit's clients, then AIQuizCore's AI features (Phase 4) on those clients.
+STATUS=0
+for PKG in Packages/LLMKit Packages/AIQuizCore; do
+  echo "→ $PKG"
+  set +e
+  AIQUIZ_LIVE_TESTS=1 \
+  AIQuiz_Ant_test_key="$ANT_KEY" AIQuiz_Ant_test_model="$ANT_MODEL" \
+  AIQuiz_Oai_test_key="$OAI_KEY" AIQuiz_Oai_test_model="$OAI_MODEL" \
+    swift test --package-path "$PKG" --filter Live 2>&1 \
+    | grep -E "✔ Test|✘|Issue|error:|Test run with|^LIVE " | grep -v "started"
+  PKG_STATUS=${PIPESTATUS[0]}
+  set -e
+  [ "$PKG_STATUS" -ne 0 ] && STATUS=$PKG_STATUS
+done
 
 if [ "$STATUS" -eq 0 ]; then
   echo "✅ Live tests passed"

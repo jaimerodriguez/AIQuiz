@@ -22,15 +22,16 @@ enum ScoreStore {
     /// Persist the session result and update per-card history. Records a deck at most once.
     /// Skipped cards do not affect history. Abandoned sessions are not persisted.
     /// Quiz-mode sessions with no graded cards are not persisted either.
+    @discardableResult
     static func recordSession(
         for quiz: QuizRecord,
         deck: SessionDeck,
         mode: SessionMode,
         in context: ModelContext
-    ) {
-        guard !deck.abandoned, !deck.recorded else { return }
+    ) -> SessionRecord? {
+        guard !deck.abandoned, !deck.recorded else { return nil }
         deck.markRecorded()
-        guard !deck.outcomes.isEmpty || mode != .quizVoice else { return }
+        guard !deck.outcomes.isEmpty || mode != .quizVoice else { return nil }
 
         let byId = Dictionary(uniqueKeysWithValues: quiz.cards.map { ($0.id, $0) })
         for (cardId, verdict) in deck.outcomes {
@@ -61,5 +62,6 @@ enum ScoreStore {
         } catch {
             Log.data.error("recordSession save failed: \(String(describing: error))")
         }
+        return session
     }
 }
