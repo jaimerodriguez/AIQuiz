@@ -1,10 +1,16 @@
 import Foundation
 import Security
 
-enum KeychainStore {
-    private static let service = "com.jaimer.aiquiz"
+/// Generic-password Keychain access scoped to one service name. API keys never leave the
+/// Keychain (SPEC N-3). UI-test mode uses a separate service so tests never see real keys.
+struct KeychainStore: Sendable {
+    let service: String
 
-    static func set(_ value: String?, for account: String) {
+    /// Same service name as v1, so keys saved before 1.1.0 are found and migrated.
+    static let production = KeychainStore(service: "com.jaimer.aiquiz")
+    static let uiTest = KeychainStore(service: "com.jaimer.aiquiz.uitest")
+
+    func set(_ value: String?, for account: String) {
         let baseQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -16,10 +22,13 @@ enum KeychainStore {
         var query = baseQuery
         query[kSecValueData as String] = Data(value.utf8)
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status != errSecSuccess {
+            Log.ai.error("Keychain add failed for account \(account): \(status)")
+        }
     }
 
-    static func get(_ account: String) -> String? {
+    func get(_ account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -34,7 +43,7 @@ enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    static func clearAll() {
+    func clearAll() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service

@@ -15,6 +15,7 @@ public struct LLMResponseParseError: LocalizedError, Sendable, Equatable {
 
 /// Tolerant extraction of a JSON object from model text: strips markdown fences,
 /// then returns the first balanced `{...}` block, ignoring braces inside JSON strings.
+/// Used even with native structured output, as a safety net for endpoints that ignore it.
 public enum LLMResponseParser {
     public static func decode<T: Decodable>(_ raw: String, as type: T.Type = T.self) throws -> T {
         guard let json = extractJSONObject(from: raw) else {
@@ -72,7 +73,6 @@ public enum LLMResponseParser {
     static func stripFences(_ raw: String) -> String {
         guard let start = raw.range(of: "```") else { return raw }
         var text = raw[start.upperBound...]
-        // Skip an optional language tag on the same line.
         if let newline = text.firstIndex(of: "\n") {
             text = text[text.index(after: newline)...]
         }

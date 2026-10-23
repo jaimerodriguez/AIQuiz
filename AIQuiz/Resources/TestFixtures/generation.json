@@ -25,8 +25,8 @@
         "short_answer": "Resources/TestFixtures"
       },
       {
-        "prompt": "What replaces FakeProvider later?",
-        "long_answer": "FakeLLMClient in the LLMKit package, introduced in PLAN Phase 1.",
+        "prompt": "Which client serves UI-test mode?",
+        "long_answer": "FakeLLMClient from the LLMKit package, replaying fixtures keyed by task name.",
         "short_answer": "FakeLLMClient"
       }
     ]

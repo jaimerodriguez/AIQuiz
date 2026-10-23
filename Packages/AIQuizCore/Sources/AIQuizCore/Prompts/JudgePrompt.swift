@@ -1,6 +1,7 @@
 import Foundation
 
-// Prompt: answer judging (SPEC F-15). Version 1 — carried over from v1 unchanged.
+// Prompt: answer judging (SPEC F-15). Version 1 — carried over from v1 unchanged; the verdict
+// enum is now also enforced by AnswerJudge.schema.
 // Output contract: JudgeJSON (see LLM/Requests.swift).
 
 public extension PromptBuilder {

@@ -106,3 +106,55 @@ One entry per decision that shapes the codebase. Each records the conversation w
 **Decision.** (b). Snapshots are `Sendable`, trivially testable, and stop views from mutating model objects mid-session. `ScoreStore.recordSession` resolves ids to records.
 
 **Consequences.** Edits to a card during a session do not show until the next session (acceptable). A small mapping function `CardSnapshot(record:)` lives in the app target.
+
+---
+
+## ADR-010 — Anthropic refusal fallbacks on by default
+**Date:** 2026-10-22. **Status:** accepted (implementation decision in Phase 1; reported to Jaime in the Phase 1 PR).
+
+**Context.** Current Claude models can decline a request through safety classifiers, returning HTTP 200 with `stop_reason: "refusal"`. Anthropic's server-side fallback re-runs a declined request on a recommended model inside the same call. A study app occasionally covers topics (history of warfare, chemistry, security) where a false-positive decline is plausible.
+
+**Options.** (a) Surface every refusal to the user. (b) Send `fallbacks: "default"` with the `server-side-fallback-2026-07-01` beta header on models that support it. (c) Pin a specific fallback model.
+
+**Decision.** (b), only when the endpoint is the Claude API host and the model is one that accepts the default form (`claude-fable-5-1`, `claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5-5`). Refusals that survive the fallback still throw `LLMError.refused`, which the router can route to the purpose's own fallback endpoint.
+
+**Consequences.** Fewer dead ends for the user; a rescued request bills at the fallback model's rate. Easy to turn off by removing the model from `AnthropicClient.fallbackModels`.
+
+---
+
+## ADR-011 — Transport protocol instead of URLProtocol stubs
+**Date:** 2026-10-22. **Status:** accepted.
+
+**Context.** Swift Testing runs tests in parallel. `URLProtocol` stubs rely on global registration, which makes parallel HTTP tests race.
+
+**Decision.** `HTTPClient` talks to an `HTTPTransport` protocol. Production uses `URLSessionTransport`; tests inject a per-test `ScriptedTransport` that replays replies and records requests. Backoff sleeps are injected too, so retry tests run instantly and assert the exact delays.
+
+**Consequences.** All 69 LLMKit tests run in parallel in milliseconds with no network. The transport is the only code path not covered by unit tests; the opt-in live tests cover it.
+
+---
+
+## ADR-012 — Endpoints are user data; nothing provider-specific is hardcoded in the router
+**Date:** 2026-10-22. **Status:** accepted.
+
+**Context.** Jaime wants Anthropic, OpenAI and local models, with the freedom to add more later.
+
+**Decision.** `AIRouter` stores a list of `LLMEndpoint` values (JSON in UserDefaults, keys in the Keychain under per-endpoint accounts) and a purpose → endpoint map with optional fallbacks. Presets only pre-fill the form. When a purpose has no explicit route, the first non-Apple endpoint serves it, else Apple on-device. v1's two Keychain keys and generation/grading choices migrate automatically on first launch of 1.1.0. OpenAI endpoints carry no default model; the user picks one from Test connection.
+
+**Consequences.** Adding a provider that speaks OpenAI's format needs no code. A migrated OpenAI endpoint shows "No model selected" until Jaime runs Test connection once.
+
+---
+
+## ADR-013 — Markdown is the format for reading content in the app, rendered natively
+**Date:** 2026-10-22. **Status:** accepted; amended the same day (CR-007).
+
+**Context.** Jaime wants to read the material a quiz came from, and asked whether the app could render it if files were always Markdown, HTML or PDF. A first implementation (CR-006) generated AI study notes; Jaime clarified he wants the original content, not new AI text.
+
+**Options.** (a) HTML in a web view for everything. (b) PDF. (c) Markdown rendered natively, with web pages shown as themselves. (d) A third-party Markdown renderer.
+
+**Trade-offs.** A web view ignores the reading-size setting and suits only real web pages. PDF is right for PDF documents but not for pasted text or Markdown files. A third-party renderer conflicts with the dependency rule (ADR-007).
+
+**Decision.** Show each source in its own form. Web pages open as the page itself in an in-app browser (`SFSafariViewController`), with the extracted text kept as an offline copy. Markdown files and pasted text render natively: `MarkdownParser` (AIQuizCore, unit-tested) splits blocks and `MarkdownView` draws them at the user's reading size, with `AttributedString(markdown:)` for inline formatting. PDF sources, when added in Phase 5, will display with PDFKit.
+
+**Consequences.** No new dependency; text follows reading size and dark mode. Tables, images and footnotes in Markdown files show as plain text.
+
+**Amendment (CR-008, 2026-10-22).** Jaime reported that tables did not render and asked whether a native renderer exists. Apple has no SwiftUI view that renders a whole Markdown document: `Text` renders inline Markdown only. Foundation's `AttributedString(markdown:)` with `interpretedSyntax: .full` does parse the whole document, including GitHub-flavored tables, and labels every run with a `PresentationIntent` (header, list item and ordinal, quote, code block and language, table, row, cell and column alignment). Options considered: keep extending the hand-written parser; adopt a third-party package such as swift-markdown-ui (conflicts with ADR-007); use Foundation's parser and keep drawing blocks ourselves. **Decision:** the last. `MarkdownParser` now only groups Foundation's runs into blocks, keeping inline formatting as `AttributedString`, and `MarkdownView` draws tables with SwiftUI `Grid`. Empty table cells produce no runs, so cells are placed by column index. Images and footnotes still show as text.

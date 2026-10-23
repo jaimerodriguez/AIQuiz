@@ -13,8 +13,8 @@ How to use this document:
 
 | Phase | Title | Status | PR |
 |---|---|---|---|
-| 0 | Test scaffolding and packages | in review | phase-0-test-scaffolding |
-| 1 | LLMKit foundation and endpoint settings | not started | |
+| 0 | Test scaffolding and packages | in review | jaimerodriguez/AIQuiz#2 |
+| 1 | LLMKit foundation and endpoint settings | in review | phase-1-llmkit, stacked on #2 |
 | 2 | Schema v2 and migration | not started | |
 | 3 | Session UI consolidation and v1 drift fixes | not started | |
 | 4 | AI grading, explanations, hints, lint | not started | |
@@ -61,7 +61,7 @@ Launch argument `-UITestMode` makes the app:
 Additional arguments: `-UITestScenario <name>` selects alternative fixture sets (e.g. `endpointError`, `malformedJSON`, `emptyLibrary`, `largeLibrary`). `largeLibrary` generates 120 quizzes × 40 cards × 15 sessions in the in-memory store (synthetic text, deterministic seed) and is the fixture for every performance assertion (SPEC N-8).
 
 ### 1.6 Live tests (opt-in)
-`AIQUIZ_LIVE_TESTS=1` with `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in the environment enables a small suite in `LLMKit` that hits the real APIs once per client (complete, stream, structured). Never run in CI by default. Run before merging Phase 1 and whenever a wire format changes.
+`scripts/live-test.sh` reads `AIQuiz_Ant_test_key` and `AIQuiz_Oai_test_key` from the macOS login Keychain and sets `AIQUIZ_LIVE_TESTS=1`, enabling a small suite in `LLMKit` that hits the real APIs once per client (complete, stream, structured). Never run in CI by default. Run before merging Phase 1 and whenever a wire format changes.
 
 ---
 
@@ -206,6 +206,8 @@ Implements F-15, F-16, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-44, S-3.
 ---
 
 ### Phase 5 — Ingestion: notes, PDF, reader mode, photo, share
+
+> **Partly delivered early (CR-007):** quizzes keep their original content (page link, file bookmark, pasted text) and show it on the quiz screen. AI study notes (F-20) are on hold at the owner's request. Phase 5 still owns PDF and photo sources, reader-mode extraction, chunking, the share extension and the generation queue.
 Implements F-3, F-19 sources, F-20, F-21, F-22, S-4, §7.4 chunking.
 
 **Tasks**

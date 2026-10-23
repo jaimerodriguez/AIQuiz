@@ -43,6 +43,19 @@ struct QuizDetailView: View {
                 }
                 .disabled(quiz.cards.isEmpty)
                 .accessibilityIdentifier("detail.mode.quizVoice")
+
+                if quiz.sourceKind != nil {
+                    NavigationLink {
+                        SourceMaterialsView(quiz: quiz)
+                    } label: {
+                        modeRow(
+                            title: "Read Source Materials",
+                            systemImage: "doc.richtext",
+                            subtitle: sourceSubtitle
+                        )
+                    }
+                    .accessibilityIdentifier("detail.mode.source")
+                }
             }
 
             Section("Stats") {
@@ -80,6 +93,16 @@ struct QuizDetailView: View {
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// "Web page · en.wikipedia.org", "Markdown file · notes.md", "Pasted text" (CR-008).
+    private var sourceSubtitle: String {
+        switch quiz.sourceKind {
+        case .webPage?: return "Web page · \(quiz.sourceTitle ?? quiz.sourceURL?.host ?? "")"
+        case .markdownFile?: return "Markdown file · \(quiz.sourceTitle ?? "")"
+        case .pastedText?: return "The text this quiz was generated from."
+        case nil: return ""
+        }
     }
 
     private var recentSessions: [SessionRecord] {
