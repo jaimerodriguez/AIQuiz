@@ -1,4 +1,5 @@
 import Foundation
+import AIQuizCore
 import SwiftData
 
 enum SampleQuizzes {

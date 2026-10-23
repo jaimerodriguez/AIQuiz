@@ -1,4 +1,5 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 
 struct QuizDetailView: View {
@@ -17,6 +18,7 @@ struct QuizDetailView: View {
                     )
                 }
                 .disabled(quiz.cards.isEmpty)
+                .accessibilityIdentifier("detail.mode.studyVoice")
 
                 NavigationLink {
                     StudyReadView(quiz: quiz)
@@ -28,6 +30,7 @@ struct QuizDetailView: View {
                     )
                 }
                 .disabled(quiz.cards.isEmpty)
+                .accessibilityIdentifier("detail.mode.studyRead")
 
                 NavigationLink {
                     QuizVoiceView(quiz: quiz)
@@ -39,6 +42,7 @@ struct QuizDetailView: View {
                     )
                 }
                 .disabled(quiz.cards.isEmpty)
+                .accessibilityIdentifier("detail.mode.quizVoice")
             }
 
             Section("Stats") {

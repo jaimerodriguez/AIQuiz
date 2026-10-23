@@ -1,4 +1,5 @@
 import AVFoundation
+import AIQuizCore
 import Foundation
 import Speech
 
@@ -88,7 +89,7 @@ final class STTService {
         onTranscript: ((String) -> Void)? = nil,
         onError: ((Error) -> Void)? = nil
     ) throws {
-        DebugLog.log("STT.startListening: entering")
+        Log.audio.debug("STT.startListening: entering")
         teardown()
 
         guard authorisationStatus() == .authorized else { throw STTError.unauthorized }
@@ -103,7 +104,7 @@ final class STTService {
         do {
             try session.setCategory(.record)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            DebugLog.log("STT: session active route=\(session.currentRoute.inputs.first?.portName ?? "none")")
+            Log.audio.debug("STT: session active route=\(session.currentRoute.inputs.first?.portName ?? "none")")
         } catch {
             throw STTError.audioSession(error)
         }
@@ -133,7 +134,7 @@ final class STTService {
             requestRef.value?.append(buffer)
         }
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil, block: tapBlock)
-        DebugLog.log("STT: tap installed (format=nil)")
+        Log.audio.debug("STT: tap installed (format=nil)")
 
         self.transcriptHandler = onTranscript
         self.errorHandler = onError
@@ -166,10 +167,10 @@ final class STTService {
         engine.prepare()
         do {
             try engine.start()
-            DebugLog.log("STT: engine started")
+            Log.audio.debug("STT: engine started")
             isListening = true
         } catch {
-            DebugLog.log("STT: engine.start failed: \(error)")
+            Log.audio.debug("STT: engine.start failed: \(error)")
             teardown()
             throw STTError.engineStart(error)
         }

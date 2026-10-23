@@ -1,0 +1,34 @@
+{
+  "quiz": {
+    "name": "Fake Generated Quiz",
+    "cards": [
+      {
+        "prompt": "What does the fake endpoint return?",
+        "long_answer": "A fixed quiz read from a JSON fixture bundled with the app, so UI tests are deterministic.",
+        "short_answer": "A fixture",
+        "hint": "It never calls the network."
+      },
+      {
+        "prompt": "How long does the fake endpoint take to respond?",
+        "long_answer": "About 300 milliseconds, so progress indicators are visible in tests.",
+        "short_answer": "300 ms"
+      },
+      {
+        "prompt": "Which launch argument enables UI-test mode?",
+        "long_answer": "-UITestMode. It switches the app to an in-memory store, seeded fixtures and the fake provider.",
+        "short_answer": "-UITestMode",
+        "hint": "Starts with a dash."
+      },
+      {
+        "prompt": "Where do fixtures live?",
+        "long_answer": "In AIQuiz/Resources/TestFixtures, bundled as a folder resource.",
+        "short_answer": "Resources/TestFixtures"
+      },
+      {
+        "prompt": "What replaces FakeProvider later?",
+        "long_answer": "FakeLLMClient in the LLMKit package, introduced in PLAN Phase 1.",
+        "short_answer": "FakeLLMClient"
+      }
+    ]
+  }
+}

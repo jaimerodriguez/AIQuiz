@@ -1,4 +1,5 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 import AVFoundation
 import Speech
@@ -32,7 +33,7 @@ final class QuizVoicePlayer {
     }
 
     func startListening() async {
-        DebugLog.log("QV.startListening invoked, phase=\(phase)")
+        Log.audio.debug("QV.startListening invoked, phase=\(phase)")
         guard phase == .awaitingAnswer else { return }
         sttError = nil
         transcript = ""
@@ -132,6 +133,8 @@ struct QuizVoiceView: View {
     let quiz: QuizRecord
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
+    @Environment(ProviderRegistry.self) private var registry
     @State private var player: QuizVoicePlayer
     @State private var showAbandonAlert = false
     @State private var sessionRecorded = false
@@ -168,6 +171,7 @@ struct QuizVoiceView: View {
                     } label: {
                         Label("End", systemImage: "xmark.circle")
                     }
+                    .accessibilityIdentifier("session.end")
                 }
             }
         }
@@ -215,16 +219,18 @@ struct QuizVoiceView: View {
             ProgressView(value: Double(p.current), total: Double(p.total))
             Text("Card \(p.current) of \(p.total)")
                 .font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier("session.progress")
         }
     }
 
     @ViewBuilder
-    private func cardContent(_ card: CardRecord) -> some View {
-        let typo = AppSettings.shared.quizFontSize
+    private func cardContent(_ card: CardSnapshot) -> some View {
+        let typo = settings.quizFontSize
         VStack(alignment: .leading, spacing: 16) {
             Text(card.prompt)
                 .font(typo.promptFont)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("session.card.prompt")
 
             if player.phase == .listening || (player.phase == .reveal && !player.transcript.isEmpty) {
                 transcriptBlock(typo: typo)
@@ -273,15 +279,17 @@ struct QuizVoiceView: View {
     }
 
     @ViewBuilder
-    private func answerReveal(_ card: CardRecord, typo: QuizFontSize) -> some View {
+    private func answerReveal(_ card: CardSnapshot, typo: QuizFontSize) -> some View {
         Divider()
         VStack(alignment: .leading, spacing: 8) {
             Text("Correct answer")
                 .font(.caption).foregroundStyle(.secondary)
             if let s = card.shortAnswer {
                 Text(s).font(typo.emphasisFont).foregroundStyle(.tint)
+                    .accessibilityIdentifier("session.card.shortAnswer")
             }
             Text(card.longAnswer).font(typo.bodyFont)
+                .accessibilityIdentifier("session.card.longAnswer")
         }
 
         if let v = player.aiVerdict {
@@ -298,6 +306,7 @@ struct QuizVoiceView: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityIdentifier("quiz.aiVerdict")
         }
     }
 
@@ -314,6 +323,7 @@ struct QuizVoiceView: View {
                         .padding(.vertical, 4)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("quiz.tapToAnswer")
 
                 HStack {
                     Button {
@@ -324,6 +334,7 @@ struct QuizVoiceView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(player.deck.current?.hint == nil)
+                    .accessibilityIdentifier("session.hint")
 
                     Button {
                         player.revealAnswerWithoutVoice()
@@ -332,6 +343,7 @@ struct QuizVoiceView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("quiz.showAnswer")
                 }
             }
         case .listening:
@@ -344,6 +356,7 @@ struct QuizVoiceView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
+            .accessibilityIdentifier("quiz.stopReveal")
         case .reveal:
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
@@ -355,6 +368,7 @@ struct QuizVoiceView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
+                    .accessibilityIdentifier("quiz.grade.wrong")
 
                     Button {
                         player.record(.partial)
@@ -364,6 +378,7 @@ struct QuizVoiceView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(.orange)
+                    .accessibilityIdentifier("quiz.grade.partial")
 
                     Button {
                         player.record(.correct)
@@ -373,6 +388,7 @@ struct QuizVoiceView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.green)
+                    .accessibilityIdentifier("quiz.grade.correct")
                 }
 
                 Button {
@@ -390,10 +406,12 @@ struct QuizVoiceView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(aiJudging || player.transcript.isEmpty)
+                .accessibilityIdentifier("quiz.askAI")
 
                 if let err = aiError {
                     Text(err).font(.footnote).foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("quiz.aiError")
                 }
             }
         case .ended:
@@ -404,7 +422,7 @@ struct QuizVoiceView: View {
     private func askAIToJudge() async {
         guard let card = player.deck.current else { return }
         aiError = nil
-        if let error = ProviderRegistry.shared.validate(for: .grading) {
+        if let error = registry.validate(for: .grading) {
             switch error {
             case .missingAPIKey, .providerUnavailable, .noProviderConfigured:
                 showProviderSetup = true
@@ -417,7 +435,7 @@ struct QuizVoiceView: View {
         aiJudging = true
         defer { aiJudging = false }
         do {
-            let provider = ProviderRegistry.shared.provider(for: .grading)
+            let provider = registry.provider(for: .grading)
             let verdict = try await provider.judgeAnswer(JudgeRequest(
                 prompt: card.prompt,
                 userAnswer: player.transcript,

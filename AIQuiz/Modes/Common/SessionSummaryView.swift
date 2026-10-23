@@ -1,33 +1,12 @@
 import SwiftUI
+import AIQuizCore
 
 struct SessionSummaryView: View {
     let deck: SessionDeck
     let onDone: () -> Void
-    let onPracticeMissed: (([CardRecord]) -> Void)?
+    let onPracticeMissed: (([CardSnapshot]) -> Void)?
 
-    private var scoredOutcomes: [(card: CardRecord, verdict: CardVerdict)] {
-        deck.cards.compactMap { card in
-            guard let v = deck.outcomes[card.id] else { return nil }
-            return (card, v)
-        }
-    }
-
-    private var counts: (correct: Int, partial: Int, wrong: Int, skipped: Int) {
-        var c = 0, p = 0, w = 0, s = 0
-        for (_, v) in scoredOutcomes {
-            switch v {
-            case .correct: c += 1
-            case .partial: p += 1
-            case .wrong:   w += 1
-            case .skipped: s += 1
-            }
-        }
-        return (c, p, w, s)
-    }
-
-    private var missed: [CardRecord] {
-        scoredOutcomes.compactMap { $0.verdict == .wrong || $0.verdict == .partial ? $0.card : nil }
-    }
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         ScrollView {
@@ -36,7 +15,7 @@ struct SessionSummaryView: View {
 
                 statsGrid
 
-                if !missed.isEmpty {
+                if !deck.missedCards.isEmpty {
                     missedList
                 }
 
@@ -56,6 +35,7 @@ struct SessionSummaryView: View {
                 Text("\(Int((pct * 100).rounded()))%")
                     .font(.system(size: 72, weight: .bold, design: .rounded))
                     .foregroundStyle(scoreColor(pct))
+                    .accessibilityIdentifier("summary.score")
                 Text("Session score")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -65,11 +45,12 @@ struct SessionSummaryView: View {
             Text("Done")
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .padding(.top)
+                .accessibilityIdentifier("summary.score")
         }
     }
 
     private var statsGrid: some View {
-        let c = counts
+        let c = deck.counts
         return HStack(spacing: 8) {
             statCell("Correct", value: c.correct, color: .green)
             statCell("Partial", value: c.partial, color: .orange)
@@ -92,14 +73,16 @@ struct SessionSummaryView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("summary.count.\(label.lowercased())")
     }
 
     private var missedList: some View {
-        let typo = AppSettings.shared.quizFontSize
+        let typo = settings.quizFontSize
+        let missed = deck.scoredCards.filter { $0.verdict == .wrong || $0.verdict == .partial }
         return VStack(alignment: .leading, spacing: 8) {
             Text("Cards to review")
                 .font(.headline)
-            ForEach(scoredOutcomes.filter { $0.verdict == .wrong || $0.verdict == .partial }, id: \.card.id) { entry in
+            ForEach(missed, id: \.card.id) { entry in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .top) {
                         Text(entry.card.prompt).font(typo.emphasisFont)
@@ -120,18 +103,20 @@ struct SessionSummaryView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 8) {
-            if let onPracticeMissed, !missed.isEmpty {
+            if let onPracticeMissed, !deck.missedCards.isEmpty {
                 Button {
-                    onPracticeMissed(missed)
+                    onPracticeMissed(deck.missedCards)
                 } label: {
-                    Label("Practice missed cards (\(missed.count))", systemImage: "arrow.clockwise")
+                    Label("Practice missed cards (\(deck.missedCards.count))", systemImage: "arrow.clockwise")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("summary.practiceMissed")
             }
             Button("Done", action: onDone)
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("summary.done")
         }
         .padding(.top)
     }

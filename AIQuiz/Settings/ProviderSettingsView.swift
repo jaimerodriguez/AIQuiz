@@ -1,13 +1,15 @@
 import SwiftUI
+import AIQuizCore
 
 struct ProviderSettingsView: View {
-    @Bindable private var registry = ProviderRegistry.shared
+    @Environment(ProviderRegistry.self) private var registry
     @State private var openAIKeyDraft: String = ""
     @State private var claudeKeyDraft: String = ""
     @State private var showSavedToast: Bool = false
 
     var body: some View {
-        Form {
+        @Bindable var registry = registry
+        return Form {
             Section {
                 Picker("Generation", selection: $registry.generationProvider) {
                     ForEach(visibleProviders) { provider($0) }

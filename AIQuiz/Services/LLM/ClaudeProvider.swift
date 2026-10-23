@@ -1,4 +1,5 @@
 import Foundation
+import AIQuizCore
 
 struct ClaudeProvider: LLMProvider {
     var id: ProviderID { .claude }

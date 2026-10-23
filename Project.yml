@@ -1,20 +1,25 @@
 name: AIQuiz
 options:
-  bundleIdPrefix: com.jaimer.aiquiz
+  bundleIdPrefix: com.jaimerodriguez.aiquiz
   deploymentTarget:
-    iOS: "18.1"
+    iOS: "26.0"
   developmentLanguage: en
   createIntermediateGroups: true
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    IPHONEOS_DEPLOYMENT_TARGET: "18.1"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
     SUPPORTS_MACCATALYST: NO
     GENERATE_INFOPLIST_FILE: NO
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+
+packages:
+  AIQuizCore:
+    path: Packages/AIQuizCore
 
 targets:
   AIQuiz:
@@ -27,6 +32,10 @@ targets:
     resources:
       - path: AIQuiz/Resources/SampleQuizzes
         type: folder
+      - path: AIQuiz/Resources/TestFixtures
+        type: folder
+    dependencies:
+      - package: AIQuizCore
     info:
       path: AIQuiz/Info.plist
       properties:
@@ -55,5 +64,45 @@ targets:
         DEVELOPMENT_TEAM: X824J47H9D
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.1.0"
-        SWIFT_OBJC_BRIDGING_HEADER: AIQuiz/AIQuiz-Bridging-Header.h
-        CLANG_ENABLE_OBJC_ARC: YES
+
+  AIQuizTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/AIQuizTests
+    dependencies:
+      - target: AIQuiz
+      - package: AIQuizCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: X824J47H9D
+        CODE_SIGN_STYLE: Automatic
+
+  AIQuizUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/AIQuizUITests
+    dependencies:
+      - target: AIQuiz
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        DEVELOPMENT_TEAM: X824J47H9D
+        CODE_SIGN_STYLE: Automatic
+
+schemes:
+  AIQuiz:
+    build:
+      targets:
+        AIQuiz: all
+        AIQuizTests: [test]
+        AIQuizUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AIQuizTests
+        - AIQuizUITests

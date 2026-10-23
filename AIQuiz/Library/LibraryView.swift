@@ -1,4 +1,5 @@
 import SwiftUI
+import AIQuizCore
 import SwiftData
 
 struct LibraryView: View {
@@ -22,6 +23,7 @@ struct LibraryView: View {
                         NavigationLink(value: quiz) {
                             QuizRow(quiz: quiz)
                         }
+                        .accessibilityIdentifier("library.row.\(quiz.id.uuidString)")
                     }
                     .onDelete(perform: deleteQuizzes)
                 }
@@ -35,6 +37,7 @@ struct LibraryView: View {
                 } label: {
                     Label("Settings", systemImage: "gear")
                 }
+                .accessibilityIdentifier("library.settings")
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -43,14 +46,17 @@ struct LibraryView: View {
                     } label: {
                         Label("Generate with AI", systemImage: "sparkles")
                     }
+                    .accessibilityIdentifier("library.generate")
                     Button {
                         importing = true
                     } label: {
                         Label("Import JSON", systemImage: "square.and.arrow.down")
                     }
+                    .accessibilityIdentifier("library.import")
                 } label: {
                     Label("Add Quiz", systemImage: "plus")
                 }
+                .accessibilityIdentifier("library.addButton")
             }
         }
         .sheet(isPresented: $generating) {

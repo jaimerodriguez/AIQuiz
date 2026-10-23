@@ -1,4 +1,7 @@
 import Foundation
+import AIQuizCore
+
+// v1 provider abstraction. Replaced by `LLMKit.LLMClient` in PLAN Phase 1.
 
 enum ProviderID: String, Codable, CaseIterable, Identifiable {
     case appleFoundation
@@ -34,35 +37,6 @@ enum ProviderID: String, Codable, CaseIterable, Identifiable {
 enum ProviderPurpose: String, Codable, CaseIterable {
     case generation
     case grading
-}
-
-struct QuizGenRequest: Sendable {
-    enum Source: Sendable {
-        case topic
-        case markdown
-        case article
-    }
-    var source: Source
-    var topic: String
-    var sourceContent: String?
-    var cardCount: Int?
-    var difficulty: String?
-    var language: String?
-    var tone: String?
-    var focus: String?
-    var exclude: String?
-}
-
-struct JudgeRequest: Sendable {
-    var prompt: String
-    var userAnswer: String
-    var correctShort: String?
-    var correctLong: String
-}
-
-struct JudgeVerdict: Sendable {
-    var verdict: CardVerdict
-    var reason: String
 }
 
 enum LLMError: LocalizedError {
