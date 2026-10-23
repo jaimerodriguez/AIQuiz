@@ -22,7 +22,7 @@ How to use this document:
 | 5 | Ingestion: notes, PDF, reader mode, photo, share | merged into `claude` | jaimerodriguez/AIQuiz#9 |
 | 6 | Card types and the Choice player | merged into `claude` | jaimerodriguez/AIQuiz#10 |
 | 7 | FSRS scheduling, Due today, notifications, insights | in review | jaimerodriguez/AIQuiz#11 |
-| 8 | Audio coordinator, tutor chat, oral exam | in review; iPad check of "hint" and the oral exam pending | phase-8-audio-tutor (merge after #11) |
+| 8 | Audio coordinator, tutor chat, oral exam | in review; accepted on the iPad 2026-10-23 ("hint" and a 5-card oral exam with Anthropic, audio log clean) | jaimerodriguez/AIQuiz#12 (merge after #11) |
 
 Decisions already taken (change only with the owner's agreement):
 
