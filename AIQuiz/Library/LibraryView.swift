@@ -7,6 +7,7 @@ import SwiftData
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// Active quizzes, for the empty state and the tag chips. Reads stored attributes only.
     @Query(filter: #Predicate<QuizRecord> { !$0.isArchived }) private var activeQuizzes: [QuizRecord]
     @Query(filter: #Predicate<QuizRecord> { $0.isArchived }) private var archivedQuizzes: [QuizRecord]
@@ -31,17 +32,24 @@ struct LibraryView: View {
                     description: Text("Import a JSON quiz from Files or generate one with AI.")
                 )
             } else {
-                LibraryList(
+                let list = LibraryList(
                     sort: settings.librarySort,
                     sortSelection: Bindable(settings).librarySort,
                     search: searchText,
+                    // iPad: search sits in the header row next to sort (CR-012).
+                    inlineSearch: sizeClass == .regular ? $searchText : nil,
                     tag: selectedTag,
                     tags: activeQuizzes.count > Self.tagChipThreshold ? allTags : [],
                     selectedTag: $selectedTag,
                     actions: actions,
                     sourceStatus: sourceStatus
                 )
-                .searchable(text: $searchText, prompt: "Search names and #tags")
+                if sizeClass == .regular {
+                    list
+                } else {
+                    // iPhone: the system search bar at the bottom.
+                    list.searchable(text: $searchText, prompt: "Search names and #tags")
+                }
             }
         }
         .navigationTitle("AIQuiz")
@@ -132,6 +140,7 @@ private struct LibraryList: View {
     @Query private var quizzes: [QuizRecord]
     @Query private var archived: [QuizRecord]
     @Binding var sortSelection: LibrarySort
+    let inlineSearch: Binding<String>?
     let tags: [String]
     @Binding var selectedTag: String?
     let actions: QuizActions
@@ -139,7 +148,7 @@ private struct LibraryList: View {
     @State private var showArchived = false
     @State private var launchMilliseconds: Int?
 
-    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
+    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, inlineSearch: Binding<String>?, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
         let term = search.trimmingCharacters(in: .whitespaces).lowercased()
         let needle = tag.map(TagsSearch.needle(forTag:)) ?? ""
         _quizzes = Query(
@@ -158,6 +167,7 @@ private struct LibraryList: View {
         )
         self.tags = tags
         _sortSelection = sortSelection
+        self.inlineSearch = inlineSearch
         _selectedTag = selectedTag
         self.actions = actions
         self.sourceStatus = sourceStatus
@@ -247,7 +257,11 @@ private struct LibraryList: View {
     /// Count and sort, at the top of the list rather than in the toolbar, so the add button
     /// stands alone (CR-011).
     private var listHeader: some View {
-        HStack {
+        HStack(spacing: 16) {
+            if let inlineSearch {
+                InlineSearchField(text: inlineSearch)
+                    .frame(maxWidth: 420)
+            }
             Text(quizzes.count == 1 ? "1 quiz" : "\(quizzes.count) quizzes")
                 .foregroundStyle(.secondary)
             Spacer()
@@ -334,5 +348,42 @@ private struct QuizRow: View {
 
     private func percentText(_ v: Double) -> String {
         "\(Int((v * 100).rounded()))%"
+    }
+}
+
+/// The iPad library's search field, in the row above the list (CR-012).
+private struct InlineSearchField: View {
+    @Binding var text: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search names and #tags", text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($focused)
+                .accessibilityIdentifier("library.search")
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+                .accessibilityIdentifier("library.search.clear")
+            }
+        }
+        .font(.body)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.background, in: Capsule())
+        .overlay(Capsule().stroke(.separator, lineWidth: 0.5))
+        .contentShape(Capsule())
+        .onTapGesture { focused = true }
     }
 }

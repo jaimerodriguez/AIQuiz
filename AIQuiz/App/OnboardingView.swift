@@ -142,7 +142,7 @@ private struct GeneratePage: View {
                             .background(.background.secondary, in: RoundedRectangle(cornerRadius: Theme.tileRadius))
                         } else {
                             HStack(spacing: 10) {
-                                AccentIcon(systemName: source.icon, size: 32)
+                                AccentIcon(systemName: source.icon, size: 40)
                                 Text(source.label)
                                     .font(.subheadline.weight(.semibold))
                                     .lineLimit(2)
@@ -150,18 +150,11 @@ private struct GeneratePage: View {
                                 Spacer(minLength: 0)
                             }
                             .padding(.horizontal, 10)
-                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .frame(maxWidth: .infinity, minHeight: 72)
                             .background(.background.secondary, in: RoundedRectangle(cornerRadius: Theme.tileRadius))
                         }
                     }
                 }
-                Label("AI writes the cards", systemImage: "arrow.down")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                AdaptiveTiles(sizeClass: sizeClass, items: [
-                    FeatureTileModel(icon: "rectangle.stack.fill", title: "A deck of flashcards", text: "Ready for all three study modes."),
-                    FeatureTileModel(icon: "book.fill", title: "The original, kept", text: "Read it again from the quiz any time.")
-                ])
             }
         }
     }
@@ -173,7 +166,7 @@ private struct ProvidersPage: View {
     var body: some View {
         OnboardingPage(index: 2, title: "Bring your own AI",
                        subtitle: "Pick who writes and grades your quizzes. Requests go straight from this device to them.") {
-            AccentIcon(systemName: "cpu.fill", size: 120)
+            SparklesBadge(size: 120)
         } content: {
             VStack(spacing: 14) {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: sizeClass == .regular ? 4 : 2), spacing: 12) {
@@ -181,14 +174,9 @@ private struct ProvidersPage: View {
                         ProviderMark(provider: provider, large: sizeClass == .regular)
                     }
                 }
-                HStack(alignment: .top, spacing: 12) {
+                HStack(spacing: 12) {
                     AccentIcon(systemName: "lock.shield.fill", size: sizeClass == .regular ? 48 : 36)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Your keys stay on this device").font(sizeClass == .regular ? .title3.weight(.semibold) : .headline)
-                        Text("API keys live in the Keychain. Add an endpoint from Settings whenever you're ready.")
-                            .font(sizeClass == .regular ? .body : .subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("Your keys stay on this device").font(sizeClass == .regular ? .title3.weight(.semibold) : .headline)
                     Spacer(minLength: 0)
                 }
                 .padding(sizeClass == .regular ? 18 : 12)
@@ -258,7 +246,7 @@ private struct StackedCardsHero: View {
                 .frame(width: 104, height: 136)
                 .overlay {
                     VStack(spacing: 10) {
-                        Image(systemName: "questionmark")
+                        Image(systemName: "checkmark")
                             .font(.system(size: 44, weight: .bold))
                         Capsule().frame(width: 56, height: 6).opacity(0.6)
                         Capsule().frame(width: 40, height: 6).opacity(0.4)
@@ -277,18 +265,28 @@ private struct StackedCardsHero: View {
     }
 }
 
+/// The AI "intelligence" badge: sparkles on an accent circle, shared by pages 2 and 3.
+private struct SparklesBadge: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(Theme.accent.gradient, in: Circle())
+            .shadow(color: Theme.accent.opacity(0.35), radius: 12, y: 6)
+            .accessibilityHidden(true)
+    }
+}
+
 /// Source → AI → cards.
 private struct GenerateHero: View {
     var body: some View {
         HStack(spacing: 10) {
             AccentIcon(systemName: "doc.text.fill", size: 64)
             Image(systemName: "chevron.right").font(.title3.weight(.bold)).foregroundStyle(.tertiary)
-            Image(systemName: "sparkles")
-                .font(.system(size: 40, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 96, height: 96)
-                .background(Theme.accent.gradient, in: Circle())
-                .shadow(color: Theme.accent.opacity(0.35), radius: 12, y: 6)
+            SparklesBadge(size: 96)
             Image(systemName: "chevron.right").font(.title3.weight(.bold)).foregroundStyle(.tertiary)
             AccentIcon(systemName: "rectangle.stack.fill", size: 64)
         }

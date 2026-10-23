@@ -378,6 +378,12 @@ final class AIQuizUITests: XCTestCase {
         row.press(forDuration: 1.2)
     }
 
+    /// The library search: inline next to sort on iPad, the system search bar on iPhone.
+    private func searchField(_ app: XCUIApplication) -> XCUIElement {
+        let inline = app.textFields["library.search"]
+        return inline.waitForExistence(timeout: 2) ? inline : app.searchFields.firstMatch
+    }
+
     private func firstRowLabel(_ app: XCUIApplication) -> String {
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library.row.'"))
         XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: timeout))
@@ -476,7 +482,7 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["quizEdit.save"].tap()
         XCTAssertTrue(app.staticTexts["#fixture #zebra"].waitForExistence(timeout: timeout), "the row shows the tags")
 
-        let search = app.searchFields.firstMatch
+        let search = searchField(app)
         XCTAssertTrue(search.waitForExistence(timeout: timeout))
         search.tap()
         search.typeText("#zebra")
@@ -557,7 +563,7 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         print("PERF sort by name visible after \(Int(Date().timeIntervalSince(start) * 1000)) ms (includes XCUITest polling)")
 
-        let search = app.searchFields.firstMatch
+        let search = searchField(app)
         XCTAssertTrue(search.waitForExistence(timeout: timeout))
         search.tap()
         search.typeText("quiz 19")
