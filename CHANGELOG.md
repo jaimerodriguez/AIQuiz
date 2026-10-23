@@ -44,5 +44,15 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Changed (CR-008):** the original content is now the fourth entry under **Modes**, called **Read Source Materials**, instead of a separate section. It appears only on quizzes that have a source.
   - **Fixed (CR-008):** Markdown tables render as tables, with a header row, borders, column alignment and sideways scrolling when wide. Nested and numbered lists, block quotes, code blocks and underlined (setext) headings render properly too. The app now uses Apple's built-in Markdown parser instead of its own.
 
+- **Phase 2 (schema v2 and migration), branch `phase-2-schema-v2`, stacked on the original-content branch:**
+  - **Library safety:** the library now has a versioned schema with a migration plan (ADR-014). Before any upgrade the app copies the library files to a backup folder in its data and keeps the last three. If a library can't be opened, it is set aside rather than deleted, an empty one starts, and the app says so once.
+  - Libraries from v0.1 and from the original-content build both migrate. Checked against two real copies of the iPad library: 7 quizzes / 207 cards and 8 quizzes / 226 cards, nothing lost.
+  - **Library:** sort by Recently studied, Name or Newest; search by name or `#tag`; tag chips above the list once you have more than 10 quizzes; an Archived section at the bottom; swipe to archive or delete. Delete now asks first.
+  - **Quiz actions:** Rename, Edit tags (with an optional description), Archive and Export JSON from the library's context menu and the quiz screen's More menu.
+  - **Cards:** tap a card to see everything on it and its history, edit any field including its kind (recall, multiple choice, fill in the blank, true or false), or delete it. Invalid cards explain what is wrong and can't be saved.
+  - **Quiz file format:** JSON files may carry `description`, `tags`, `language`, and per card `kind`, `options`, `explanation` and `mnemonic` (SPEC §2). Export writes them back. A bad file names itself, the card and the problem.
+  - **Speed:** counts and scores are stored on each quiz, so the library never loads cards or sessions. With 200 quizzes, 10 000 cards and 5 000 sessions on the simulator, the library fetch takes 8 ms, the due count 1.5 ms, search 4 ms, and a cold launch reaches the first row in about 1.2 s.
+  - Generated quizzes record the endpoint and model that made them, shown under About on the quiz screen.
+
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.

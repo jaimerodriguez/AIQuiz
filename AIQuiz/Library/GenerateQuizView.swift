@@ -127,7 +127,7 @@ struct GenerateQuizView: View {
         }
         .fileExporter(
             isPresented: $exporting,
-            document: exportingJSON.map { JSONDocument(data: $0) },
+            document: exportingJSON.map { QuizJSONDocument(data: $0) },
             contentType: .json,
             defaultFilename: defaultExportFilename
         ) { result in
@@ -323,7 +323,7 @@ struct GenerateQuizView: View {
         do {
             let client = try router.client(for: .generation)
             let payload = try await QuizGenerator.generate(request, using: client)
-            try saveQuiz(payload, request: request)
+            try saveQuiz(payload, request: request, endpoint: client.endpoint)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -370,12 +370,23 @@ struct GenerateQuizView: View {
     }
 
     /// Saves the quiz and, for source modes, its original content (CR-007).
-    private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest) throws {
-        let record = QuizRecord.make(from: payload, source: originalSource(text: request.sourceContent))
+    private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest, endpoint: LLMEndpoint) throws {
+        let record = QuizRecord.make(from: payload, origin: origin, source: originalSource(text: request.sourceContent))
+        record.generatedByEndpointName = endpoint.name
+        record.generatedByModel = endpoint.model
         context.insert(record)
         try context.save()
         generatedQuizId = record.id
         exportingJSON = try? QuizDecoder.encode(payload)
+    }
+
+    private var origin: QuizOrigin {
+        switch source {
+        case .topic: return .topic
+        case .markdown: return .markdown
+        case .paste: return .pastedText
+        case .url: return .url
+        }
     }
 
     private func originalSource(text: String?) -> OriginalSource? {
@@ -395,24 +406,5 @@ struct GenerateQuizView: View {
             let url = URL(string: urlString.trimmingCharacters(in: .whitespaces))
             return OriginalSource(kind: .webPage, title: url?.host ?? "Web page", text: text, url: url)
         }
-    }
-}
-
-private struct JSONDocument: FileDocument {
-    static let readableContentTypes: [UTType] = [.json]
-    var data: Data
-
-    init(data: Data) { self.data = data }
-
-    init(configuration: ReadConfiguration) throws {
-        if let read = configuration.file.regularFileContents {
-            data = read
-        } else {
-            data = Data()
-        }
-    }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
     }
 }

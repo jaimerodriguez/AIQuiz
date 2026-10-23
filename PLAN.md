@@ -13,9 +13,10 @@ How to use this document:
 
 | Phase | Title | Status | PR |
 |---|---|---|---|
-| 0 | Test scaffolding and packages | in review | jaimerodriguez/AIQuiz#2 |
-| 1 | LLMKit foundation and endpoint settings | in review | phase-1-llmkit, stacked on #2 |
-| 2 | Schema v2 and migration | not started | |
+| 0 | Test scaffolding and packages | merged into `claude` | jaimerodriguez/AIQuiz#2 |
+| 1 | LLMKit foundation and endpoint settings | approved; landing in `claude` | jaimerodriguez/AIQuiz#3, landed by jaimerodriguez/AIQuiz#6 |
+| — | Original content and Read Source Materials (CR-007, CR-008) | approved; landing in `claude` | jaimerodriguez/AIQuiz#4, landed by jaimerodriguez/AIQuiz#6 |
+| 2 | Schema v2 and migration | in review | jaimerodriguez/AIQuiz#5 (merge after #6) |
 | 3 | Session UI consolidation and v1 drift fixes | not started | |
 | 4 | AI grading, explanations, hints, lint | not started | |
 | 5 | Ingestion: notes, PDF, reader mode, photo, share | not started | |
@@ -146,10 +147,10 @@ Implements SPEC §7.2–7.5, §8 (S-1, S-2, S-16). Fixes the broken Claude path.
 Implements SPEC §3, D-10. No new UI except what is needed to show new fields.
 
 **Tasks**
-1. `SchemaV1` (exact copy of today's models) and `SchemaV2` (SPEC §3) as `VersionedSchema`s; `AIQuizMigrationPlan` with a lightweight stage where possible and a custom stage for defaults (`kind = recall`, `sourceKind` derived from `bundledSampleId`/`sourceBookmark`, `createdAt = importedAt`, scheduling fields zero/nil).
+1. `SchemaV0` (v0.1) and `SchemaV1` (exact copy of today's models; both shapes exist on devices, ADR-014) and `SchemaV2` (SPEC §3) as `VersionedSchema`s; `AIQuizMigrationPlan` with a lightweight stage where possible and a custom stage for defaults (`kind = recall`, `sourceKind` derived from `bundledSampleId`/`sourceBookmark`, `createdAt = importedAt`, scheduling fields zero/nil).
 2. Container creation uses the plan. On migration failure: log, back up the store file with a timestamp, recreate empty, show a one-time alert ("Library could not be migrated; a backup was kept at …").
 3. Update `FileImportService` (now `QuizImporter` enum, no actor) and `SampleQuizzes` to fill new fields. Decode/encode `kind`, `options`, `explanation`, `mnemonic`, `description`, `tags`, `language` (SPEC §2).
-4. Card sheet (F-9) with Edit and Delete; quiz Rename / Edit tags / Archive / Export JSON (F-4); library sort menu, archived section, tag chips (F-1).
+4. Card sheet (F-9) with Edit and Delete; quiz Rename / Edit tags / Archive / Export JSON (F-4); library sort menu, archived section, tag chips (F-1). Due badge, *Most due* and multi-select are deferred (CR-009).
 5. Stored counters (D-11): `QuizStats.refresh`, called from every write path listed in SPEC §3 and from a foreground hook; `#Index` on `CardRecord.dueAt` and `SessionRecord.startedAt`; `tagsSearch` maintained on rename/tag edit; `summaryMarkdown` as external storage. Library rows and Due today read only stored fields (SPEC N-8). Migration stage fills the counters for existing quizzes.
 
 **Tests**

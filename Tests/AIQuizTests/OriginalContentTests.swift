@@ -25,7 +25,7 @@ final class OriginalContentTests: XCTestCase {
 
     func testWebPageSourceIsStoredAndRefetched() throws {
         let article = String(repeating: "Article text. ", count: 2_000)
-        let record = QuizRecord.make(from: payload, source: OriginalSource(
+        let record = QuizRecord.make(from: payload, origin: .url, source: OriginalSource(
             kind: .webPage, title: "en.wikipedia.org", text: article, url: URL(string: "https://en.wikipedia.org/wiki/Rome")
         ))
         container.mainContext.insert(record)
@@ -40,12 +40,12 @@ final class OriginalContentTests: XCTestCase {
     }
 
     func testPastedAndTopicQuizzes() {
-        let pasted = QuizRecord.make(from: payload, source: OriginalSource(kind: .pastedText, title: "Pasted text", text: "## Heading\nBody"))
+        let pasted = QuizRecord.make(from: payload, origin: .pastedText, source: OriginalSource(kind: .pastedText, title: "Pasted text", text: "## Heading\nBody"))
         XCTAssertEqual(pasted.sourceKind, .pastedText)
         XCTAssertEqual(pasted.sourceText, "## Heading\nBody")
         XCTAssertNil(pasted.sourceURL)
 
-        let topic = QuizRecord.make(from: payload)
+        let topic = QuizRecord.make(from: payload, origin: .topic)
         XCTAssertNil(topic.sourceKind, "topic quizzes have no original content")
         XCTAssertNil(topic.sourceText)
         XCTAssertNil(topic.studyNotes)
@@ -55,7 +55,7 @@ final class OriginalContentTests: XCTestCase {
         let file = tempDir.appendingPathComponent("notes.md")
         try "# Original\nText".write(to: file, atomically: true, encoding: .utf8)
         let bookmark = try XCTUnwrap(OriginalFileLoader.bookmark(for: file))
-        let record = QuizRecord.make(from: payload, source: OriginalSource(
+        let record = QuizRecord.make(from: payload, origin: .markdown, source: OriginalSource(
             kind: .markdownFile, title: "notes.md", text: "# Original\nText", fileBookmark: bookmark
         ))
         XCTAssertEqual(record.sourceBookmark, bookmark)

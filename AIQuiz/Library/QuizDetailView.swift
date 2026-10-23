@@ -4,6 +4,8 @@ import SwiftData
 
 struct QuizDetailView: View {
     let quiz: QuizRecord
+    @State private var selectedCard: CardRecord?
+    @State private var actions = QuizActions()
 
     var body: some View {
         List {
@@ -17,7 +19,7 @@ struct QuizDetailView: View {
                         subtitle: "Hands-free; the app reads each card aloud."
                     )
                 }
-                .disabled(quiz.cards.isEmpty)
+                .disabled(quiz.cardCount == 0)
                 .accessibilityIdentifier("detail.mode.studyVoice")
 
                 NavigationLink {
@@ -29,7 +31,7 @@ struct QuizDetailView: View {
                         subtitle: "Flip-card or all-at-once display."
                     )
                 }
-                .disabled(quiz.cards.isEmpty)
+                .disabled(quiz.cardCount == 0)
                 .accessibilityIdentifier("detail.mode.studyRead")
 
                 NavigationLink {
@@ -41,7 +43,7 @@ struct QuizDetailView: View {
                         subtitle: "Speak your answer, then self-grade."
                     )
                 }
-                .disabled(quiz.cards.isEmpty)
+                .disabled(quiz.cardCount == 0)
                 .accessibilityIdentifier("detail.mode.quizVoice")
 
                 if quiz.sourceKind != nil {
@@ -58,9 +60,30 @@ struct QuizDetailView: View {
                 }
             }
 
+            if quiz.descriptionText != nil || !quiz.tags.isEmpty || quiz.generatedByModel != nil {
+                Section("About") {
+                    if let description = quiz.descriptionText {
+                        Text(description)
+                            .accessibilityIdentifier("detail.description")
+                    }
+                    if !quiz.tags.isEmpty {
+                        Text(quiz.tags.map { "#\($0)" }.joined(separator: " "))
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("detail.tags")
+                    }
+                    if let model = quiz.generatedByModel {
+                        LabeledContent("Generated with", value: [quiz.generatedByEndpointName, model].compactMap { $0 }.joined(separator: " · "))
+                    }
+                }
+            }
+
             Section("Stats") {
-                LabeledContent("Cards", value: "\(quiz.cards.count)")
+                LabeledContent("Cards", value: "\(quiz.cardCount)")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detail.stat.cards")
                 LabeledContent("Sessions", value: "\(quiz.sessionCount)")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detail.stat.sessions")
                 if let best = quiz.bestScore {
                     LabeledContent("Best", value: "\(Int((best * 100).rounded()))%")
                 }
@@ -78,21 +101,57 @@ struct QuizDetailView: View {
             }
 
             Section("Cards") {
-                ForEach(quiz.cards.sorted(by: { $0.orderIndex < $1.orderIndex })) { card in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(card.prompt).font(.headline)
-                        if let s = card.shortAnswer { Text(s).font(.subheadline).foregroundStyle(.secondary) }
-                        Text(card.longAnswer).font(.body)
-                        if card.correctCount + card.partialCount + card.wrongCount > 0 {
-                            historyBadges(card)
-                        }
+                ForEach(Array(quiz.sortedCards.enumerated()), id: \.element.id) { index, card in
+                    Button {
+                        selectedCard = card
+                    } label: {
+                        cardRow(card)
                     }
-                    .padding(.vertical, 2)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("detail.card.\(index)")
                 }
             }
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    actions.menu(for: quiz, idPrefix: "detail", includeDelete: false)
+                } label: {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .accessibilityIdentifier("detail.more")
+            }
+        }
+        .sheet(item: $selectedCard) { card in
+            CardSheet(card: card)
+        }
+        .quizActions(actions)
+    }
+
+    private func cardRow(_ card: CardRecord) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(card.prompt).font(.headline)
+                Spacer()
+                if card.cardKind != .recall {
+                    Text(card.cardKind.label)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.fill.tertiary, in: Capsule())
+                }
+            }
+            if let s = card.shortAnswer { Text(s).font(.subheadline).foregroundStyle(.secondary) }
+            Text(card.longAnswer).font(.body)
+            if card.correctCount + card.partialCount + card.wrongCount > 0 {
+                historyBadges(card)
+            }
+        }
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     /// "Web page · en.wikipedia.org", "Markdown file · notes.md", "Pasted text" (CR-008).
@@ -108,7 +167,7 @@ struct QuizDetailView: View {
     private var recentSessions: [SessionRecord] {
         quiz.sessions
             .sorted { $0.startedAt > $1.startedAt }
-            .prefix(5)
+            .prefix(10)
             .map { $0 }
     }
 
