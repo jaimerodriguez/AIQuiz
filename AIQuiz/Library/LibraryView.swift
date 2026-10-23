@@ -15,6 +15,8 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var selectedTag: String?
     @State private var importing = false
+    @State private var importingAnki = false
+    @Environment(AnkiImportRouter.self) private var ankiRouter
     @State private var importError: String?
     @State private var generateSource: GenerateQuizView.Source?
     @State private var batching = false
@@ -32,7 +34,7 @@ struct LibraryView: View {
                 ContentUnavailableView(
                     "No quizzes yet",
                     systemImage: "rectangle.stack.badge.plus",
-                    description: Text("Import a JSON quiz from Files or generate one with AI.")
+                    description: Text("Import a JSON quiz or an Anki deck from Files, or generate one with AI.")
                 )
             } else {
                 let list = LibraryList(
@@ -97,6 +99,12 @@ struct LibraryView: View {
                         Label("Import JSON", systemImage: "square.and.arrow.down")
                     }
                     .accessibilityIdentifier("library.import")
+                    Button {
+                        importingAnki = true
+                    } label: {
+                        Label("Import Anki deck", systemImage: "rectangle.stack")
+                    }
+                    .accessibilityIdentifier("library.importAnki")
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .bold))
@@ -138,6 +146,18 @@ struct LibraryView: View {
             case .failure(let error):
                 importError = error.localizedDescription
             }
+        }
+        // A second importer on its own view: two on one view conflict (only one presents).
+        .background {
+            Color.clear.fileImporter(isPresented: $importingAnki, allowedContentTypes: [.ankiPackage, .ankiCollection]) { result in
+                switch result {
+                case .success(let url): ankiRouter.open(url, securityScoped: true)
+                case .failure(let error): importError = error.localizedDescription
+                }
+            }
+        }
+        .sheet(item: Bindable(ankiRouter).pending) { request in
+            AnkiImportView(request: request)
         }
         .alert("Import failed", isPresented: .init(
             get: { importError != nil },

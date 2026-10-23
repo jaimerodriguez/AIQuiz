@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import UniformTypeIdentifiers
 import AIQuizCore
 
 @main
@@ -14,6 +15,7 @@ struct AIQuizApp: App {
     @State private var speech = SpeechServices.make(for: AppEnvironment.current)
     @State private var queue: GenerationQueue
     @State private var reviewRouter = ReviewRouter()
+    @State private var ankiRouter = AnkiImportRouter()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -41,6 +43,7 @@ struct AIQuizApp: App {
                 .environment(speech)
                 .environment(queue)
                 .environment(reviewRouter)
+                .environment(ankiRouter)
                 .preferredColorScheme(settings.appearanceMode.colorScheme)
                 .task {
                     Log.app.info("AIQuiz launched (uiTest=\(environment.isUITest), scenario=\(environment.scenario.rawValue))")
@@ -50,10 +53,19 @@ struct AIQuizApp: App {
                         SampleQuizzes.seedOnFirstLaunch(in: container.mainContext, defaults: AppEnvironment.defaults)
                     }
                     QuizStats.refreshStale(in: container.mainContext)
-                    ShareInbox.drain(into: queue)
+                    ShareInbox.drain(into: queue, anki: { ankiRouter.open($0, deleteAfter: true) })
                     queue.start()
                     UNUserNotificationCenter.current().delegate = reviewRouter
+                    if let fixture = environment.ankiFixture,
+                       let url = Bundle.main.url(forResource: fixture, withExtension: "apkg", subdirectory: "TestFixtures")
+                        ?? Bundle.main.url(forResource: fixture, withExtension: "apkg") {
+                        ankiRouter.open(url)
+                    }
                     DueNotifications.reschedule(settings: settings, context: container.mainContext)
+                }
+                // F-62: an Anki deck opened from Files or another app.
+                .onOpenURL { url in
+                    if UTType.isAnki(url) { ankiRouter.open(url, securityScoped: true, deleteAfter: url.path.contains("/Inbox/")) }
                 }
                 .onChange(of: settings.reminderOn) { _, _ in DueNotifications.reschedule(settings: settings, context: container.mainContext) }
                 .onChange(of: settings.reminderMinutes) { _, _ in DueNotifications.reschedule(settings: settings, context: container.mainContext) }
@@ -61,7 +73,7 @@ struct AIQuizApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 QuizStats.refreshStale(in: container.mainContext)
-                ShareInbox.drain(into: queue)
+                ShareInbox.drain(into: queue, anki: { ankiRouter.open($0, deleteAfter: true) })
                 queue.start()
             }
             if phase == .background {

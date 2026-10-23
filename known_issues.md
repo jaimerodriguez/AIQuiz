@@ -174,3 +174,9 @@ Each `startListening` increments a `generation`; the `@Sendable` handler capture
 ### How to recognise it
 A recognition that stops by itself right after starting, only when the previous one stopped less than a second earlier.
 
+---
+
+## Anki import and export: limits
+
+Not bugs: deliberate limits of the first version (images and audio dropped, re-import makes a copy, and others). Listed with workarounds as A-1 to A-14 in `docs/anki.md` §3.
+

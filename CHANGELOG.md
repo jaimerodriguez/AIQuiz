@@ -67,6 +67,15 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-23 (Phase 9)
+- **Phase 9 (Anki import and export), branch `phase-9-anki`, merge after Phase 8:**
+  - **Import Anki decks** from the + menu (*Import Anki deck*), from Files (*Open in AIQuiz*), or by sharing a `.apkg` to AIQuiz. Every Anki format works, including whole-collection backups (`.colpkg`).
+  - Each deck becomes a quiz named after it ("Spanish › Verbs"), tagged *anki*. Cards keep their Anki history, so what was due in Anki is due here and the rest comes back when Anki would have shown it.
+  - Cloze cards become fill-in-the-blank cards, with their hints. Reversed cards come in as their own cards.
+  - Images and sounds are left out (cards are text only), and the summary says how many.
+  - **Export to Anki** in a quiz's menu saves a `.apkg` that Anki opens. Every field and the review schedule go with it, and a deck sent to Anki and back comes back the same.
+  - The format is written down in `docs/anki-interchange.md`, with test decks made by Anki itself, for the companion website. How-to, known issues and the decisions left open are in `docs/anki.md`.
+
 ### 2026-10-23 (Phase 8)
 - **Phase 8 (audio, tutor chat, oral exam), branch `phase-8-audio-tutor`, merge after Phase 7:**
   - **Oral exam** on every quiz: the examiner reads 5 to 10 questions aloud and listens to your answers. If an answer is vague it asks one follow-up, then moves on. At the end every card is graded with a reason and two sentences overall, and the exam is saved like any session. *Done answering* and *Skip* are at the bottom of the screen.

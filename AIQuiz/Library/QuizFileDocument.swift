@@ -1,12 +1,17 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// A quiz JSON file for `fileExporter` (SPEC §2, F-4).
-struct QuizJSONDocument: FileDocument {
-    static let readableContentTypes: [UTType] = [.json]
+/// A quiz file for `fileExporter`: JSON (SPEC §2, F-4) or an Anki package (F-62).
+struct QuizFileDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.json, .ankiPackage]
+    static let writableContentTypes: [UTType] = [.json, .ankiPackage]
     var data: Data
+    var contentType: UTType = .json
 
-    init(data: Data) { self.data = data }
+    init(data: Data, contentType: UTType = .json) {
+        self.data = data
+        self.contentType = contentType
+    }
 
     init(configuration: ReadConfiguration) throws {
         data = configuration.file.regularFileContents ?? Data()

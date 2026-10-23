@@ -1,0 +1,329 @@
+{
+  "anki": "26.9.3",
+  "plain": {
+    "quizzes": {
+      "Spanish › Verbs": [
+        {
+          "kind": "recall",
+          "prompt": "hablar",
+          "long_answer": "to speak\nRegular -ar verb",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "comer",
+          "long_answer": "to eat (regular -er)",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "vivir",
+          "long_answer": "to live",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "to live",
+          "long_answer": "vivir",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "¿Qué es esto?",
+          "long_answer": "el perro",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "ser (yo)",
+          "long_answer": "soy",
+          "short_answer": null,
+          "hint": null
+        }
+      ],
+      "Geography": [
+        {
+          "kind": "cloze",
+          "prompt": "The capital of {{blank}} is Paris.",
+          "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.",
+          "short_answer": "France",
+          "hint": "country"
+        },
+        {
+          "kind": "cloze",
+          "prompt": "The capital of France is {{blank}}.",
+          "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.",
+          "short_answer": "Paris",
+          "hint": null
+        },
+        {
+          "kind": "cloze",
+          "prompt": "{{blank}} is the capital of Australia, and {{blank}} was planned.",
+          "long_answer": "Canberra is the capital of Australia, and Canberra was planned.",
+          "short_answer": "Canberra|Canberra",
+          "hint": null
+        }
+      ]
+    },
+    "media": {
+      "images": 1,
+      "sounds": 1
+    },
+    "schedules": {
+      "<b>hablar</b>": {
+        "type": 2,
+        "queue": 2,
+        "reps": 1,
+        "lapses": 0,
+        "ivl": 5,
+        "dueDayOffset": 5,
+        "revlogEases": [
+          4
+        ]
+      },
+      "comer": {
+        "type": 2,
+        "queue": 2,
+        "reps": 2,
+        "lapses": 0,
+        "ivl": 1,
+        "dueDayOffset": 1,
+        "revlogEases": [
+          3,
+          3
+        ]
+      },
+      "vivir": {
+        "type": 3,
+        "queue": 1,
+        "reps": 2,
+        "lapses": 1,
+        "ivl": 1,
+        "revlogEases": [
+          4,
+          0,
+          1
+        ]
+      },
+      "vivir #1": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "¿Qué es esto? <img src=\"perro.png\">": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "ser (yo)": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "The capital of {{c1::France::country}} is {{c2::Paris}}. #1": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "The capital of {{c1::France::country}} is {{c2::Paris}}.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "{{c1::Canberra}} is the capital of Australia, and {{c1::Canberra}} was planned.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      }
+    }
+  },
+  "fsrs": {
+    "quizzes": {
+      "Spanish › Verbs": [
+        {
+          "kind": "recall",
+          "prompt": "hablar",
+          "long_answer": "to speak\nRegular -ar verb",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "comer",
+          "long_answer": "to eat (regular -er)",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "vivir",
+          "long_answer": "to live",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "to live",
+          "long_answer": "vivir",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "¿Qué es esto?",
+          "long_answer": "el perro",
+          "short_answer": null,
+          "hint": null
+        },
+        {
+          "kind": "recall",
+          "prompt": "ser (yo)",
+          "long_answer": "soy",
+          "short_answer": null,
+          "hint": null
+        }
+      ],
+      "Geography": [
+        {
+          "kind": "cloze",
+          "prompt": "The capital of {{blank}} is Paris.",
+          "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.",
+          "short_answer": "France",
+          "hint": "country"
+        },
+        {
+          "kind": "cloze",
+          "prompt": "The capital of France is {{blank}}.",
+          "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.",
+          "short_answer": "Paris",
+          "hint": null
+        },
+        {
+          "kind": "cloze",
+          "prompt": "{{blank}} is the capital of Australia, and {{blank}} was planned.",
+          "long_answer": "Canberra is the capital of Australia, and Canberra was planned.",
+          "short_answer": "Canberra|Canberra",
+          "hint": null
+        }
+      ]
+    },
+    "media": {
+      "images": 1,
+      "sounds": 1
+    },
+    "schedules": {
+      "<b>hablar</b>": {
+        "type": 2,
+        "queue": 2,
+        "reps": 1,
+        "lapses": 0,
+        "ivl": 10,
+        "dueDayOffset": 10,
+        "stability": 8.2956,
+        "difficulty": 1.0,
+        "revlogEases": [
+          4
+        ]
+      },
+      "comer": {
+        "type": 2,
+        "queue": 2,
+        "reps": 2,
+        "lapses": 0,
+        "ivl": 2,
+        "dueDayOffset": 2,
+        "stability": 2.3065,
+        "difficulty": 2.111,
+        "revlogEases": [
+          3,
+          3
+        ]
+      },
+      "vivir": {
+        "type": 3,
+        "queue": 1,
+        "reps": 2,
+        "lapses": 1,
+        "ivl": 3,
+        "stability": 2.5625,
+        "difficulty": 7.027,
+        "revlogEases": [
+          4,
+          0,
+          1
+        ]
+      },
+      "vivir #1": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "¿Qué es esto? <img src=\"perro.png\">": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "ser (yo)": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "The capital of {{c1::France::country}} is {{c2::Paris}}.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "The capital of {{c1::France::country}} is {{c2::Paris}}. #1": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "{{c1::Canberra}} is the capital of Australia, and {{c1::Canberra}} was planned.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      }
+    }
+  }
+}
