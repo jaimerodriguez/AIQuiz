@@ -69,6 +69,7 @@ struct GenerateQuizView: View {
     @State private var tone: Tone = .formal
     @State private var focus = ""
     @State private var excludeText = ""
+    @State private var extraKinds: Set<CardKind> = []
     @State private var urlString = ""
     @State private var pasted = ""
     @State private var document: PickedDocument?
@@ -87,7 +88,9 @@ struct GenerateQuizView: View {
         Form {
             sourceSection
             switch source {
-            case .topic: topicSection
+            case .topic:
+                topicSection
+                kindsSection
             case .url: urlSection
             case .document: documentSection
             case .photo: photoSection
@@ -181,6 +184,23 @@ struct GenerateQuizView: View {
                 .lineLimit(1...3)
             TextField("Exclude (optional)", text: $excludeText, axis: .vertical)
                 .lineLimit(1...3)
+        }
+    }
+
+    /// F-19: card kinds to include besides recall (Phase 6).
+    private var kindsSection: some View {
+        Section {
+            ForEach([CardKind.multipleChoice, .cloze, .trueFalse], id: \.self) { kind in
+                Toggle(kind.label, isOn: Binding(
+                    get: { extraKinds.contains(kind) },
+                    set: { on in if on { extraKinds.insert(kind) } else { extraKinds.remove(kind) } }
+                ))
+                .accessibilityIdentifier("generate.kind.\(kind.rawValue)")
+            }
+        } header: {
+            Text("Card types")
+        } footer: {
+            Text("Recall cards are always included. Other types are played in Quiz — Choice.")
         }
     }
 
@@ -335,7 +355,8 @@ struct GenerateQuizView: View {
             let options = GenerationJob.TopicOptions(
                 topic: topic.trimmingCharacters(in: .whitespaces), cardCount: cardCount, difficulty: difficulty.rawValue,
                 language: language.isEmpty ? Locale.current.identifier : language, tone: tone.rawValue,
-                focus: focus.isEmpty ? nil : focus, exclude: excludeText.isEmpty ? nil : excludeText
+                focus: focus.isEmpty ? nil : focus, exclude: excludeText.isEmpty ? nil : excludeText,
+                kinds: extraKinds.isEmpty ? nil : CardKind.allCases.filter { extraKinds.contains($0) }
             )
             job = GenerationJob(title: options.topic, source: .topic(options))
         case .url:

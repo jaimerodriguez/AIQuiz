@@ -141,3 +141,19 @@ wrapping pattern above applies to that callback too.
    `STTService.startListening` closures.
 
 That combination is this bug. Re-apply the `@Sendable` fix.
+
+---
+
+## 2. Array-index bindings crash when a SwiftUI list shrinks (Phase 6)
+
+### Symptom
+Quiz — Choice crashed (`EXC_BREAKPOINT`, `Array._checkSubscript`) on the card after a fill-in-the-blank card. The stack ran through `Binding<A>.subscript.getter` and `ForEachChild.updateValue()` inside `QuizChoiceSession.answerArea`.
+
+### Root cause
+The blank fields used `ForEach(player.blankAnswers.indices) { i in TextField(..., text: $player.blankAnswers[i]) }`. Moving on set `blankAnswers` to fewer elements, and SwiftUI evaluated a stale child's binding with the old index before removing it.
+
+### Fix
+Bind through a bounds-checked `Binding(get:set:)` that returns "" past the end and ignores writes there, and give the per-card answer area `.id(card.id)` so its views are rebuilt for each card.
+
+### How to recognise it
+Any crash in `Array._checkSubscript` under `Binding.subscript` after a collection that drives a `ForEach` of editable rows shrinks.

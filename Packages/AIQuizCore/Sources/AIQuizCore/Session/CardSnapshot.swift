@@ -11,14 +11,22 @@ public struct CardSnapshot: Identifiable, Hashable, Sendable {
     public let hint: String?
     /// Stored AI hints, weakest first (F-24).
     public let aiHints: [String]
+    /// How the card is asked (SPEC D-2) and, for multiple choice, its options.
+    public let kind: CardKind
+    public let options: [String]
+    public let explanation: String?
 
-    public init(id: UUID, prompt: String, longAnswer: String, shortAnswer: String? = nil, hint: String? = nil, aiHints: [String] = []) {
+    public init(id: UUID, prompt: String, longAnswer: String, shortAnswer: String? = nil, hint: String? = nil, aiHints: [String] = [],
+                kind: CardKind = .recall, options: [String] = [], explanation: String? = nil) {
         self.id = id
         self.prompt = prompt
         self.longAnswer = longAnswer
         self.shortAnswer = shortAnswer
         self.hint = hint
         self.aiHints = aiHints
+        self.kind = kind
+        self.options = options
+        self.explanation = explanation
     }
 
     /// Every hint, in the order the Hint button reveals them: the author's, then AI hints.
@@ -30,6 +38,7 @@ public struct CardSnapshot: Identifiable, Hashable, Sendable {
 public extension CardPayload {
     /// The content of a session card, for AI prompts.
     init(_ snapshot: CardSnapshot) {
-        self.init(prompt: snapshot.prompt, longAnswer: snapshot.longAnswer, shortAnswer: snapshot.shortAnswer, hint: snapshot.hint)
+        self.init(prompt: snapshot.prompt, longAnswer: snapshot.longAnswer, shortAnswer: snapshot.shortAnswer, hint: snapshot.hint,
+                  kind: snapshot.kind, options: snapshot.options.isEmpty ? nil : snapshot.options, explanation: snapshot.explanation)
     }
 }

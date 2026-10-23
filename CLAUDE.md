@@ -79,6 +79,7 @@ XCUITest gotchas seen in this project:
 - Rows of a `List` or `Form` that are off screen do not exist for XCUITest. Put anything a test must find near the top, or swipe on a static text until it is hittable.
 - `Text("\(number)")` localizes the number (`1,177`). Use `Text(verbatim:)` for values a test parses.
 - A `confirmationDialog` button's identifier matches twice; tap `app.buttons.matching(identifier:).firstMatch`.
+- Never bind editable rows to `$array[index]` inside a `ForEach` whose array can shrink; use a bounds-checked `Binding(get:set:)` (known_issues §2).
 - Never attach `.sheet` or `.alert` to a view inside a `List` row or `Section`: when the row redraws, SwiftUI can dismiss the whole enclosing sheet. Present from the list itself (see `cardAIPresentation`).
 - AI results shown inline below a short sheet's fold are invisible to people and tests; show them in their own sheet.
 

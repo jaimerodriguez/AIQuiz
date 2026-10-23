@@ -19,6 +19,8 @@ public struct QuizGenRequest: Sendable, Hashable {
     public var tone: String?
     public var focus: String?
     public var exclude: String?
+    /// Card kinds to use (F-19 toggles); recall is always allowed.
+    public var kinds: Set<CardKind> = [.recall]
     /// "part 2 of 5" when a long source is split (SPEC §7.4).
     public var part: Part?
 

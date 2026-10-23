@@ -67,6 +67,20 @@ struct QuizDetailView: View {
                 .disabled(quiz.cardCount == 0)
                 .accessibilityIdentifier("detail.mode.quizVoice")
 
+                // F-17: offered when the deck has at least one choice-style card.
+                if quiz.cards.contains(where: { $0.cardKind != .recall }) {
+                    NavigationLink {
+                        QuizChoiceView(quiz: quiz)
+                    } label: {
+                        modeRow(
+                            title: "Quiz — Choice",
+                            systemImage: "checklist",
+                            subtitle: "Multiple choice, fill in the blank, true or false."
+                        )
+                    }
+                    .accessibilityIdentifier("detail.mode.quizChoice")
+                }
+
                 if quiz.sourceKind != nil {
                     NavigationLink {
                         SourceMaterialsView(quiz: quiz)
@@ -294,6 +308,7 @@ struct QuizDetailView: View {
         case .studyVoice: return "speaker.wave.2.fill"
         case .studyRead: return "rectangle.portrait.on.rectangle.portrait"
         case .quizVoice: return "mic.fill"
+        case .quizChoice: return "checklist"
         }
     }
 
@@ -302,6 +317,7 @@ struct QuizDetailView: View {
         case .studyVoice: return "Study — Voice"
         case .studyRead: return "Study — Read"
         case .quizVoice: return "Quiz — Voice"
+        case .quizChoice: return "Quiz — Choice"
         }
     }
 

@@ -29,8 +29,10 @@ struct GenerationPipeline {
         switch job.source {
         case .topic(let options):
             report(.generating, 0)
-            request = QuizGenRequest(source: .topic, topic: options.topic, cardCount: options.cardCount, difficulty: options.difficulty,
-                                     language: options.language, tone: options.tone, focus: options.focus, exclude: options.exclude)
+            var topicRequest = QuizGenRequest(source: .topic, topic: options.topic, cardCount: options.cardCount, difficulty: options.difficulty,
+                                              language: options.language, tone: options.tone, focus: options.focus, exclude: options.exclude)
+            topicRequest.kinds = Set(options.kinds ?? []).union([.recall])
+            request = topicRequest
             origin = .topic
             original = nil
         case .url(let url):

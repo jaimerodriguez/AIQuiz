@@ -62,7 +62,10 @@ extension CardSnapshot {
             longAnswer: record.longAnswer,
             shortAnswer: record.shortAnswer,
             hint: record.hint,
-            aiHints: record.aiHints
+            aiHints: record.aiHints,
+            kind: record.cardKind,
+            options: record.options ?? [],
+            explanation: record.explanation
         )
     }
 }
