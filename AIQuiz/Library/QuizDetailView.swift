@@ -13,6 +13,7 @@ struct QuizDetailView: View {
     @State private var rating = false
     @State private var ratingError: String?
     @Environment(GenerationQueue.self) private var queue
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         List {
@@ -112,6 +113,13 @@ struct QuizDetailView: View {
                 }
             }
 
+            Section {
+                Toggle("Include cards that aren't due", isOn: Bindable(settings).includeNotDue)
+                    .accessibilityIdentifier("detail.includeNotDue")
+            } footer: {
+                Text("Quizzes ask the cards that are due or new, up to \(settings.sessionCap) (Settings). Study modes use every card.")
+            }
+
             Section("Stats") {
                 LabeledContent("Cards", value: "\(quiz.cardCount)")
                     .accessibilityElement(children: .combine)
@@ -119,6 +127,9 @@ struct QuizDetailView: View {
                 LabeledContent("Sessions", value: "\(quiz.sessionCount)")
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("detail.stat.sessions")
+                LabeledContent("Due now", value: "\(quiz.dueCount)")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detail.stat.due")
                 if let best = quiz.bestScore {
                     LabeledContent("Best", value: "\(Int((best * 100).rounded()))%")
                 }
@@ -309,6 +320,7 @@ struct QuizDetailView: View {
         case .studyRead: return "rectangle.portrait.on.rectangle.portrait"
         case .quizVoice: return "mic.fill"
         case .quizChoice: return "checklist"
+        case .review: return "calendar.badge.clock"
         }
     }
 
@@ -318,6 +330,7 @@ struct QuizDetailView: View {
         case .studyRead: return "Study — Read"
         case .quizVoice: return "Quiz — Voice"
         case .quizChoice: return "Quiz — Choice"
+        case .review: return "Due today review"
         }
     }
 

@@ -6,12 +6,16 @@ import SwiftData
 /// the recap (F-44) and *Practice missed cards* (F-18).
 struct QuizChoiceView: View {
     let quiz: QuizRecord
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var context
     @State private var player: ChoicePlayer?
 
     var body: some View {
         Group {
             if let player {
-                QuizChoiceSession(quiz: quiz, player: player) { missed in
+                ChoiceSessionView(title: quiz.name, player: player, recapQuizName: quiz.name, record: { deck in
+                    ScoreStore.recordSession(for: quiz, deck: deck, mode: .quizChoice, in: context)
+                }) { missed in
                     self.player = ChoicePlayer(deck: ScoreStore.makeDeck(cards: missed))
                 }
                 .id(ObjectIdentifier(player))
@@ -20,14 +24,58 @@ struct QuizChoiceView: View {
             }
         }
         .onAppear {
-            if player == nil { player = ChoicePlayer(deck: ScoreStore.makeDeck(for: quiz)) }
+            if player == nil { player = ChoicePlayer(deck: ScoreStore.makeQuizDeck(for: quiz, cap: settings.sessionCap, includeNotDue: settings.includeNotDue)) }
         }
     }
 }
 
-private struct QuizChoiceSession: View {
-    let quiz: QuizRecord
+/// The Due today review (SPEC F-41): due and new cards from every non-archived quiz, each
+/// played by kind (recall as flip cards, the rest as choices), saved per quiz, with a summary
+/// grouped by quiz. Long-press Correct on a recall card to rate it Easy (§10).
+struct ReviewSessionView: View {
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var context
+    @State private var player: ChoicePlayer?
+    @State private var quizNames: [UUID: String] = [:]
+
+    var body: some View {
+        Group {
+            if let player {
+                if player.deck.isEmpty {
+                    ContentUnavailableView("Nothing due", systemImage: "checkmark.circle", description: Text("Every card is scheduled for later."))
+                } else {
+                    ChoiceSessionView(title: "Due today", player: player, recapQuizName: nil, allowsEasy: true, quizNames: quizNames, record: { deck in
+                        ScoreStore.recordReview(deck, in: context)
+                        return nil
+                    }) { missed in
+                        self.player = ChoicePlayer(deck: ScoreStore.makeDeck(cards: missed))
+                    }
+                    .id(ObjectIdentifier(player))
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .onAppear {
+            guard player == nil else { return }
+            let deck = ScoreStore.makeReviewDeck(in: context, cap: settings.sessionCap)
+            let ids = Set(deck.cards.map(\.id))
+            let cards = ((try? context.fetch(FetchDescriptor<CardRecord>())) ?? []).filter { ids.contains($0.id) }
+            quizNames = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0.quiz?.name ?? "Quiz") })
+            player = ChoicePlayer(deck: deck)
+        }
+    }
+}
+
+struct ChoiceSessionView: View {
+    let title: String
     @Bindable var player: ChoicePlayer
+    /// The quiz the recap is about; nil for a cross-quiz review.
+    let recapQuizName: String?
+    var allowsEasy = false
+    /// Card id → quiz name, for the review's grouped summary.
+    var quizNames: [UUID: String] = [:]
+    let record: (SessionDeck) -> SessionRecord?
     let onPracticeMissed: ([CardSnapshot]) -> Void
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -46,13 +94,14 @@ private struct QuizChoiceSession: View {
                     onRecap: { text in
                         recorded?.recapText = text
                         try? context.save()
-                    }
+                    },
+                    quizNames: quizNames
                 )
             } else {
                 sessionBody
             }
         }
-        .navigationTitle(quiz.name)
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .endSessionConfirmation(isEnabled: player.stage != .ended) {
             player.abandon()
@@ -60,7 +109,7 @@ private struct QuizChoiceSession: View {
         }
         .onChange(of: player.stage) { _, stage in
             if stage == .ended {
-                recorded = ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .quizChoice, in: context)
+                recorded = record(player.deck)
             }
         }
     }
@@ -68,7 +117,7 @@ private struct QuizChoiceSession: View {
     private var recapRequest: (() async throws -> String)? {
         guard router.issue(for: .grading) == nil, !player.deck.scoredCards.isEmpty else { return nil }
         let router = self.router
-        let quizName = quiz.name
+        let quizName = recapQuizName
         let results = player.deck.scoredCards.map { (card: CardPayload($0.card), verdict: $0.verdict) }
         return { try await SessionRecapper.recap(quizName: quizName, results: results, using: try router.client(for: .grading)) }
     }
@@ -266,9 +315,11 @@ private struct QuizChoiceSession: View {
         }
     }
 
-    /// Recall cards in a choice deck: self-grade, then move on (F-17).
+    /// Recall cards in a choice deck: self-grade, then move on (F-17). In a review, a long
+    /// press on Correct rates the card Easy (§10).
+    @ViewBuilder
     private func gradeButton(_ title: String, _ icon: String, _ verdict: CardVerdict) -> some View {
-        Button {
+        let button = Button {
             player.override(verdict)
             player.next()
         } label: {
@@ -277,6 +328,13 @@ private struct QuizChoiceSession: View {
         .buttonStyle(.bordered)
         .tint(color(verdict))
         .accessibilityIdentifier("choice.grade.\(verdict.rawValue)")
+        if allowsEasy && verdict == .correct {
+            button
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in player.gradeEasy() })
+                .accessibilityAction(named: "Easy") { player.gradeEasy() }
+        } else {
+            button
+        }
     }
 
     private func color(_ verdict: CardVerdict) -> Color {

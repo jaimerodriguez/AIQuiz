@@ -7,6 +7,8 @@ public enum SessionMode: String, Codable, Sendable, CaseIterable {
     case quizVoice
     /// Quiz — Choice: multiple choice, fill in the blank, true or false (F-17).
     case quizChoice
+    /// The cross-quiz Due today review (F-41).
+    case review
 }
 
 /// Outcome of one card in a session. `skipped` records nothing and scores nothing.

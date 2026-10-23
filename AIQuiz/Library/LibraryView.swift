@@ -19,6 +19,7 @@ struct LibraryView: View {
     @State private var generateSource: GenerateQuizView.Source?
     @State private var batching = false
     @Environment(GenerationQueue.self) private var queue
+    @Environment(ReviewRouter.self) private var reviewRouter
     @State private var actions = QuizActions()
     @State private var sourceStatus = SourceStatus()
 
@@ -63,6 +64,15 @@ struct LibraryView: View {
                     Label("Settings", systemImage: "gear")
                 }
                 .accessibilityIdentifier("library.settings")
+            }
+            // F-7: the progress report.
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    InsightsView()
+                } label: {
+                    Label("Insights", systemImage: "chart.line.uptrend.xyaxis")
+                }
+                .accessibilityIdentifier("library.insights")
             }
             // The app's main action: an accent circle without the toolbar's glass (CR-011).
             ToolbarItem(placement: .primaryAction) {
@@ -109,6 +119,9 @@ struct LibraryView: View {
         }
         .navigationDestination(for: QuizRecord.self) { quiz in
             QuizDetailView(quiz: quiz)
+        }
+        .navigationDestination(isPresented: Bindable(reviewRouter).showReview) {
+            ReviewSessionView()
         }
         .fileImporter(
             isPresented: $importing,
@@ -206,6 +219,8 @@ private struct LibraryList: View {
             return [SortDescriptor(\.lastStudiedAt, order: .reverse), SortDescriptor(\.createdAt, order: .reverse)]
         case .name:
             return [SortDescriptor(\.name, comparator: .localizedStandard)]
+        case .mostDue:
+            return [SortDescriptor(\.dueCount, order: .reverse), SortDescriptor(\.name, comparator: .localizedStandard)]
         case .newest:
             return [SortDescriptor(\.createdAt, order: .reverse)]
         }
@@ -213,6 +228,7 @@ private struct LibraryList: View {
 
     var body: some View {
         List {
+            DueTodayRow()
             GeneratingSection()
             if !tags.isEmpty {
                 tagChips
@@ -353,25 +369,58 @@ private struct QuizRow: View {
                         .accessibilityIdentifier("library.sourceMissing")
                 }
             }
-            HStack(spacing: 12) {
-                Label("\(quiz.cardCount) cards", systemImage: "rectangle.on.rectangle")
-                if let best = quiz.bestScore {
-                    Label(percentText(best), systemImage: "star.fill")
-                        .foregroundStyle(.yellow)
+            // Stats never wrap mid-word; on a narrow row the tags move to their own line.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    stats
+                    tags
                 }
-                if let avg = quiz.averageScore {
-                    Label("avg \(percentText(avg))", systemImage: "chart.bar")
-                        .foregroundStyle(.secondary)
-                }
-                if !quiz.tags.isEmpty {
-                    Text(quiz.tags.map { "#\($0)" }.joined(separator: " "))
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 12) { stats }
+                    tags
                 }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var stats: some View {
+        stat("\(quiz.cardCount) cards", icon: "rectangle.on.rectangle")
+        if let best = quiz.bestScore {
+            stat(percentText(best), icon: "star.fill")
+                .foregroundStyle(.yellow)
+        }
+        if let avg = quiz.averageScore {
+            stat("avg \(percentText(avg))", icon: "chart.bar")
+        }
+        if quiz.dueCount > 0 {
+            stat("\(quiz.dueCount) due", icon: "calendar.badge.clock")
+                .foregroundStyle(Theme.accent)
+                .accessibilityIdentifier("library.due")
+        }
+    }
+
+    /// An icon and a value that never wrap.
+    private func stat(_ text: String, icon: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+            Text(text)
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+
+    @ViewBuilder
+    private var tags: some View {
+        if !quiz.tags.isEmpty {
+            Text(quiz.tags.map { "#\($0)" }.joined(separator: " "))
+                .lineLimit(1)
+        }
     }
 
     private func percentText(_ v: Double) -> String {
@@ -413,5 +462,41 @@ private struct InlineSearchField: View {
         .overlay(Capsule().stroke(.separator, lineWidth: 0.5))
         .contentShape(Capsule())
         .onTapGesture { focused = true }
+    }
+}
+
+/// *Due today* (SPEC F-2): one `fetchCount` over cards, hidden when nothing is due. Opens the
+/// cross-quiz review (F-41).
+private struct DueTodayRow: View {
+    @Environment(\.modelContext) private var context
+    @Environment(ReviewRouter.self) private var reviewRouter
+    /// Changes whenever quiz counters change, so the count refreshes after sessions.
+    @Query(filter: #Predicate<QuizRecord> { !$0.isArchived }) private var quizzes: [QuizRecord]
+
+    var body: some View {
+        let count = ScoreStore.dueCount(in: context)
+        let _ = quizzes.count
+        if count > 0 {
+            Section {
+                Button {
+                    reviewRouter.showReview = true
+                } label: {
+                    HStack(spacing: 12) {
+                        AccentIcon(systemName: "calendar.badge.clock", size: 40)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Due today").font(.headline)
+                            Text(count == 1 ? "1 card to review" : "\(count) cards to review")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("library.dueToday")
+            }
+        }
     }
 }

@@ -1,0 +1,8 @@
+{"headline": "Fixture insights: solid on the basics, shaky on due prompt one.",
+ "strengths": ["You finish sessions", "Recall is improving"],
+ "confusions": [{"description": "Due prompt one keeps slipping", "card_ids": []}],
+ "recommendations": ["Review the due deck daily", "Try Quiz — Choice for variety"],
+ "drill_cards": [
+   {"prompt": "Drill prompt one", "long_answer": "Drill answer one.", "short_answer": "Drill one", "hint": null},
+   {"prompt": "Drill prompt two", "long_answer": "Drill answer two.", "short_answer": null, "hint": null}
+ ]}

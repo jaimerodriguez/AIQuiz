@@ -42,6 +42,7 @@ struct SettingsView: View {
             voiceSection
             voiceTuningSection
             recognitionSection
+            reviewSection
             studyVoiceSection
             studyReadSection
             debugSection
@@ -187,6 +188,36 @@ struct SettingsView: View {
                 Button("Preview") { Task { await TTSService.shared.speak("This is the AIQuiz voice. Ready to study?") } }
                     .buttonStyle(.bordered)
             }
+        }
+    }
+
+    /// S-11 session size and S-12 the daily due reminder.
+    private var reviewSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Stepper(value: $settings.sessionCap, in: 10...100, step: 5) {
+                LabeledContent("Cards per quiz session", value: "\(settings.sessionCap)")
+            }
+            .accessibilityIdentifier("settings.sessionCap")
+            Toggle("Daily reminder", isOn: $settings.reminderOn)
+                .accessibilityIdentifier("settings.reminder")
+                .onChange(of: settings.reminderOn) { _, on in
+                    if on { Task { _ = await DueNotifications.requestPermission() } }
+                }
+            if settings.reminderOn {
+                DatePicker("Time", selection: Binding(
+                    get: { Calendar.current.date(bySettingHour: settings.reminderMinutes / 60, minute: settings.reminderMinutes % 60, second: 0, of: .now) ?? .now },
+                    set: { date in
+                        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                        settings.reminderMinutes = (parts.hour ?? 18) * 60 + (parts.minute ?? 0)
+                    }
+                ), displayedComponents: .hourAndMinute)
+                .accessibilityIdentifier("settings.reminderTime")
+            }
+        } header: {
+            Text("Reviews")
+        } footer: {
+            Text("Quizzes ask the cards that are due or new, up to this many. The reminder says how many cards are due, and only when some are.")
         }
     }
 

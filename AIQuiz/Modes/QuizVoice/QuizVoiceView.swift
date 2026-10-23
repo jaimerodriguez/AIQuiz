@@ -24,7 +24,7 @@ struct QuizVoiceView: View {
             }
         }
         .onAppear {
-            if player == nil { player = makePlayer(ScoreStore.makeDeck(for: quiz)) }
+            if player == nil { player = makePlayer(ScoreStore.makeQuizDeck(for: quiz, cap: settings.sessionCap, includeNotDue: settings.includeNotDue)) }
         }
     }
 

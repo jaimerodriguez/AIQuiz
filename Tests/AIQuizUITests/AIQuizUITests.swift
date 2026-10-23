@@ -961,4 +961,49 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["card.done"].tap()
         XCTAssertTrue(app.buttons["detail.mode.quizChoice"].waitForExistence(timeout: timeout), "a converted card makes the deck playable as Choice")
     }
+
+    // MARK: Phase 7: Due today, scheduling, insights
+
+    func testDueTodayReviewsTheTwoDueCardsGroupedByQuiz() {
+        let app = launch()
+        let due = app.buttons["library.dueToday"]
+        XCTAssertTrue(due.waitForExistence(timeout: timeout), "the Due today row shows (F-2)")
+        XCTAssertTrue(due.label.contains("2 cards"), due.label)
+        due.tap()
+        for _ in 0..<2 {
+            XCTAssertTrue(app.buttons["choice.reveal"].waitForExistence(timeout: timeout), "recall cards flip in the review")
+            app.buttons["choice.reveal"].tap()
+            app.buttons["choice.grade.correct"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["summary.score"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(element(app, "summary.quiz.UITest Due Deck").exists, "the summary groups by quiz (F-41)")
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["library.dueToday"].waitForExistence(timeout: 2), "nothing is due after the review")
+    }
+
+    func testMostDueSortAndDueBadge() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["library.sort"].waitForExistence(timeout: timeout))
+        app.buttons["library.sort"].tap()
+        button(app, id: "library.sort.mostDue", label: "Most due").tap()
+        XCTAssertTrue(firstRowLabel(app).hasPrefix("UITest Due Deck"), firstRowLabel(app))
+        XCTAssertTrue(element(app, "library.due").exists, "a due badge on the due deck")
+    }
+
+    func testInsightsShowsTheReportAndCreatesADrillDeck() {
+        let app = launch()
+        let insights = app.buttons["library.insights"]
+        XCTAssertTrue(insights.waitForExistence(timeout: timeout))
+        insights.tap()
+        let headline = element(app, "insights.headline")
+        XCTAssertTrue(headline.waitForExistence(timeout: timeout), "the fake report renders (F-43)")
+        XCTAssertTrue(headline.label.contains("Fixture insights"))
+        let create = app.buttons["insights.createDrill"]
+        for _ in 0..<4 where !(create.exists && create.isHittable) { app.swipeUp() }
+        create.tap()
+        XCTAssertTrue(element(app, "insights.saved").waitForExistence(timeout: timeout))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Drill ·'")).firstMatch.waitForExistence(timeout: timeout), "the drill deck is in the library")
+    }
 }
