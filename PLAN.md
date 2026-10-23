@@ -13,10 +13,10 @@ How to use this document:
 
 | Phase | Title | Status | PR |
 |---|---|---|---|
-| 0 | Test scaffolding and packages | in review | jaimerodriguez/AIQuiz#2 |
-| 1 | LLMKit foundation and endpoint settings | in review | jaimerodriguez/AIQuiz#3, stacked on #2 |
-| — | Original content and Read Source Materials (CR-007, CR-008) | in review | jaimerodriguez/AIQuiz#4, stacked on #3 |
-| 2 | Schema v2 and migration | in review | phase-2-schema-v2, stacked on #4 |
+| 0 | Test scaffolding and packages | merged into `claude` | jaimerodriguez/AIQuiz#2 |
+| 1 | LLMKit foundation and endpoint settings | approved; landing in `claude` | jaimerodriguez/AIQuiz#3, landed by jaimerodriguez/AIQuiz#6 |
+| — | Original content and Read Source Materials (CR-007, CR-008) | approved; landing in `claude` | jaimerodriguez/AIQuiz#4, landed by jaimerodriguez/AIQuiz#6 |
+| 2 | Schema v2 and migration | in review | jaimerodriguez/AIQuiz#5 (merge after #6) |
 | 3 | Session UI consolidation and v1 drift fixes | not started | |
 | 4 | AI grading, explanations, hints, lint | not started | |
 | 5 | Ingestion: notes, PDF, reader mode, photo, share | not started | |
