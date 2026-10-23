@@ -67,6 +67,14 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-23 (Phase 8)
+- **Phase 8 (audio, tutor chat, oral exam), branch `phase-8-audio-tutor`, merge after Phase 7:**
+  - **Oral exam** on every quiz: the examiner reads 5 to 10 questions aloud and listens to your answers. If an answer is vague it asks one follow-up, then moves on. At the end every card is graded with a reason and two sentences overall, and the exam is saved like any session. *Done answering* and *Skip* are at the bottom of the screen.
+  - **Tutor chat** (quiz screen toolbar, or the speech-bubble button during any study or quiz session) answers questions about the quiz as it types. It knows the quiz's notes and the card you were on. Starters: *Explain this card*, *Quiz me on this*, *Give me an analogy*. *Make cards* turns the conversation into 3 to 5 new cards to add. Study — Voice pauses while the chat is open.
+  - **Say "hint"** in Study — Voice (Settings › Study — Voice auto-read, off by default): after a card that has a hint, the app listens for a moment; saying "hint" shows and reads the hint.
+  - Leaving Study — Voice now lets other apps' audio return to full volume.
+  - Fixed a flaky Phase 7 test that assumed the review order the light shuffle can swap.
+
 ### 2026-10-23 (Phase 7)
 - **Phase 7 (spaced repetition, Due today, reminders, insights), branch `phase-7-scheduling`, merge after Phase 6:**
   - **Spaced repetition (FSRS):** every graded card is scheduled. Right answers come back after longer and longer gaps, wrong ones the same day. Quizzes ask the cards that are due or new, up to 20 per session (Settings › Reviews), with *Include cards that aren't due* on the quiz screen.

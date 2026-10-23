@@ -1,10 +1,11 @@
 import XCTest
 
 /// UI flows under `-UITestMode` (PLAN §1.3, §1.5). Uses accessibility identifiers from SPEC §12 only.
+@MainActor
 final class AIQuizUITests: XCTestCase {
     private let timeout: TimeInterval = 10
 
-    override func setUp() {
+    override func setUp() async throws {
         continueAfterFailure = false
     }
 
@@ -1005,5 +1006,83 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(element(app, "insights.saved").waitForExistence(timeout: timeout))
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Drill ·'")).firstMatch.waitForExistence(timeout: timeout), "the drill deck is in the library")
+    }
+
+    // MARK: Phase 8: tutor chat, oral exam, spoken hint
+
+    func testTutorChatStreamsAReplyAndMakeCardsAddsThemToTheQuiz() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let cards = element(app, "detail.stat.cards")
+        XCTAssertTrue(cards.waitForExistence(timeout: timeout))
+        XCTAssertTrue(cards.label.contains("6"), cards.label)
+        app.buttons["detail.chat"].tap()
+        let starter = app.buttons["chat.starter.0"]
+        XCTAssertTrue(starter.waitForExistence(timeout: timeout))
+        starter.tap()
+        let reply = element(app, "chat.message.1")
+        XCTAssertTrue(reply.waitForExistence(timeout: timeout), "the fake reply streams in (F-30)")
+        let makeCards = app.buttons["chat.makeCards"]
+        XCTAssertTrue(makeCards.waitForExistence(timeout: timeout))
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: makeCards)
+        wait(for: [enabled], timeout: timeout)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Fixture tutor'")).firstMatch.exists)
+        makeCards.tap()
+        let add = app.buttons["chat.cards.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: timeout), "the new cards open in a preview")
+        add.tap()
+        XCTAssertTrue(element(app, "chat.added").waitForExistence(timeout: timeout))
+        app.buttons["chat.done"].tap()
+        XCTAssertTrue(cards.waitForExistence(timeout: timeout))
+        let nine = expectation(for: NSPredicate(format: "label CONTAINS '9'"), evaluatedWith: cards)
+        wait(for: [nine], timeout: timeout)
+    }
+
+    func testTutorChatFromASessionShowsTheCurrentCard() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.studyRead"].tap()
+        let prompt = element(app, "session.card.prompt")
+        XCTAssertTrue(prompt.waitForExistence(timeout: timeout))
+        let promptText = prompt.label
+        app.buttons["session.chat"].tap()
+        let card = element(app, "chat.card")
+        XCTAssertTrue(card.waitForExistence(timeout: timeout), "the chat knows the card it was opened from")
+        XCTAssertEqual(card.label, promptText)
+        XCTAssertTrue(app.buttons["chat.starter.0"].label.contains("Explain this card"))
+        app.buttons["chat.done"].tap()
+        XCTAssertTrue(prompt.waitForExistence(timeout: timeout), "the session is still there")
+    }
+
+    func testOralExamRunsFiveCardsWithFollowUpsAndRecordsTheSession() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let examRow = app.buttons["detail.mode.oralExam"]
+        XCTAssertTrue(examRow.waitForExistence(timeout: timeout))
+        examRow.tap()
+        let start = app.buttons["oralExam.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: timeout))
+        start.tap()
+        XCTAssertTrue(element(app, "oralExam.question").waitForExistence(timeout: timeout))
+        let followUp = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Fixture follow-up'")).firstMatch
+        XCTAssertTrue(followUp.waitForExistence(timeout: timeout), "the examiner asks a follow-up (F-45)")
+        let recap = element(app, "summary.recap")
+        XCTAssertTrue(recap.waitForExistence(timeout: 60), "five cards, two turns each, then grading")
+        XCTAssertTrue(recap.label.contains("Fixture overall"), recap.label)
+        XCTAssertTrue(element(app, "summary.count.correct").exists)
+        app.buttons["summary.done"].tap()
+        let sessions = element(app, "detail.stat.sessions")
+        XCTAssertTrue(sessions.waitForExistence(timeout: timeout))
+        XCTAssertTrue(sessions.label.contains("1"), "the exam was recorded: \(sessions.label)")
+    }
+
+    func testSayingHintInStudyVoiceRevealsTheHint() {
+        let app = launch(extra: ["-voiceHint", "YES"])
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.studyVoice"].tap()
+        XCTAssertTrue(app.staticTexts["studyVoice.state"].waitForExistence(timeout: timeout))
+        // The UI-test hint listener always hears "hint"; the first card with a hint reveals it.
+        XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: 30), "saying hint reveals the hint (F-12)")
+        app.buttons["studyVoice.pause"].tap()
     }
 }

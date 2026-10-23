@@ -69,6 +69,7 @@ final class AppSettings {
     private let kIncludeNotDue = "includeNotDue"
     private let kReminderOn = "reminderOn"
     private let kReminderMinutes = "reminderMinutes"
+    private let kVoiceHint = "voiceHint"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -80,6 +81,12 @@ final class AppSettings {
 
     var studyVoicePauseSeconds: Double {
         didSet { defaults.set(studyVoicePauseSeconds, forKey: kStudyVoicePause) }
+    }
+
+    /// Study — Voice listens for "hint" between cards (F-12, S-17). Off by default: it needs
+    /// the microphone.
+    var voiceHint: Bool {
+        didSet { defaults.set(voiceHint, forKey: kVoiceHint) }
     }
 
     /// `nil` means "let the app pick the best installed voice for the current locale."
@@ -165,6 +172,7 @@ final class AppSettings {
         self.studyVoiceRepeatCount = max(1, min(5, repeats))
         let pause = defaults.object(forKey: kStudyVoicePause) as? Double ?? 1.0
         self.studyVoicePauseSeconds = max(0.5, min(3.0, pause))
+        self.voiceHint = defaults.bool(forKey: kVoiceHint)
         let savedVoice = defaults.string(forKey: kTTSVoiceIdentifier)
         // If the saved voice has been uninstalled or renamed, fall back to Auto so
         // we don't try to use an identifier that AVSpeech will silently ignore.

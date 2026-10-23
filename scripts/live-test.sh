@@ -9,6 +9,7 @@
 # Usage:
 #   scripts/live-test.sh                      # both providers, default models below
 #   scripts/live-test.sh -m <openai-model>    # override the OpenAI chat model
+#   scripts/live-test.sh -f mixedKinds        # only live tests whose name matches (regex)
 #   AIQuiz_Ant_test_model=claude-opus-5-5 scripts/live-test.sh    # override the Anthropic model
 #
 # Default test models, chosen by the owner on 2026-10-22: the latest Sonnet and gpt-6-luna.
@@ -24,10 +25,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OPENAI_MODEL_ARG=""
-while getopts "m:" opt; do
+FILTER="Live"
+while getopts "m:f:" opt; do
   case "$opt" in
     m) OPENAI_MODEL_ARG="$OPTARG" ;;
-    *) echo "usage: $0 [-m openai-model]" >&2; exit 2 ;;
+    f) FILTER="Live.*$OPTARG" ;;
+    *) echo "usage: $0 [-m openai-model] [-f test-name]" >&2; exit 2 ;;
   esac
 done
 
@@ -68,7 +71,7 @@ for PKG in Packages/LLMKit Packages/AIQuizCore; do
   AIQUIZ_LIVE_TESTS=1 \
   AIQuiz_Ant_test_key="$ANT_KEY" AIQuiz_Ant_test_model="$ANT_MODEL" \
   AIQuiz_Oai_test_key="$OAI_KEY" AIQuiz_Oai_test_model="$OAI_MODEL" \
-    swift test --package-path "$PKG" --filter Live 2>&1 \
+    swift test --package-path "$PKG" --filter "$FILTER" 2>&1 \
     | grep -E "✔ Test|✘|Issue|error:|Test run with|^LIVE " | grep -v "started"
   PKG_STATUS=${PIPESTATUS[0]}
   set -e

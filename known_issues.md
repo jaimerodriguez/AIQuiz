@@ -157,3 +157,20 @@ Bind through a bounds-checked `Binding(get:set:)` that returns "" past the end a
 
 ### How to recognise it
 Any crash in `Array._checkSubscript` under `Binding.subscript` after a collection that drives a `ForEach` of editable rows shrinks.
+
+---
+
+## 3. A stale recognition callback tore down the next one (Phase 8)
+
+### Symptom
+Starting and stopping speech recognition in quick succession (the spoken "hint" command listens for a moment after every card) could end a fresh recognition at once, with no transcript.
+
+### Root cause
+`STTService`'s result handler hops to the main actor with `Task { @MainActor in … }`, so a final result or error from a recognition that was already stopped can arrive after the next one started. It then called the new recognition's handlers and `teardown()`.
+
+### Fix
+Each `startListening` increments a `generation`; the `@Sendable` handler captures its number (an `Int`, so the `known_issues` §1 pattern holds) and ignores the callback when it no longer matches.
+
+### How to recognise it
+A recognition that stops by itself right after starting, only when the previous one stopped less than a second earlier.
+

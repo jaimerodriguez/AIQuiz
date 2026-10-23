@@ -35,8 +35,7 @@ enum STTError: LocalizedError {
 @MainActor
 @Observable
 final class STTService {
-    static let shared = STTService()
-
+    private let audio: AudioSessionCoordinator
     private var engine: AVAudioEngine?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var requestRef: RequestRef?
@@ -57,6 +56,14 @@ final class STTService {
     private final class WeakSelfBox: @unchecked Sendable {
         weak var value: STTService?
         init(_ v: STTService) { self.value = v }
+    }
+
+    /// Counts recognitions. A callback from an earlier one (they arrive late, after `stop`)
+    /// carries its number and is ignored, so it cannot feed or tear down the current one.
+    private var generation = 0
+
+    init(audio: AudioSessionCoordinator) {
+        self.audio = audio
     }
 
     private(set) var liveTranscript: String = ""
@@ -98,14 +105,10 @@ final class STTService {
             throw STTError.unavailable
         }
 
-        // Audio session: minimal record-only config. No mode, no options. The
-        // simpler this is the better — extra options were what destabilised
-        // the engine in earlier attempts.
-        let session = AVAudioSession.sharedInstance()
+        // Audio session through the coordinator (F-50): record-only, or the play-and-record
+        // session a voice-hint or oral-exam session already holds.
         do {
-            try session.setCategory(.record)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-            Log.audio.debug("STT: session active route=\(session.currentRoute.inputs.first?.portName ?? "none")")
+            try audio.beginRecording()
         } catch {
             throw STTError.audioSession(error)
         }
@@ -144,12 +147,14 @@ final class STTService {
         // Same isolation trap applies to the recognition callback — declare it
         // as a @Sendable function-typed closure to break inherited @MainActor.
         let selfBox = WeakSelfBox(self)
+        generation += 1
+        let current = generation
         let resultHandler: @Sendable (SFSpeechRecognitionResult?, Error?) -> Void = { result, error in
             if let result {
                 let text = result.bestTranscription.formattedString
                 let isFinal = result.isFinal
                 Task { @MainActor in
-                    guard let me = selfBox.value else { return }
+                    guard let me = selfBox.value, me.generation == current else { return }
                     me.liveTranscript = text
                     me.transcriptHandler?(text, isFinal)
                     if isFinal { me.teardown() }
@@ -157,7 +162,7 @@ final class STTService {
             }
             if let error {
                 Task { @MainActor in
-                    guard let me = selfBox.value else { return }
+                    guard let me = selfBox.value, me.generation == current else { return }
                     me.errorHandler?(error)
                     me.teardown()
                 }
@@ -199,7 +204,7 @@ final class STTService {
         transcriptHandler = nil
         errorHandler = nil
         isListening = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        audio.endRecording()
     }
 }
 

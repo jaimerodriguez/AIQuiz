@@ -74,9 +74,17 @@ final class SchedulingAppTests: XCTestCase {
 
         let deck = ScoreStore.makeReviewDeck(in: context, cap: 20)
         XCTAssertEqual(Set(deck.cards.map(\.prompt)), ["A 0", "B 0"])
-        XCTAssertEqual(deck.cards.first?.prompt, "B 0", "the oldest due card first")
-        deck.record(.correct); deck.markEasy(deck.current!.id); deck.next()
-        deck.record(.wrong); deck.next()
+        // The light shuffle (§10) may swap neighbours, so grade by card, not by position;
+        // the order itself is covered by the seeded Scheduler tests in AIQuizCore.
+        while let card = deck.current, !deck.ended {
+            if card.prompt == "B 0" {
+                deck.record(.correct)
+                deck.markEasy(card.id)
+            } else {
+                deck.record(.wrong)
+            }
+            deck.next()
+        }
         ScoreStore.recordReview(deck, in: context)
 
         XCTAssertEqual(a.sessions.map(\.sessionMode), [.review])

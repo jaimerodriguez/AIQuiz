@@ -79,6 +79,7 @@ private struct StudyReadSession: View {
             player.abandon()
             dismiss()
         }
+        .tutorChatButton(quiz: quiz, card: player.deck.current)
         .onChange(of: player.finished) { _, finished in
             guard finished else { return }
             ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .studyRead, in: context)

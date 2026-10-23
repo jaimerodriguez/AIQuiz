@@ -5,8 +5,7 @@ import Foundation
 @MainActor
 @Observable
 final class TTSService: NSObject, AVSpeechSynthesizerDelegate {
-    static let shared = TTSService()
-
+    private let audio: AudioSessionCoordinator
     private let synthesizer = AVSpeechSynthesizer()
     private var continuation: CheckedContinuation<Void, Never>?
     private var currentUtterance: AVSpeechUtterance?
@@ -16,7 +15,8 @@ final class TTSService: NSObject, AVSpeechSynthesizerDelegate {
     /// so iOS played a default voice instead).
     private(set) var lastUsedVoiceIdentifier: String?
 
-    override init() {
+    init(audio: AudioSessionCoordinator) {
+        self.audio = audio
         super.init()
         synthesizer.delegate = self
     }
@@ -33,9 +33,14 @@ final class TTSService: NSObject, AVSpeechSynthesizerDelegate {
             //    never orphan a previous `speak` call.
             cancelInFlight()
 
-            // 2. Reset audio session to playback. If STTService used .playAndRecord
-            //    earlier, leaving it that way can silence subsequent TTS playback.
-            configureAudioSessionForPlayback()
+            // 2. Ask for playback (F-50). Inside a play-and-record session (voice hints, oral
+            //    exam) the coordinator keeps that session instead.
+            do {
+                try audio.beginPlayback()
+            } catch {
+                // Non-fatal: speech usually still plays without explicit session setup.
+                Log.audio.debug("TTS: playback session failed: \(error.localizedDescription)")
+            }
 
             // 3. Build the utterance.
             let utterance = AVSpeechUtterance(string: trimmed)
@@ -59,16 +64,6 @@ final class TTSService: NSObject, AVSpeechSynthesizerDelegate {
         }
         return AVSpeechSynthesisVoice(language: Locale.current.identifier)
             ?? AVSpeechSynthesisVoice(language: "en-US")
-    }
-
-    private func configureAudioSessionForPlayback() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-            try session.setActive(true, options: [])
-        } catch {
-            // Non-fatal — speech still works without explicit session setup in most cases.
-        }
     }
 
     func pause() {

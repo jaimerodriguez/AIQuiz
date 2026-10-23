@@ -9,6 +9,8 @@ public enum SessionMode: String, Codable, Sendable, CaseIterable {
     case quizChoice
     /// The cross-quiz Due today review (F-41).
     case review
+    /// The AI examiner asks aloud and grades at the end (F-45).
+    case oralExam
 }
 
 /// Outcome of one card in a session. `skipped` records nothing and scores nothing.

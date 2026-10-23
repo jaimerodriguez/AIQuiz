@@ -23,7 +23,10 @@ struct StudyVoiceView: View {
                 deck: ScoreStore.makeDeck(for: quiz),
                 speech: speech.synthesizer,
                 pauseSeconds: settings.studyVoicePauseSeconds,
-                repeatCount: settings.studyVoiceRepeatCount
+                repeatCount: settings.studyVoiceRepeatCount,
+                hintListener: settings.voiceHint ? speech.hintListener : nil,
+                audio: speech.audio,
+                locale: settings.sttLocale
             )
         }
     }
@@ -32,8 +35,10 @@ struct StudyVoiceView: View {
 private struct StudyVoiceSession: View {
     let quiz: QuizRecord
     let player: StudyVoicePlayer
+    @Environment(SpeechServices.self) private var speech
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @State private var resumeAfterChat = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -46,6 +51,7 @@ private struct StudyVoiceSession: View {
             } else {
                 ContentUnavailableView("Empty quiz", systemImage: "tray")
             }
+            voiceHintStatus
             Spacer()
             controls
         }
@@ -57,12 +63,43 @@ private struct StudyVoiceSession: View {
             player.abandon()
             dismiss()
         }
+        // §9.1: the session pauses while the tutor is open and resumes after.
+        .tutorChatButton(quiz: quiz, card: player.deck.current, onOpen: {
+            resumeAfterChat = player.state == .playing
+            player.pause()
+        }, onClose: {
+            if resumeAfterChat { player.resume() }
+            resumeAfterChat = false
+        })
         .onAppear { player.start() }
-        .onDisappear { player.stop() }
+        .onDisappear {
+            player.stop()
+            // Release the session so other apps' audio un-ducks (F-50).
+            speech.audio.end()
+        }
         .onChange(of: player.state) { _, state in
             guard state == .ended, !player.deck.abandoned else { return }
             ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .studyVoice, in: context)
             dismiss()
+        }
+    }
+
+    /// F-12: shows when the app is listening for "hint", or why it can't.
+    @ViewBuilder
+    private var voiceHintStatus: some View {
+        if player.listeningForHint {
+            Label("Say “hint” for a hint", systemImage: "waveform")
+                .font(.callout)
+                .foregroundStyle(.orange)
+                .symbolEffect(.variableColor.iterative)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("studyVoice.listening")
+        } else if let message = player.voiceHintMessage {
+            Label(message, systemImage: "mic.slash")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("studyVoice.voiceHintMessage")
         }
     }
 

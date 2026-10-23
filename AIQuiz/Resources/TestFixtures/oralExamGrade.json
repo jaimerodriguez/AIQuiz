@@ -1,0 +1,55 @@
+{
+  "cards": [
+    {
+      "card_id": "c1",
+      "verdict": "partial",
+      "reason": "Fixture reason 1."
+    },
+    {
+      "card_id": "c2",
+      "verdict": "wrong",
+      "reason": "Fixture reason 2."
+    },
+    {
+      "card_id": "c3",
+      "verdict": "correct",
+      "reason": "Fixture reason 3."
+    },
+    {
+      "card_id": "c4",
+      "verdict": "partial",
+      "reason": "Fixture reason 4."
+    },
+    {
+      "card_id": "c5",
+      "verdict": "wrong",
+      "reason": "Fixture reason 5."
+    },
+    {
+      "card_id": "c6",
+      "verdict": "correct",
+      "reason": "Fixture reason 6."
+    },
+    {
+      "card_id": "c7",
+      "verdict": "partial",
+      "reason": "Fixture reason 7."
+    },
+    {
+      "card_id": "c8",
+      "verdict": "wrong",
+      "reason": "Fixture reason 8."
+    },
+    {
+      "card_id": "c9",
+      "verdict": "correct",
+      "reason": "Fixture reason 9."
+    },
+    {
+      "card_id": "c10",
+      "verdict": "partial",
+      "reason": "Fixture reason 10."
+    }
+  ],
+  "overall": "Fixture overall: clear on the basics. Revisit the details you skipped."
+}

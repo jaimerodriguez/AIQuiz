@@ -36,7 +36,7 @@ Live API tests (spend real money, a few cents a run; never in CI). Keys live in 
 ```bash
 scripts/live-test.sh
 ```
-Defaults are `claude-sonnet-5-5` and `gpt-6-luna` (owner's choice); override with `-m <openai-model>` or `AIQuiz_Ant_test_model=<model>`.
+Defaults are `claude-sonnet-5-5` and `gpt-6-luna` (owner's choice); override with `-m <openai-model>` or `AIQuiz_Ant_test_model=<model>`. Run one test with `-f <name>` (a regex on the test name, e.g. `-f oralExam`).
 The owner stores the keys; agents never ask for them, read them, or type them anywhere. Run the live tests at the end of any phase that changes `Packages/LLMKit`, a client, or a prompt; they cover LLMKit's clients and every AIQuizCore AI feature.
 
 App tests alone:
@@ -77,6 +77,7 @@ XCUITest gotchas seen in this project:
 - Test bundles need `GENERATE_INFOPLIST_FILE: YES` in `Project.yml`; the app target sets it to NO.
 - `scripts/test.sh` runs under macOS bash 3.2: expand optional arrays as `${ARR[@]+"${ARR[@]}"}` with `set -u`.
 - Rows of a `List` or `Form` that are off screen do not exist for XCUITest. Put anything a test must find near the top, or swipe on a static text until it is hittable.
+- Session decks are shuffled lightly (`Scheduler.order` swaps neighbours with probability 0.3). App and UI tests must not assume a deck's order: grade by card, or assert on sets. Order is tested in AIQuizCore with a seeded generator.
 - `Text("\(number)")` localizes the number (`1,177`). Use `Text(verbatim:)` for values a test parses.
 - A `confirmationDialog` button's identifier matches twice; tap `app.buttons.matching(identifier:).firstMatch`.
 - Never bind editable rows to `$array[index]` inside a `ForEach` whose array can shrink; use a bounds-checked `Binding(get:set:)` (known_issues §2).
