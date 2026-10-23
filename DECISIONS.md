@@ -144,15 +144,15 @@ One entry per decision that shapes the codebase. Each records the conversation w
 
 ---
 
-## ADR-013 — Markdown is the single format for study material, rendered natively
-**Date:** 2026-10-22. **Status:** accepted.
+## ADR-013 — Markdown is the format for reading content in the app, rendered natively
+**Date:** 2026-10-22. **Status:** accepted; amended the same day (CR-007).
 
-**Context.** Jaime wanted to study a generated topic as a whole, and asked whether the app could render the material if files were always Markdown, HTML or PDF.
+**Context.** Jaime wants to read the material a quiz came from, and asked whether the app could render it if files were always Markdown, HTML or PDF. A first implementation (CR-006) generated AI study notes; Jaime clarified he wants the original content, not new AI text.
 
-**Options.** (a) Store HTML and show it in a web view. (b) Store PDFs. (c) Store Markdown and render it natively. (d) A third-party Markdown renderer.
+**Options.** (a) HTML in a web view for everything. (b) PDF. (c) Markdown rendered natively, with web pages shown as themselves. (d) A third-party Markdown renderer.
 
-**Trade-offs.** HTML in a web view ignores the reading-size setting and adds a WebKit dependency for content we generate ourselves. PDF is a good display format for documents the user brings, but a poor one for notes the model writes and for later editing. Markdown is what models write most reliably, is diff-able and exportable, and covers what notes need (headings, lists, emphasis). A third-party renderer conflicts with the dependency rule (ADR-007).
+**Trade-offs.** A web view ignores the reading-size setting and suits only real web pages. PDF is right for PDF documents but not for pasted text or Markdown files. A third-party renderer conflicts with the dependency rule (ADR-007).
 
-**Decision.** (c). Notes are stored as Markdown. `MarkdownParser` (AIQuizCore, unit-tested) splits blocks; `MarkdownView` renders them with SwiftUI at the user's reading size and uses `AttributedString(markdown:)` for inline formatting. Web sources keep their extracted article text plus the original URL. PDF sources, when added in Phase 5, are displayed with PDFKit and summarised into Markdown notes like any other source.
+**Decision.** Show each source in its own form. Web pages open as the page itself in an in-app browser (`SFSafariViewController`), with the extracted text kept as an offline copy. Markdown files and pasted text render natively: `MarkdownParser` (AIQuizCore, unit-tested) splits blocks and `MarkdownView` draws them at the user's reading size, with `AttributedString(markdown:)` for inline formatting. PDF sources, when added in Phase 5, will display with PDFKit.
 
-**Consequences.** No new dependency; notes follow reading size and dark mode. Tables, images and footnotes are not rendered; the notes prompt asks the model not to use them.
+**Consequences.** No new dependency; text follows reading size and dark mode. Tables, images and footnotes in Markdown files show as plain text.

@@ -10,14 +10,21 @@ final class QuizRecord {
     var sourceBookmark: Data?
     var bundledSampleId: String?
 
-    // Added in 1.1.0 (CR-006). Optional, so SwiftData migrates existing stores automatically.
-    /// Markdown study notes for reading the topic as a whole.
-    var studyNotes: String?
-    /// Original source text (pasted text, a Markdown file, or a page's extracted article),
-    /// stored outside the row so library lists don't load it (SPEC N-8).
+    // Original content the quiz was generated from (CR-007). All optional, so SwiftData
+    // migrates existing stores automatically. `sourceBookmark` (above) is reused for the
+    // Markdown file a quiz was generated from.
+    /// `QuizSourceKind` raw value; nil for topic and imported quizzes.
+    var sourceKindRaw: String?
+    /// File name or page host, for display.
+    var sourceTitle: String?
+    /// Copy of the original text at generation time (pasted text, file contents, or a page's
+    /// extracted article). Stored outside the row so library lists don't load it (SPEC N-8).
     @Attribute(.externalStorage) var sourceTextData: Data?
     /// Web page the quiz was generated from.
     var sourceURLString: String?
+    /// Unused since CR-007. Kept so AI notes written by a pre-release build on the owner's iPad
+    /// are not deleted; drop in the Phase 2 schema with the owner's agreement.
+    var studyNotes: String?
 
     @Relationship(deleteRule: .cascade, inverse: \CardRecord.quiz)
     var cards: [CardRecord] = []
@@ -142,18 +149,24 @@ extension QuizRecord {
         sourceURLString.flatMap(URL.init(string:))
     }
 
+    var sourceKind: QuizSourceKind? {
+        sourceKindRaw.flatMap(QuizSourceKind.init(rawValue:))
+    }
+
     /// Builds a quiz and its cards from a payload. The caller inserts and saves it.
     static func make(
         from payload: QuizPayload,
         sourceBookmark: Data? = nil,
         bundledSampleId: String? = nil,
-        sourceText: String? = nil,
-        sourceURL: URL? = nil
+        source: OriginalSource? = nil
     ) -> QuizRecord {
-        let record = QuizRecord(name: payload.name, sourceBookmark: sourceBookmark, bundledSampleId: bundledSampleId)
-        record.studyNotes = payload.studyNotes
-        record.sourceText = sourceText
-        record.sourceURLString = sourceURL?.absoluteString
+        let record = QuizRecord(name: payload.name, sourceBookmark: source?.fileBookmark ?? sourceBookmark, bundledSampleId: bundledSampleId)
+        if let source {
+            record.sourceKindRaw = source.kind.rawValue
+            record.sourceTitle = source.title
+            record.sourceText = source.text
+            record.sourceURLString = source.url?.absoluteString
+        }
         for (idx, card) in payload.cards.enumerated() {
             let cr = CardRecord(
                 prompt: card.prompt,
@@ -168,14 +181,13 @@ extension QuizRecord {
         return record
     }
 
-    /// The quiz as a payload for export, including study notes.
+    /// The quiz as a payload for export.
     var payload: QuizPayload {
         QuizPayload(
             name: name,
             cards: cards.sorted { $0.orderIndex < $1.orderIndex }.map {
                 CardPayload(prompt: $0.prompt, longAnswer: $0.longAnswer, shortAnswer: $0.shortAnswer, hint: $0.hint)
-            },
-            studyNotes: studyNotes
+            }
         )
     }
 
@@ -192,4 +204,23 @@ extension QuizRecord {
     var sessionCount: Int {
         sessions.filter { !$0.abandoned }.count
     }
+}
+
+/// Where a generated quiz's content came from (CR-007).
+enum QuizSourceKind: String, Codable, Sendable {
+    case webPage
+    case markdownFile
+    case pastedText
+}
+
+/// The original content to keep with a generated quiz.
+struct OriginalSource: Sendable, Equatable {
+    var kind: QuizSourceKind
+    var title: String
+    /// Copy of the text at generation time; the fallback when the original can't be reached.
+    var text: String?
+    /// The web page, for `.webPage`.
+    var url: URL?
+    /// Security-scoped bookmark to the file in Files, for `.markdownFile`.
+    var fileBookmark: Data?
 }

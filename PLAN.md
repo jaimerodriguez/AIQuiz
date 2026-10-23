@@ -207,7 +207,7 @@ Implements F-15, F-16, F-23, F-24, F-25, F-26, F-27, F-28, F-29, F-44, S-3.
 
 ### Phase 5 — Ingestion: notes, PDF, reader mode, photo, share
 
-> **Partly delivered early (CR-006):** study notes for all current sources, the notes reader, source viewing and `study_notes` in JSON are done. Phase 5 still owns PDF and photo sources, reader-mode extraction, chunking of long sources, the share extension and the generation queue.
+> **Partly delivered early (CR-007):** quizzes keep their original content (page link, file bookmark, pasted text) and show it on the quiz screen. AI study notes (F-20) are on hold at the owner's request. Phase 5 still owns PDF and photo sources, reader-mode extraction, chunking, the share extension and the generation queue.
 Implements F-3, F-19 sources, F-20, F-21, F-22, S-4, §7.4 chunking.
 
 **Tasks**

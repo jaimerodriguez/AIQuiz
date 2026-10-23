@@ -30,7 +30,10 @@ final class AIQuizUITests: XCTestCase {
     private func scrollGenerateForm(_ app: XCUIApplication, until target: XCUIElement) {
         let anchors = [
             app.staticTexts["Topic mode lets you set card count, difficulty, language, and tone."],
+            // XCUITest rejects query strings over 128 characters; match long footers by prefix.
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "When you provide a source")).firstMatch,
             app.staticTexts["Topic"],
+            app.staticTexts["Paste text or markdown"],
             app.staticTexts["Generate"]
         ]
         for _ in 0..<6 {
@@ -145,12 +148,48 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(keyField(app).waitForExistence(timeout: timeout))
     }
 
-    // MARK: Study notes (CR-006)
+    // MARK: Original content (CR-007)
 
-    /// The fixture notes (Resources/TestFixtures/notes.md) contain this heading.
-    private let fixtureHeading = "Key ideas"
+    /// Generate → Paste text, type a small Markdown document, generate, open the new quiz.
+    private func generateFromPastedText(_ app: XCUIApplication, text: String) {
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        app.buttons["library.generate"].tap()
 
-    func testGeneratedTopicQuizHasReadableStudyNotes() {
+        let sourcePicker = button(app, id: "generate.source", label: "Source")
+        XCTAssertTrue(sourcePicker.waitForExistence(timeout: timeout))
+        sourcePicker.tap()
+        let paste = app.buttons["Paste text"]
+        XCTAssertTrue(paste.waitForExistence(timeout: timeout), "source menu did not open")
+        paste.tap()
+
+        let editor = app.textViews["generate.paste"]
+        XCTAssertTrue(editor.waitForExistence(timeout: timeout))
+        editor.tap()
+        editor.typeText(text)
+
+        let run = app.buttons["generate.run"]
+        scrollGenerateForm(app, until: run)
+        run.tap()
+        let open = app.buttons["generate.openLibrary"]
+        XCTAssertTrue(open.waitForExistence(timeout: timeout))
+        open.tap()
+        openQuiz(app, named: "Fake Generated Quiz")
+    }
+
+    func testPastedTextQuizShowsItsOriginalText() {
+        let app = launch()
+        generateFromPastedText(app, text: "## My pasted heading\nThe body of what I pasted.")
+
+        let original = button(app, id: "detail.originalText", label: "Original text")
+        XCTAssertTrue(original.waitForExistence(timeout: timeout), "a pasted-text quiz links to its original text")
+        XCTAssertFalse(app.buttons["detail.createNotes"].exists, "no AI notes")
+        original.tap()
+        XCTAssertTrue(app.staticTexts["My pasted heading"].waitForExistence(timeout: timeout), "the original text renders")
+        XCTAssertTrue(app.buttons["reader.share"].exists)
+    }
+
+    func testTopicQuizHasNoOriginalContentSection() {
         let app = launch()
         XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
         app.buttons["library.addButton"].tap()
@@ -159,36 +198,19 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(topic.waitForExistence(timeout: timeout))
         topic.tap()
         topic.typeText("Roman emperors")
-
         let run = app.buttons["generate.run"]
         scrollGenerateForm(app, until: run)
-        XCTAssertTrue(element(app, "generate.writeNotes").exists, "notes toggle is shown")
+        XCTAssertFalse(app.switches["generate.writeNotes"].exists, "the AI notes toggle is gone")
         run.tap()
         let open = app.buttons["generate.openLibrary"]
-        scrollGenerateForm(app, until: open)
         XCTAssertTrue(open.waitForExistence(timeout: timeout))
         open.tap()
 
         openQuiz(app, named: "Fake Generated Quiz")
-        let notesLink = button(app, id: "detail.notes", label: "Study notes")
-        XCTAssertTrue(notesLink.waitForExistence(timeout: timeout), "a generated quiz links to its notes")
-        notesLink.tap()
-        XCTAssertTrue(app.staticTexts[fixtureHeading].waitForExistence(timeout: timeout), "notes render their headings")
-        XCTAssertTrue(app.buttons["notes.share"].exists)
-    }
-
-    func testCreateStudyNotesForAnExistingQuiz() {
-        let app = launch()
-        openQuiz(app, named: "Roman Emperors")
-        let create = button(app, id: "detail.createNotes", label: "Create study notes")
-        XCTAssertTrue(create.waitForExistence(timeout: timeout))
-        create.tap()
-
-        let notesLink = button(app, id: "detail.notes", label: "Study notes")
-        XCTAssertTrue(notesLink.waitForExistence(timeout: timeout), "notes appear once written")
-        XCTAssertFalse(app.buttons["detail.createNotes"].exists)
-        notesLink.tap()
-        XCTAssertTrue(app.staticTexts[fixtureHeading].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.staticTexts["Original content"].exists)
+        XCTAssertFalse(app.buttons["detail.originalText"].exists)
+        XCTAssertFalse(app.buttons["detail.originalPage"].exists)
     }
 
     func testGenerateWithoutEndpointShowsSetupSheet() {

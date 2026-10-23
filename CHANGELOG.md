@@ -35,14 +35,12 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Live-verified 2026-10-22:** `claude-sonnet-5-5` and `gpt-6-luna` both pass plain, streamed and structured requests and model listing. OpenAI accepted strict `json_schema` with nullable fields without falling back.
   - `scripts/live-test.sh` runs the opt-in live API tests with keys read from the macOS login Keychain (`AIQuiz_Ant_test_key`, `AIQuiz_Oai_test_key`). The test variables use these names instead of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` so no other tool picks up the test keys.
 
-- **Study notes (CR-006), branch `feature-study-notes`, stacked on Phase 1:**
-  - Generating a quiz first writes Markdown study notes, then draws the cards from them, so you can read the topic as a whole. Works for topics, Markdown files, pasted text and web pages. A "Write study notes first" toggle turns it off. Progress shows "Writing study notes… N words", then "Writing cards…".
-  - Quiz detail has a new Study section: Study notes (rendered natively at your reading size, shareable), Source material (the original text you gave it), and Open original page for web sources.
-  - Quizzes without notes, including imported ones and those created before 1.1.0, get a Create study notes button that writes notes from the cards.
-  - Quiz JSON files can carry `study_notes`; they survive export and import.
-  - New optional quiz fields are added to existing libraries automatically; nothing is lost (verified on the owner's iPad: 7 quizzes and 207 cards before and after).
+- **Original content (CR-007), branch `feature-study-notes`, stacked on Phase 1:**
+  - A quiz generated from a web page, a Markdown file or pasted text keeps that content. An **Original content** section at the top of the quiz screen shows it: the original page in an in-app browser plus a saved copy for offline reading; the original file from Files, with its current contents, falling back to the saved copy if it moved; or the pasted text. Text renders at your reading size.
+  - Topic quizzes have no original content, so they show no section.
+  - A first version (CR-006) generated AI study notes instead; it was withdrawn the same day at the owner's request. One quiz on the owner's iPad has notes from that build; they are kept in the database, unused.
+  - New optional quiz fields are added to existing libraries automatically. Verified on the owner's iPad: 7 quizzes and 207 cards before and after.
   - The Generate form scrolls to the result or error when generation finishes; on iPad the outcome was below the fold.
-  - **Live-verified 2026-10-22:** the topic → notes → cards pipeline on `claude-sonnet-5-5` (747 words, 8 headings, 8 cards) and `gpt-6-luna` (828 words, 8 headings, 8 cards). `scripts/live-test.sh` now also runs the AIQuizCore live suite.
 
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.

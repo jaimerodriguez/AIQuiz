@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the opt-in live API tests (PLAN §1.6) in LLMKit and AIQuizCore against Anthropic and OpenAI, with keys read
+# Run the opt-in live API tests (PLAN §1.6) against Anthropic and OpenAI, with keys read
 # from the macOS login Keychain. Spends a few cents per run. Never prints a key.
 #
 # Store each key once. The command prompts for the value, so it stays out of shell history:
@@ -64,8 +64,8 @@ set +e
 AIQUIZ_LIVE_TESTS=1 \
 AIQuiz_Ant_test_key="$ANT_KEY" AIQuiz_Ant_test_model="$ANT_MODEL" \
 AIQuiz_Oai_test_key="$OAI_KEY" AIQuiz_Oai_test_model="$OAI_MODEL" \
-  bash -c 'swift test --package-path Packages/LLMKit --filter Live 2>&1 && swift test --package-path Packages/AIQuizCore --filter Live 2>&1' \
-  | grep -E "✔ Test|✘|Issue|error:|Test run with|\[live\]" | grep -v "started"
+  swift test --package-path Packages/LLMKit --filter Live 2>&1 \
+  | grep -E "✔ Test|✘|Issue|error:|Test run with" | grep -v "started"
 STATUS=${PIPESTATUS[0]}
 set -e
 

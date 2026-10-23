@@ -17,8 +17,6 @@ public struct QuizGenRequest: Sendable, Hashable {
     public var tone: String?
     public var focus: String?
     public var exclude: String?
-    /// Study notes written first (CR-006). When present, cards are drawn from them.
-    public var studyNotes: String?
 
     public init(
         source: Source,
@@ -29,8 +27,7 @@ public struct QuizGenRequest: Sendable, Hashable {
         language: String? = nil,
         tone: String? = nil,
         focus: String? = nil,
-        exclude: String? = nil,
-        studyNotes: String? = nil
+        exclude: String? = nil
     ) {
         self.source = source
         self.topic = topic
@@ -41,7 +38,6 @@ public struct QuizGenRequest: Sendable, Hashable {
         self.tone = tone
         self.focus = focus
         self.exclude = exclude
-        self.studyNotes = studyNotes
     }
 }
 

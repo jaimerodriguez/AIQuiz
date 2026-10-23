@@ -1,7 +1,8 @@
 import SwiftUI
 import AIQuizCore
 
-/// Renders study-note Markdown natively at the user's reading size (DECISIONS ADR-013).
+/// Renders Markdown (pasted text, Markdown files, saved page text) natively at the user's
+/// reading size (DECISIONS ADR-013).
 /// Blocks come from `MarkdownParser`; inline bold, italics and code use `AttributedString(markdown:)`.
 struct MarkdownView: View {
     let markdown: String
@@ -88,21 +89,33 @@ struct MarkdownView: View {
     }
 }
 
-/// A full-screen reader for study notes or source material.
-struct StudyNotesView: View {
+/// A full-screen reader for a quiz's original content.
+struct MarkdownReaderView: View {
     let title: String
     let markdown: String
     var sourceURL: URL?
+    /// Shown above the text, for example when a saved copy stands in for a missing file.
+    var notice: String?
 
     var body: some View {
         ScrollView {
+            if let notice {
+                Label(notice, systemImage: "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: 820, alignment: .leading)
+                    .padding([.horizontal, .top])
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("reader.notice")
+            }
             MarkdownView(markdown: markdown)
                 .textSelection(.enabled)
                 .frame(maxWidth: 820, alignment: .leading)
                 .padding()
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("notes.content")
+                .accessibilityIdentifier("reader.content")
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
@@ -112,14 +125,14 @@ struct StudyNotesView: View {
                     Link(destination: sourceURL) {
                         Label("Open original page", systemImage: "safari")
                     }
-                    .accessibilityIdentifier("notes.openOriginal")
+                    .accessibilityIdentifier("reader.openOriginal")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: markdown, subject: Text(title)) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
-                .accessibilityIdentifier("notes.share")
+                .accessibilityIdentifier("reader.share")
             }
         }
     }

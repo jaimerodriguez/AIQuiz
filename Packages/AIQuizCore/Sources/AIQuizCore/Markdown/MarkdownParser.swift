@@ -26,7 +26,7 @@ public struct MarkdownListItem: Equatable, Sendable {
     }
 }
 
-/// A small block-level Markdown parser covering what study notes use: ATX headings, paragraphs,
+/// A small block-level Markdown parser covering what source documents and pasted notes use: ATX headings, paragraphs,
 /// bullet and numbered lists (nested by indent), block quotes, fenced code and horizontal rules.
 public enum MarkdownParser {
     public static func parse(_ text: String) -> [MarkdownBlock] {

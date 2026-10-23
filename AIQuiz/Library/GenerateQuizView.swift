@@ -58,6 +58,7 @@ struct GenerateQuizView: View {
     @State private var excludeText: String = ""
 
     @State private var pickedMarkdownURL: URL?
+    @State private var markdownBookmark: Data?
     @State private var markdownContent: String?
     @State private var pickingMarkdown = false
 
@@ -66,8 +67,6 @@ struct GenerateQuizView: View {
     @State private var urlString: String = ""
 
     @State private var generating = false
-    @State private var writeNotes = true
-    @State private var progress = GenerationProgress()
     @State private var errorMessage: String?
     @State private var showProviderSetup = false
     @State private var setupIssue: String?
@@ -114,6 +113,7 @@ struct GenerateQuizView: View {
             case .success(let urls):
                 guard let url = urls.first else { return }
                 pickedMarkdownURL = url
+                markdownBookmark = OriginalFileLoader.bookmark(for: url)
                 Task {
                     do {
                         markdownContent = try await ContentExtractor.loadMarkdown(url)
@@ -199,6 +199,7 @@ struct GenerateQuizView: View {
         Section("Paste text or markdown") {
             TextEditor(text: $pasted)
                 .frame(minHeight: 220)
+                .accessibilityIdentifier("generate.paste")
             Text("\(pasted.count) characters")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -207,6 +208,7 @@ struct GenerateQuizView: View {
     private var urlSection: some View {
         Section {
             TextField("https://en.wikipedia.org/wiki/…", text: $urlString)
+                .accessibilityIdentifier("generate.url")
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -219,25 +221,13 @@ struct GenerateQuizView: View {
 
     private var generateSection: some View {
         Section {
-            Toggle(isOn: $writeNotes) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Write study notes first")
-                    Text("Notes you can read as a whole; the cards are drawn from them.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .disabled(generating)
-            .accessibilityIdentifier("generate.writeNotes")
-
             Button {
                 Task { await generate() }
             } label: {
                 HStack {
                     if generating {
                         ProgressView()
-                        Text(progress.label)
-                            .accessibilityIdentifier("generate.progress")
+                        Text("Generating…")
                     } else {
                         Label("Generate quiz", systemImage: "sparkles")
                     }
@@ -274,8 +264,13 @@ struct GenerateQuizView: View {
         } header: {
             Text("Generate")
         } footer: {
-            Text("Endpoint: \(router.summary(for: .generation))")
-                .font(.footnote)
+            VStack(alignment: .leading, spacing: 4) {
+                if source != .topic {
+                    Text("The original \(source == .url ? "page link" : source == .markdown ? "file link" : "text") is kept with the quiz so you can read it later.")
+                }
+                Text("Endpoint: \(router.summary(for: .generation))")
+            }
+            .font(.footnote)
         }
     }
 
@@ -309,7 +304,7 @@ struct GenerateQuizView: View {
         generatedQuizId = nil
         exportingJSON = nil
 
-        if let issue = router.issue(for: .generation) ?? (writeNotes ? router.issue(for: .summary) : nil) {
+        if let issue = router.issue(for: .generation) {
             setupIssue = issue.localizedDescription
             showProviderSetup = true
             return
@@ -324,19 +319,10 @@ struct GenerateQuizView: View {
         }
 
         generating = true
-        progress.phase = nil
         defer { generating = false }
         do {
-            let cardsClient = try router.client(for: .generation)
-            let notesClient = writeNotes ? try router.client(for: .summary) : nil
-            let progress = self.progress
-            let payload = try await QuizCreationPipeline.run(
-                request,
-                notesClient: notesClient,
-                cardsClient: cardsClient
-            ) { phase in
-                Task { @MainActor in progress.phase = phase }
-            }
+            let client = try router.client(for: .generation)
+            let payload = try await QuizGenerator.generate(request, using: client)
             try saveQuiz(payload, request: request)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -383,33 +369,31 @@ struct GenerateQuizView: View {
         }
     }
 
-    /// Saves the quiz with its study notes and, for source modes, the original source to read.
+    /// Saves the quiz and, for source modes, its original content (CR-007).
     private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest) throws {
-        let sourceURL = source == .url ? URL(string: urlString.trimmingCharacters(in: .whitespaces)) : nil
-        let record = QuizRecord.make(from: payload, sourceText: request.sourceContent, sourceURL: sourceURL)
+        let record = QuizRecord.make(from: payload, source: originalSource(text: request.sourceContent))
         context.insert(record)
         try context.save()
         generatedQuizId = record.id
-
-        // JSON for the optional export, including study notes.
         exportingJSON = try? QuizDecoder.encode(payload)
     }
-}
 
-/// Shared with the pipeline's progress callback, which runs off the main actor.
-@MainActor
-@Observable
-final class GenerationProgress {
-    var phase: QuizCreationPhase?
-
-    var label: String {
-        switch phase {
-        case .writingNotes(let words)?:
-            return words > 0 ? "Writing study notes… \(words) words" : "Writing study notes…"
-        case .writingCards?:
-            return "Writing cards…"
-        case nil:
-            return "Generating…"
+    private func originalSource(text: String?) -> OriginalSource? {
+        switch source {
+        case .topic:
+            return nil
+        case .markdown:
+            return OriginalSource(
+                kind: .markdownFile,
+                title: pickedMarkdownURL?.lastPathComponent ?? "Markdown file",
+                text: text,
+                fileBookmark: markdownBookmark
+            )
+        case .paste:
+            return OriginalSource(kind: .pastedText, title: "Pasted text", text: text)
+        case .url:
+            let url = URL(string: urlString.trimmingCharacters(in: .whitespaces))
+            return OriginalSource(kind: .webPage, title: url?.host ?? "Web page", text: text, url: url)
         }
     }
 }
