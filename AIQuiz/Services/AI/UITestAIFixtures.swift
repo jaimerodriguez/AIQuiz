@@ -25,6 +25,8 @@ enum UITestAIFixtures {
             case "quiz"?: return try fixture("generation")
             case "judge"?: return try fixture("grading")
             case let name?: return try fixture(name)
+            case nil where request.label == "tutor":
+                return "Fixture tutor: **photosynthesis** turns light into sugar.\nWant a quick question on it?"
             case nil: return "OK"
             }
         }

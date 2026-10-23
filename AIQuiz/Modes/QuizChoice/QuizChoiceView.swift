@@ -13,7 +13,7 @@ struct QuizChoiceView: View {
     var body: some View {
         Group {
             if let player {
-                ChoiceSessionView(title: quiz.name, player: player, recapQuizName: quiz.name, record: { deck in
+                ChoiceSessionView(title: quiz.name, player: player, recapQuizName: quiz.name, quiz: quiz, record: { deck in
                     ScoreStore.recordSession(for: quiz, deck: deck, mode: .quizChoice, in: context)
                 }) { missed in
                     self.player = ChoicePlayer(deck: ScoreStore.makeDeck(cards: missed))
@@ -73,6 +73,8 @@ struct ChoiceSessionView: View {
     /// The quiz the recap is about; nil for a cross-quiz review.
     let recapQuizName: String?
     var allowsEasy = false
+    /// The quiz the session is from, for tutor chat; nil for a cross-quiz review.
+    var quiz: QuizRecord? = nil
     /// Card id → quiz name, for the review's grouped summary.
     var quizNames: [UUID: String] = [:]
     let record: (SessionDeck) -> SessionRecord?
@@ -107,6 +109,7 @@ struct ChoiceSessionView: View {
             player.abandon()
             dismiss()
         }
+        .tutorChatButton(quiz: player.stage == .ended ? nil : quiz, card: player.deck.current)
         .onChange(of: player.stage) { _, stage in
             if stage == .ended {
                 recorded = record(player.deck)

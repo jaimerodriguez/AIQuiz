@@ -71,6 +71,7 @@ private struct QuizVoiceSession: View {
             player.abandon()
             dismiss()
         }
+        .tutorChatButton(quiz: player.phase == .ended ? nil : quiz, card: player.deck.current, isEnabled: player.phase != .listening)
         .aiSetupSheet(gate)
         .onChange(of: player.phase) { _, phase in
             if phase == .ended {

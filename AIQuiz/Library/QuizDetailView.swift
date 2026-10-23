@@ -14,6 +14,7 @@ struct QuizDetailView: View {
     @State private var ratingError: String?
     @Environment(GenerationQueue.self) private var queue
     @Environment(AppSettings.self) private var settings
+    @State private var chatting = false
 
     var body: some View {
         List {
@@ -81,6 +82,18 @@ struct QuizDetailView: View {
                     }
                     .accessibilityIdentifier("detail.mode.quizChoice")
                 }
+
+                NavigationLink {
+                    OralExamView(quiz: quiz)
+                } label: {
+                    modeRow(
+                        title: "Oral exam",
+                        systemImage: "graduationcap",
+                        subtitle: "The AI asks aloud, follows up, and grades at the end."
+                    )
+                }
+                .disabled(quiz.cardCount == 0)
+                .accessibilityIdentifier("detail.mode.oralExam")
 
                 if quiz.sourceKind != nil {
                     NavigationLink {
@@ -168,6 +181,14 @@ struct QuizDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    chatting = true
+                } label: {
+                    Label("Tutor chat", systemImage: "bubble.left.and.text.bubble.right")
+                }
+                .accessibilityIdentifier("detail.chat")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
                     linting = true
                 } label: {
                     Label("Lint cards", systemImage: "checklist")
@@ -195,6 +216,9 @@ struct QuizDetailView: View {
         .sheet(item: $selectedCard) { card in
             CardSheet(card: card)
                 .presentationSizing(.page)
+        }
+        .sheet(isPresented: $chatting) {
+            TutorChatView(quiz: quiz)
         }
         .sheet(isPresented: $linting) {
             NavigationStack { LintView(quiz: quiz) }
@@ -321,6 +345,7 @@ struct QuizDetailView: View {
         case .quizVoice: return "mic.fill"
         case .quizChoice: return "checklist"
         case .review: return "calendar.badge.clock"
+        case .oralExam: return "graduationcap"
         }
     }
 
@@ -331,6 +356,7 @@ struct QuizDetailView: View {
         case .quizVoice: return "Quiz — Voice"
         case .quizChoice: return "Quiz — Choice"
         case .review: return "Due today review"
+        case .oralExam: return "Oral exam"
         }
     }
 

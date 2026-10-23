@@ -248,3 +248,19 @@ The files are used unmodified, next to the provider's name and only to identify 
 - **Reminder:** recomputed on launch, on going to the background (which follows any session) and on a settings change. It is scheduled for the next fire time with the count due then.
 
 **Consequences.** Moving to FSRS-5 later means new weights and three formulas, with the same `State`. Card difficulty from FSRS is separate from the AI's 1–5 rating (F-26). The reminder may be a day late if the app isn't opened for days, since it is a one-off. The tap opens the Due today review through `ReviewRouter`.
+
+## ADR-020 — One audio session owner that a speaking-and-listening session can hold
+**Date:** 2026-10-23. **Status:** accepted (PLAN Phase 8, SPEC F-50, F-12, F-45, CR-017).
+
+**Context.** Until Phase 8, text to speech set the session to `.playback` before every utterance and speech recognition set `.record` and deactivated it afterwards. That worked for Quiz — Voice, which switches once per card. The spoken "hint" command and the oral exam switch between speaking and listening every few seconds, and `known_issues.md` §1 records how fragile category changes around a fresh `AVAudioEngine` were on the iPad.
+
+**Options.** (a) Keep each service setting its own category. (b) Always use `.playAndRecord`. (c) One coordinator that hands out playback or recording on request, plus a play-and-record mode that a session holds until it ends.
+
+**Decision.** (c).
+- `AudioSessionCoordinator` (AIQuizCore) is the only code that changes the session, through an `AudioSessionBackend`; the app's `SystemAudioSession` keeps the configurations that proved stable (no `.measurement`, no preferred input).
+- Every request is idempotent. While a session holds play-and-record, playback and recording requests are satisfied by it; after an interruption or media-services reset the next request sets it up again.
+- Voice hints and the oral exam hold play-and-record. Quiz — Voice keeps the old behaviour.
+- The app listens for "hint" only between cards, never while speaking, so it never hears itself and needs no echo cancellation.
+
+**Consequences.** (b) was rejected because it would route iPhone audio to the receiver unless forced to the speaker, and it would change Quiz — Voice, which the owner uses daily. The STT result handler now ignores callbacks from an earlier recognition, since voice hints start and stop listening every card. The coordinator is the place for audio-route handling if AirPods need it later.
+

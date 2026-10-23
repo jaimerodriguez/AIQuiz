@@ -123,4 +123,54 @@ struct LiveCardAITests {
             print("LIVE \(client.endpoint.name) insights: \(report.headline) — \(report.drillCards.count) drill cards")
         }
     }
+
+    @Test("tutor chat streams a reply and makes cards from it (Phase 8)")
+    @MainActor
+    func tutorChat() async throws {
+        let clients = liveClients()
+        try #require(!clients.isEmpty)
+        for client in clients {
+            let chat = TutorChat(context: TutorContext(quizName: "Roman emperors", description: "The first emperors of Rome", card: tiberius))
+            var updates = 0
+            let watcher = Task { @MainActor in
+                var last = ""
+                while !Task.isCancelled {
+                    let text = chat.messages.last?.text ?? ""
+                    if text != last { updates += 1; last = text }
+                    try? await Task.sleep(for: .milliseconds(20))
+                }
+            }
+            await chat.send("Explain this card", using: client)
+            watcher.cancel()
+            #expect(chat.error == nil, "\(client.endpoint.name): \(chat.error ?? "")")
+            let reply = chat.messages.last?.text ?? ""
+            #expect(chat.messages.last?.role == .assistant)
+            #expect(reply.localizedCaseInsensitiveContains("Tiberius"), "\(client.endpoint.name) talks about the card")
+            let cards = try await chat.makeCards(existingPrompts: deck.map(\.prompt), using: client)
+            #expect((1...6).contains(cards.count))
+            print("LIVE \(client.endpoint.name) tutor: \(reply.count) chars in \(updates) visible updates; \(cards.count) cards: \(cards.map(\.prompt))")
+        }
+    }
+
+    @Test("oral exam: follow-up decisions and the final grading (Phase 8)")
+    func oralExam() async throws {
+        let clients = liveClients()
+        try #require(!clients.isEmpty)
+        let card = CardSnapshot(id: UUID(), prompt: tiberius.prompt, longAnswer: tiberius.longAnswer, shortAnswer: tiberius.shortAnswer)
+        let first = CardSnapshot(id: UUID(), prompt: "Who was the first Roman emperor?", longAnswer: "Augustus, from 27 BC.", shortAnswer: "Augustus")
+        for client in clients {
+            let vague = try await OralExaminer.decide(card: card, exchanges: [OralExchange(question: card.prompt, answer: "um it was his son I think, someone in his family")], using: client)
+            let good = try await OralExaminer.decide(card: first, exchanges: [OralExchange(question: first.prompt, answer: "That was Augustus, starting in 27 BC")], using: client)
+            #expect(!good.say.isEmpty || good.followUp == nil)
+            if let followUp = vague.followUp { #expect(!followUp.isEmpty) }
+            let result = try await OralExaminer.grade([
+                OralExamItem(card: first, exchanges: [OralExchange(question: first.prompt, answer: "That was Augustus, starting in 27 BC")]),
+                OralExamItem(card: card, exchanges: [OralExchange(question: card.prompt, answer: "")])
+            ], using: client)
+            #expect(result.grades[first.id]?.verdict == .correct, "\(client.endpoint.name) grades the right answer correct")
+            #expect(result.grades[card.id]?.verdict == .wrong, "\(client.endpoint.name) grades no answer wrong")
+            #expect(!result.overall.isEmpty)
+            print("LIVE \(client.endpoint.name) oral exam: vague → \(vague.followUp.map { "follow-up \"\($0)\"" } ?? "accept"); good → \(good.followUp == nil ? "accept \"\(good.say)\"" : "follow-up"); overall: \(result.overall)")
+        }
+    }
 }

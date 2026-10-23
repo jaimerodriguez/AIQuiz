@@ -188,6 +188,17 @@ extension QuizRecord {
         QuizStats.refresh(self)
     }
 
+    /// Adds cards at the end of the deck (tutor chat's *Make cards*, F-30).
+    func appendCards(_ payloads: [CardPayload]) {
+        let start = (cards.map(\.orderIndex).max() ?? -1) + 1
+        for (offset, payload) in payloads.enumerated() {
+            let new = CardRecord(payload, orderIndex: start + offset)
+            new.quiz = self
+            cards.append(new)
+        }
+        QuizStats.refresh(self)
+    }
+
     var sortedCards: [CardRecord] {
         cards.sorted { $0.orderIndex < $1.orderIndex }
     }

@@ -1,0 +1,7 @@
+{
+  "cards": [
+    {"prompt": "Chat card one: what does photosynthesis produce?", "long_answer": "Glucose and oxygen, from carbon dioxide and water using light.", "short_answer": "Glucose and oxygen", "hint": null},
+    {"prompt": "Chat card two: where in the cell does it happen?", "long_answer": "In the chloroplasts, which hold chlorophyll.", "short_answer": "Chloroplasts", "hint": null},
+    {"prompt": "Chat card three: what powers it?", "long_answer": "Light energy, captured by chlorophyll.", "short_answer": "Light", "hint": null}
+  ]
+}

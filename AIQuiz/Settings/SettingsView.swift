@@ -8,6 +8,7 @@ import UIKit
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(AIRouter.self) private var router
+    @Environment(SpeechServices.self) private var speech
     @Environment(\.modelContext) private var context
     @State private var voicePreviewing: String?
     @State private var pendingClear: PrivacyClear?
@@ -185,7 +186,7 @@ struct SettingsView: View {
                     Text("Faster").foregroundStyle(.secondary)
                 }
                 .font(.caption)
-                Button("Preview") { Task { await TTSService.shared.speak("This is the AIQuiz voice. Ready to study?") } }
+                Button("Preview") { Task { await speech.synthesizer.speak("This is the AIQuiz voice. Ready to study?") } }
                     .buttonStyle(.bordered)
             }
         }
@@ -331,6 +332,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Slider(value: $settings.studyVoicePauseSeconds, in: 0.5...3.0, step: 0.1)
+            Toggle(isOn: $settings.voiceHint) {
+                Text("Say “hint” for a hint")
+                Text("Listens for a moment after each card that has hints.")
+            }
+            .accessibilityIdentifier("settings.voiceHint")
         }
     }
 
@@ -358,7 +364,7 @@ private struct VoicePickerView: View {
     @Binding var selection: String?
     @State private var previewing: String?
     @State private var diagnostic: String?
-    private let tts = TTSService.shared
+    @Environment(SpeechServices.self) private var speech
 
     var body: some View {
         List {
@@ -438,9 +444,9 @@ private struct VoicePickerView: View {
         previewing = identifier
         let requested = identifier
         Task {
-            await TTSService.shared.speak("Hello. This is how this voice sounds.")
+            await speech.synthesizer.speak("Hello. This is how this voice sounds.")
             previewing = nil
-            let actualID = TTSService.shared.lastUsedVoiceIdentifier
+            let actualID = speech.synthesizer.lastUsedVoiceIdentifier
             diagnostic = buildDiagnostic(requested: requested, actual: actualID)
         }
     }
