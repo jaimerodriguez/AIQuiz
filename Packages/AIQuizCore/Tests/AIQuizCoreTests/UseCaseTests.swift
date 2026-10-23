@@ -77,8 +77,9 @@ struct QuizGeneratorTests {
     func schemaShape() {
         let card = QuizGenerator.schema.jsonValue["properties"]?["quiz"]?["properties"]?["cards"]?["items"]
         let required = card?["required"]?.arrayValue?.compactMap(\.stringValue) ?? []
-        #expect(Set(required) == ["prompt", "long_answer", "short_answer", "hint"])
+        #expect(Set(required) == ["prompt", "long_answer", "short_answer", "hint", "kind", "options"])
         #expect(card?["properties"]?["hint"]?["anyOf"] != nil)
+        #expect(card?["properties"]?["options"]?["anyOf"] != nil, "options are null except for multiple choice")
     }
 }
 

@@ -10,7 +10,9 @@ public enum QuizGenerator {
                 .init("prompt", .string(description: "Front of the card, 20-200 characters")),
                 .init("long_answer", .string(description: "Fuller explanation, 20-400 characters")),
                 .init("short_answer", .nullable(.string(description: "One-line sharp answer"))),
-                .init("hint", .nullable(.string(description: "One-line hint")))
+                .init("hint", .nullable(.string(description: "One-line hint"))),
+                .init("kind", .string(enumValues: CardKind.allCases.map(\.rawValue))),
+                .init("options", .nullable(.array(of: .string(), description: "Multiple-choice options")))
             ])))
         ]))
     ])
@@ -32,6 +34,15 @@ public enum QuizGenerator {
                 }
                 if file.quiz.cards.contains(where: { $0.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
                     throw LLMResponseParseError("a card has an empty prompt")
+                }
+                let allowed = request.kinds.union([.recall])
+                for (index, card) in file.quiz.cards.enumerated() {
+                    if !allowed.contains(card.kind) {
+                        throw LLMResponseParseError("card \(index + 1) is \(card.kind.rawValue), which wasn't requested")
+                    }
+                    if let problem = CardValidator.problem(with: card) {
+                        throw LLMResponseParseError("card \(index + 1): \(problem)")
+                    }
                 }
             }
         )

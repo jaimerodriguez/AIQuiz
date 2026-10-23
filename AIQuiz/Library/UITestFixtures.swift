@@ -44,8 +44,17 @@ enum UITestFixtures {
             cards: cards.map { CardPayload(prompt: $0.0, longAnswer: $0.1, shortAnswer: $0.2, hint: $0.3) }
         )
         context.insert(QuizRecord.make(from: payload, origin: .imported))
+        context.insert(QuizRecord.make(from: mixedDeck, origin: .imported))
         try? context.save()
     }
+
+    /// One card of each kind (Phase 6, F-17).
+    static let mixedDeck = QuizPayload(name: "UITest Mixed Deck", tags: ["fixture"], cards: [
+        CardPayload(prompt: "Mixed multiple choice", longAnswer: "Blue is right.", shortAnswer: "Blue", kind: .multipleChoice, options: ["Red", "Blue", "Green"]),
+        CardPayload(prompt: "The sky is {{blank}} on a clear day.", longAnswer: "Blue.", shortAnswer: "blue", kind: .cloze),
+        CardPayload(prompt: "Water boils at 100 °C at sea level.", longAnswer: "True.", shortAnswer: "true", kind: .trueFalse),
+        CardPayload(prompt: "Mixed recall prompt", longAnswer: "Mixed recall answer.", shortAnswer: "Recall", kind: .recall)
+    ])
 
     /// Seeds the large library once; later launches reuse the on-disk store.
     @MainActor

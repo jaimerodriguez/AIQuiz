@@ -67,6 +67,12 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-23 (Phase 6)
+- **Phase 6 (card types and Quiz — Choice), branch `phase-6-choice-player`, merge after Phase 5:**
+  - **Quiz — Choice**, on any quiz with multiple-choice, fill-in-the-blank or true-or-false cards: tap an option (the right one turns green, a wrong pick red), type the missing words (case and spacing don't matter), or pick true or false. Recall cards in the same deck flip and you grade them. *Mark as…* overrides any verdict, including to Partly right. Ends with the summary, recap and *Practice missed cards*.
+  - **Generate from a topic** can include multiple-choice, fill-in-the-blank and true-or-false cards (toggles under *Card types*).
+  - **Rewrite** on a card can turn it into multiple choice, fill in the blank, true or false, or back to recall.
+
 ### 2026-10-23 (Phase 5)
 - **Phase 5 (ingestion and the generation queue), branch `phase-5-ingestion`, merge after Phase 4:**
   - **Make quizzes from more sources:** the + menu has *From a web page*, *From a document* (PDF, Markdown or text), *From photos* (scan pages or pick photos), *From pasted text* and *Batch from a list of links*. Web pages are reduced to the article (menus, ads and comments dropped). PDFs are read page by page, with text recognition for scanned pages. Photos are read on the device.

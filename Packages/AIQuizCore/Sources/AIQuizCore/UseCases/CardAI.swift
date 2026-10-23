@@ -13,6 +13,15 @@ private func requireText(_ text: String, _ field: String) throws {
 
 /// The card shape the generation-style features return.
 enum CardSchema {
+    static let cardWithKind = JSONSchema.object(properties: [
+        .init("prompt", .string(description: "A question, a statement, or a sentence with {{blank}} markers")),
+        .init("long_answer", .string(description: "2-4 sentence answer")),
+        .init("short_answer", .nullable(.string(description: "The answer: an option, true/false, or the blanked words joined by |"))),
+        .init("hint", .nullable(.string(description: "A nudge that does not give the answer away"))),
+        .init("kind", .string(enumValues: CardKind.allCases.map(\.rawValue))),
+        .init("options", .nullable(.array(of: .string())))
+    ])
+
     static let card = JSONSchema.object(properties: [
         .init("prompt", .string(description: "A question")),
         .init("long_answer", .string(description: "2-4 sentence answer")),
@@ -177,6 +186,8 @@ public enum CardRewriter {
         case harder
         case shorten
         case translate(String)
+        /// Turn the card into another kind (Phase 6), e.g. "make this multiple choice".
+        case convert(CardKind)
 
         var promptText: String {
             switch self {
@@ -184,6 +195,7 @@ public enum CardRewriter {
             case .harder: return "Make it harder: ask for a deeper or more precise understanding of the same idea."
             case .shorten: return "Make it shorter: trim the prompt and the long answer to the essentials."
             case .translate(let language): return "Translate every field into \(language). Keep the meaning exactly."
+            case .convert(let kind): return "Turn it into a \(kind.rawValue) card. " + PromptBuilder.kindsInstruction([kind])
             }
         }
 
@@ -193,14 +205,24 @@ public enum CardRewriter {
             case .harder: return "Make harder"
             case .shorten: return "Shorten"
             case .translate(let language): return "Translate to \(language)"
+            case .convert(.multipleChoice): return "Make multiple choice"
+            case .convert(.cloze): return "Make fill in the blank"
+            case .convert(.trueFalse): return "Make true or false"
+            case .convert(.recall): return "Make a recall card"
             }
         }
     }
 
     public static let schema = JSONSchema.object(properties: [.init("card", CardSchema.card)])
+    /// For `.convert`: the card with its new kind and options.
+    public static let convertSchema = JSONSchema.object(properties: [.init("card", CardSchema.cardWithKind)])
 
-    /// The rewritten card. Kind, options, explanation and mnemonic stay as they were.
+    /// The rewritten card. Kind, options, explanation and mnemonic stay as they were, except
+    /// for `.convert`, which sets the new kind and options.
     public static func rewrite(_ card: CardPayload, _ instruction: Instruction, using client: LLMClient) async throws -> CardPayload {
+        if case .convert(let kind) = instruction {
+            return try await convert(card, to: kind, using: client)
+        }
         let rewritten = try await client.run(StructuredTask<RewriteJSON>(
             name: "rewrite",
             system: PromptBuilder.rewriteSystem(),
@@ -220,6 +242,29 @@ public enum CardRewriter {
             merged.kind = .recall
             merged.options = nil
         }
+        return merged
+    }
+}
+
+extension CardRewriter {
+    static func convert(_ card: CardPayload, to kind: CardKind, using client: LLMClient) async throws -> CardPayload {
+        let converted = try await client.run(StructuredTask<RewriteJSON>(
+            name: "convert",
+            system: PromptBuilder.rewriteSystem(),
+            user: PromptBuilder.rewriteUser(card: card, instruction: .convert(kind)),
+            schema: convertSchema, maxTokens: 4_000, effort: .medium, timeout: 90,
+            validate: { json in
+                guard json.card.kind == kind else { throw LLMResponseParseError("the card must be \(kind.rawValue), got \(json.card.kind.rawValue)") }
+                if let problem = CardValidator.problem(with: json.card) { throw LLMResponseParseError(problem) }
+            }
+        )).card
+        var merged = card
+        merged.prompt = converted.prompt
+        merged.longAnswer = converted.longAnswer
+        merged.shortAnswer = converted.shortAnswer
+        merged.hint = converted.hint
+        merged.kind = kind
+        merged.options = kind == .multipleChoice ? converted.options : nil
         return merged
     }
 }

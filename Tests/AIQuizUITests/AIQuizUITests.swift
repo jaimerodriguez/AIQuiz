@@ -639,12 +639,14 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertEqual(state.label, "Playing")
         // Smart ordering shuffles the deck; skip to a card that has a hint, then pause on it.
         let hint = app.buttons["session.hint"]
+        // Pause first, so playback can't move on between the check and the tap.
+        app.buttons["studyVoice.pause"].tap()
         var skips = 0
         while !hint.isEnabled && skips < 5 {
             app.buttons["studyVoice.skip"].tap()
+            if app.buttons["studyVoice.pause"].waitForExistence(timeout: 2) { app.buttons["studyVoice.pause"].tap() }
             skips += 1
         }
-        app.buttons["studyVoice.pause"].tap()
         hint.tap()
         XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: timeout))
         // Playback also advances on its own, so skip until the session ends.
@@ -893,5 +895,70 @@ final class AIQuizUITests: XCTestCase {
         _ = generated
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Fake Generated Quiz")).count, 5, "five new quizzes")
         XCTAssertFalse(element(app, "library.generating").exists, "the queue drains")
+    }
+
+    // MARK: Phase 6: Quiz — Choice
+
+    func testChoiceQuizOnTheMixedDeckEndToEnd() {
+        let app = launch()
+        openQuiz(app, named: "UITest Mixed Deck")
+        let mode = app.buttons["detail.mode.quizChoice"]
+        XCTAssertTrue(mode.waitForExistence(timeout: timeout), "a deck with choice cards offers Quiz — Choice")
+        mode.tap()
+
+        var overrodeOnce = false
+        for card in 1...4 {
+            let kind = app.staticTexts["choice.kind"]
+            XCTAssertTrue(kind.waitForExistence(timeout: timeout), "card \(card)")
+            switch kind.label {
+            case "Multiple choice":
+                let pick = overrodeOnce ? "Blue" : "Red"
+                app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'choice.option.' AND label CONTAINS %@", pick)).firstMatch.tap()
+                XCTAssertTrue(element(app, "choice.verdict").label.contains(overrodeOnce ? "Correct" : "Wrong"))
+                if !overrodeOnce {
+                    app.buttons["choice.override"].tap()
+                    app.buttons["Correct"].firstMatch.tap()
+                    XCTAssertTrue(element(app, "choice.verdict").label.contains("your call"), "the override is shown")
+                    overrodeOnce = true
+                }
+                app.buttons["choice.next"].tap()
+            case "Fill in the blank":
+                let field = app.textFields["choice.blank.0"]
+                field.tap()
+                field.typeText("  BLUE ")
+                app.buttons["choice.check"].tap()
+                XCTAssertTrue(element(app, "choice.verdict").label.contains("Correct"), "case and spaces are ignored")
+                app.buttons["choice.next"].tap()
+            case "True or false":
+                app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'choice.option.' AND label CONTAINS 'True'")).firstMatch.tap()
+                XCTAssertTrue(element(app, "choice.verdict").label.contains("Correct"))
+                app.buttons["choice.next"].tap()
+            default:
+                app.buttons["choice.reveal"].tap()
+                XCTAssertTrue(app.buttons["choice.grade.correct"].waitForExistence(timeout: timeout))
+                app.buttons["choice.grade.correct"].tap()
+            }
+        }
+        XCTAssertTrue(app.staticTexts["summary.score"].waitForExistence(timeout: timeout))
+        XCTAssertEqual(app.staticTexts["summary.score"].label, "100%", "the override counts")
+        app.buttons["summary.done"].tap()
+        XCTAssertTrue(element(app, "detail.stat.sessions").label.contains("1"))
+    }
+
+    func testRecallOnlyDecksHaveNoChoiceModeUntilACardIsConverted() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["detail.mode.quizChoice"].exists)
+        app.buttons["detail.card.0"].tap()
+        XCTAssertTrue(app.buttons["card.ai.rewrite"].waitForExistence(timeout: timeout))
+        app.buttons["card.ai.rewrite"].tap()
+        let convert = button(app, id: "card.ai.convert.multipleChoice", label: "Make multiple choice")
+        XCTAssertTrue(convert.waitForExistence(timeout: timeout))
+        convert.tap()
+        XCTAssertTrue(app.buttons["card.ai.save"].waitForExistence(timeout: timeout))
+        app.buttons["card.ai.save"].tap()
+        app.buttons["card.done"].tap()
+        XCTAssertTrue(app.buttons["detail.mode.quizChoice"].waitForExistence(timeout: timeout), "a converted card makes the deck playable as Choice")
     }
 }

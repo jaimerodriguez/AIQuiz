@@ -209,6 +209,12 @@ struct CardAISection: View {
                     .accessibilityIdentifier("card.ai.rewrite.\(instruction.label)")
             }
             Button("Translate…") { assistant.askingLanguage = true }
+            Divider()
+            ForEach(CardKind.allCases.filter { $0 != card.cardKind }, id: \.self) { kind in
+                let instruction = CardRewriter.Instruction.convert(kind)
+                Button(instruction.label) { Task { await assistant.rewrite(instruction, router: router) } }
+                    .accessibilityIdentifier("card.ai.convert.\(kind.rawValue)")
+            }
         } label: {
             Group {
                 if assistant.busy == "Rewriting" {

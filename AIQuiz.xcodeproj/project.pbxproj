@@ -71,6 +71,7 @@
 		B570928955CC17BE6008F911 /* MigrationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7AA54547B5C2D490C387D6 /* MigrationPlan.swift */; };
 		B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 775A3D3AB206AE6D55095940 /* Assets.xcassets */; };
 		B9D576550FA3934444914E3F /* LibraryMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB829CAF9AB6CE095EC1B3D3 /* LibraryMaintenance.swift */; };
+		BA894BBE33B159191E92E348 /* convert.json in Resources */ = {isa = PBXBuildFile; fileRef = 3F34D2B69EE9E3FC275321B5 /* convert.json */; };
 		C12B92162884645720BF0823 /* hint.json in Resources */ = {isa = PBXBuildFile; fileRef = C1ACB64FC5BECE0DC3F1F10B /* hint.json */; };
 		C1C14165E5BA07C10ED3A441 /* Phase3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C28E49651C0164B5E875085 /* Phase3Tests.swift */; };
 		C468BFD511100035470AF527 /* LargeLibraryPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71943BE354597EF7135A1AFE /* LargeLibraryPerformanceTests.swift */; };
@@ -89,6 +90,7 @@
 		E94206AAACEC99EE624C993B /* LaunchMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C30346E7CF1C649B3785F1 /* LaunchMetric.swift */; };
 		ED67EB9B19E3312215882781 /* StudyReadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06DC5F90D997F337147C60F2 /* StudyReadView.swift */; };
 		EF91A134A76EC6855FFEF5BD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBF322BC20DB68106549B7A /* RootView.swift */; };
+		F60E0E46B9D04C5F905BC66C /* QuizChoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADEF8DD904B25C9E53E67CA /* QuizChoiceView.swift */; };
 		F8F839ECF7D7F0A16AAC19B1 /* SchemaV0.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B36DE7F994236DC1DE4DE67 /* SchemaV0.swift */; };
 		FA880DE9D1AD5D178CB80008 /* AIRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6593A4AAA38E932190D4F4A /* AIRouterTests.swift */; };
 		FD693415A31D4311EE7A40AB /* difficulty.json in Resources */ = {isa = PBXBuildFile; fileRef = 638737B69F925AC8F076C118 /* difficulty.json */; };
@@ -156,6 +158,7 @@
 		3799AAA6A76E684B6E045702 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3B36DE7F994236DC1DE4DE67 /* SchemaV0.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemaV0.swift; sourceTree = "<group>"; };
 		3CBF322BC20DB68106549B7A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		3F34D2B69EE9E3FC275321B5 /* convert.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = convert.json; sourceTree = "<group>"; };
 		4128E1EDC648587162B4D3B2 /* AIPurpose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPurpose.swift; sourceTree = "<group>"; };
 		45E08F624C4E300935A4F257 /* SourceLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceLink.swift; sourceTree = "<group>"; };
 		4AA88E141A89C65EC92EEACB /* OriginalContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginalContentTests.swift; sourceTree = "<group>"; };
@@ -227,6 +230,7 @@
 		ECEAFF54AE993D686DF493F2 /* roman-emperors.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "roman-emperors.json"; sourceTree = "<group>"; };
 		ED6E3287C013FDDAE7D6B6BB /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		F6BA43C1EC8A709430C09F0A /* ContentExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentExtractor.swift; sourceTree = "<group>"; };
+		FADEF8DD904B25C9E53E67CA /* QuizChoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizChoiceView.swift; sourceTree = "<group>"; };
 		FDA07B697BEEDD4E950E89D0 /* EndpointEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointEditView.swift; sourceTree = "<group>"; };
 		FF4D780954F58C8100BDC1F1 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -383,10 +387,19 @@
 			path = Packages;
 			sourceTree = "<group>";
 		};
+		9CD655076AFAA08169C525F7 /* QuizChoice */ = {
+			isa = PBXGroup;
+			children = (
+				FADEF8DD904B25C9E53E67CA /* QuizChoiceView.swift */,
+			);
+			path = QuizChoice;
+			sourceTree = "<group>";
+		};
 		AA6FCF2E25D695BAC0DD96CB /* Modes */ = {
 			isa = PBXGroup;
 			children = (
 				505ED8698A7C4AC5BE50E146 /* Common */,
+				9CD655076AFAA08169C525F7 /* QuizChoice */,
 				3570B25D1B25080F199C8919 /* QuizVoice */,
 				1B91B6603D378504D5412597 /* StudyRead */,
 				4D1AF934CC246D9E5E6FEEEF /* StudyVoice */,
@@ -434,6 +447,7 @@
 		DD6E65F6A9865A244CD1A7BA /* TestFixtures */ = {
 			isa = PBXGroup;
 			children = (
+				3F34D2B69EE9E3FC275321B5 /* convert.json */,
 				638737B69F925AC8F076C118 /* difficulty.json */,
 				344F3FDF1D2C07D6209B6275 /* expand.json */,
 				C46A0FE89D58E3752B54DB42 /* explain.json */,
@@ -677,6 +691,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */,
+				BA894BBE33B159191E92E348 /* convert.json in Resources */,
 				FD693415A31D4311EE7A40AB /* difficulty.json in Resources */,
 				FE23FEB7EDC071DF7F100F8A /* expand.json in Resources */,
 				5544F93EAAD2A26865BE03C6 /* explain.json in Resources */,
@@ -738,6 +753,7 @@
 				396807B3E7B7750A4D08FF91 /* OriginalFileView.swift in Sources */,
 				7D20D99C54216543D52B6053 /* Persistence.swift in Sources */,
 				AD48888F65116ED762DCBDFC /* QuizActions.swift in Sources */,
+				F60E0E46B9D04C5F905BC66C /* QuizChoiceView.swift in Sources */,
 				9BCD8E6D7D1C70AF855C84BA /* QuizDetailView.swift in Sources */,
 				A623D2EABB3D5ED11533DB42 /* QuizImporter.swift in Sources */,
 				46476BB61DAE8DDB508EAF7A /* QuizJSONDocument.swift in Sources */,

@@ -91,4 +91,21 @@ struct LiveCardAITests {
             print("LIVE \(client.endpoint.name) quiz from the page: \(quiz.name), \(quiz.cards.count) cards")
         }
     }
+
+    @Test("a mixed-kind quiz and a conversion (Phase 6)")
+    func mixedKinds() async throws {
+        let clients = liveClients()
+        try #require(!clients.isEmpty)
+        for client in clients {
+            var request = QuizGenRequest(source: .topic, topic: "Roman emperors", cardCount: 8, difficulty: "intermediate", language: "en", tone: "formal")
+            request.kinds = [.recall, .multipleChoice, .cloze, .trueFalse]
+            let quiz = try await QuizGenerator.generate(request, using: client)
+            let kinds = Set(quiz.cards.map(\.kind))
+            #expect(kinds.count >= 3, "\(client.endpoint.name) used kinds \(kinds)")
+            #expect(quiz.cards.allSatisfy { CardValidator.problem(with: $0) == nil }, "every card follows D-2")
+            let converted = try await CardRewriter.rewrite(tiberius, .convert(.multipleChoice), using: client)
+            #expect(converted.kind == .multipleChoice && converted.options?.contains(converted.shortAnswer ?? "") == true)
+            print("LIVE \(client.endpoint.name) mixed quiz: \(quiz.cards.map(\.kind.rawValue)); converted options \(converted.options ?? [])")
+        }
+    }
 }

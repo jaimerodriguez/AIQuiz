@@ -12,8 +12,10 @@ public struct GenerationJob: Codable, Identifiable, Sendable, Equatable {
         public var tone: String
         public var focus: String?
         public var exclude: String?
+        /// Card kinds beyond recall (Phase 6); absent in jobs from older builds.
+        public var kinds: [CardKind]?
 
-        public init(topic: String, cardCount: Int, difficulty: String, language: String?, tone: String, focus: String?, exclude: String?) {
+        public init(topic: String, cardCount: Int, difficulty: String, language: String?, tone: String, focus: String?, exclude: String?, kinds: [CardKind]? = nil) {
             self.topic = topic
             self.cardCount = cardCount
             self.difficulty = difficulty
@@ -21,6 +23,7 @@ public struct GenerationJob: Codable, Identifiable, Sendable, Equatable {
             self.tone = tone
             self.focus = focus
             self.exclude = exclude
+            self.kinds = kinds
         }
     }
 
