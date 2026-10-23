@@ -30,7 +30,10 @@ final class AIQuizUITests: XCTestCase {
     private func scrollGenerateForm(_ app: XCUIApplication, until target: XCUIElement) {
         let anchors = [
             app.staticTexts["Topic mode lets you set card count, difficulty, language, and tone."],
+            // XCUITest rejects query strings over 128 characters; match long footers by prefix.
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "When you provide a source")).firstMatch,
             app.staticTexts["Topic"],
+            app.staticTexts["Paste text or markdown"],
             app.staticTexts["Generate"]
         ]
         for _ in 0..<6 {
@@ -143,6 +146,71 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(app.secureTextFields["endpoints.key"].waitForExistence(timeout: timeout), "hide switches to a secure field")
         app.buttons["endpoints.keyVisibility"].tap()
         XCTAssertTrue(keyField(app).waitForExistence(timeout: timeout))
+    }
+
+    // MARK: Original content (CR-007)
+
+    /// Generate → Paste text, type a small Markdown document, generate, open the new quiz.
+    private func generateFromPastedText(_ app: XCUIApplication, text: String) {
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        app.buttons["library.generate"].tap()
+
+        let sourcePicker = button(app, id: "generate.source", label: "Source")
+        XCTAssertTrue(sourcePicker.waitForExistence(timeout: timeout))
+        sourcePicker.tap()
+        let paste = app.buttons["Paste text"]
+        XCTAssertTrue(paste.waitForExistence(timeout: timeout), "source menu did not open")
+        paste.tap()
+
+        let editor = app.textViews["generate.paste"]
+        XCTAssertTrue(editor.waitForExistence(timeout: timeout))
+        editor.tap()
+        editor.typeText(text)
+
+        let run = app.buttons["generate.run"]
+        scrollGenerateForm(app, until: run)
+        run.tap()
+        let open = app.buttons["generate.openLibrary"]
+        XCTAssertTrue(open.waitForExistence(timeout: timeout))
+        open.tap()
+        openQuiz(app, named: "Fake Generated Quiz")
+    }
+
+    func testPastedTextQuizShowsItsOriginalText() {
+        let app = launch()
+        generateFromPastedText(app, text: "## My pasted heading\nThe body of what I pasted.\n\n| Term | Meaning |\n|---|---|\n| Cell A | Cell B |\n")
+
+        let original = button(app, id: "detail.mode.source", label: "Read Source Materials")
+        XCTAssertTrue(original.waitForExistence(timeout: timeout), "a pasted-text quiz offers Read Source Materials in Modes")
+        XCTAssertFalse(app.staticTexts["Original content"].exists, "no separate section")
+        original.tap()
+        XCTAssertTrue(app.staticTexts["My pasted heading"].waitForExistence(timeout: timeout), "the original text renders")
+        XCTAssertTrue(element(app, "reader.table").exists, "the table renders as a table")
+        XCTAssertTrue(app.staticTexts["Cell B"].exists, "table cells render")
+        XCTAssertTrue(app.buttons["reader.share"].exists)
+    }
+
+    func testTopicQuizHasNoOriginalContentSection() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        app.buttons["library.generate"].tap()
+        let topic = app.textFields["generate.topic"]
+        XCTAssertTrue(topic.waitForExistence(timeout: timeout))
+        topic.tap()
+        topic.typeText("Roman emperors")
+        let run = app.buttons["generate.run"]
+        scrollGenerateForm(app, until: run)
+        XCTAssertFalse(app.switches["generate.writeNotes"].exists, "the AI notes toggle is gone")
+        run.tap()
+        let open = app.buttons["generate.openLibrary"]
+        XCTAssertTrue(open.waitForExistence(timeout: timeout))
+        open.tap()
+
+        openQuiz(app, named: "Fake Generated Quiz")
+        XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["detail.mode.source"].exists, "topic quizzes have no source materials")
     }
 
     func testGenerateWithoutEndpointShowsSetupSheet() {

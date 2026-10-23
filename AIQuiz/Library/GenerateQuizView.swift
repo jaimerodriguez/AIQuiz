@@ -58,6 +58,7 @@ struct GenerateQuizView: View {
     @State private var excludeText: String = ""
 
     @State private var pickedMarkdownURL: URL?
+    @State private var markdownBookmark: Data?
     @State private var markdownContent: String?
     @State private var pickingMarkdown = false
 
@@ -74,17 +75,26 @@ struct GenerateQuizView: View {
     @State private var exporting = false
 
     var body: some View {
-        Form {
-            sourceSection
+        ScrollViewReader { proxy in
+            Form {
+                sourceSection
 
-            switch source {
-            case .topic: topicSection
-            case .markdown: markdownSection
-            case .paste: pasteSection
-            case .url: urlSection
+                switch source {
+                case .topic: topicSection
+                case .markdown: markdownSection
+                case .paste: pasteSection
+                case .url: urlSection
+                }
+
+                generateSection
             }
-
-            generateSection
+            // The sheet is short on iPad; bring the outcome into view when generation ends.
+            .onChange(of: generatedQuizId) { _, id in
+                if id != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
+            }
+            .onChange(of: errorMessage) { _, message in
+                if message != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
+            }
         }
         .navigationTitle("Generate quiz")
         .navigationBarTitleDisplayMode(.inline)
@@ -103,6 +113,7 @@ struct GenerateQuizView: View {
             case .success(let urls):
                 guard let url = urls.first else { return }
                 pickedMarkdownURL = url
+                markdownBookmark = OriginalFileLoader.bookmark(for: url)
                 Task {
                     do {
                         markdownContent = try await ContentExtractor.loadMarkdown(url)
@@ -188,6 +199,7 @@ struct GenerateQuizView: View {
         Section("Paste text or markdown") {
             TextEditor(text: $pasted)
                 .frame(minHeight: 220)
+                .accessibilityIdentifier("generate.paste")
             Text("\(pasted.count) characters")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -196,6 +208,7 @@ struct GenerateQuizView: View {
     private var urlSection: some View {
         Section {
             TextField("https://en.wikipedia.org/wiki/…", text: $urlString)
+                .accessibilityIdentifier("generate.url")
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -240,19 +253,28 @@ struct GenerateQuizView: View {
                     Label("Open in library", systemImage: "checkmark.circle")
                 }
                 .accessibilityIdentifier("generate.openLibrary")
+                .id(Self.resultAnchor)
             }
 
             if let err = errorMessage {
                 Text(err).font(.footnote).foregroundStyle(.red)
                     .accessibilityIdentifier("generate.error")
+                    .id(Self.resultAnchor)
             }
         } header: {
             Text("Generate")
         } footer: {
-            Text("Endpoint: \(router.summary(for: .generation))")
-                .font(.footnote)
+            VStack(alignment: .leading, spacing: 4) {
+                if source != .topic {
+                    Text("The original \(source == .url ? "page link" : source == .markdown ? "file link" : "text") is kept with the quiz so you can read it later.")
+                }
+                Text("Endpoint: \(router.summary(for: .generation))")
+            }
+            .font(.footnote)
         }
     }
+
+    private static let resultAnchor = "generate.result"
 
     private var canGenerate: Bool {
         switch source {
@@ -301,7 +323,7 @@ struct GenerateQuizView: View {
         do {
             let client = try router.client(for: .generation)
             let payload = try await QuizGenerator.generate(request, using: client)
-            try saveQuiz(payload)
+            try saveQuiz(payload, request: request)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -347,29 +369,31 @@ struct GenerateQuizView: View {
         }
     }
 
-    private func saveQuiz(_ payload: QuizPayload) throws {
-        let record = QuizRecord(name: payload.name, sourceBookmark: nil, bundledSampleId: nil)
-        for (idx, card) in payload.cards.enumerated() {
-            let cr = CardRecord(
-                prompt: card.prompt,
-                longAnswer: card.longAnswer,
-                shortAnswer: card.shortAnswer,
-                hint: card.hint,
-                orderIndex: idx
-            )
-            cr.quiz = record
-            record.cards.append(cr)
-        }
+    /// Saves the quiz and, for source modes, its original content (CR-007).
+    private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest) throws {
+        let record = QuizRecord.make(from: payload, source: originalSource(text: request.sourceContent))
         context.insert(record)
         try context.save()
         generatedQuizId = record.id
+        exportingJSON = try? QuizDecoder.encode(payload)
+    }
 
-        // Build JSON for optional export
-        let file = QuizFile(quiz: payload)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(file) {
-            exportingJSON = data
+    private func originalSource(text: String?) -> OriginalSource? {
+        switch source {
+        case .topic:
+            return nil
+        case .markdown:
+            return OriginalSource(
+                kind: .markdownFile,
+                title: pickedMarkdownURL?.lastPathComponent ?? "Markdown file",
+                text: text,
+                fileBookmark: markdownBookmark
+            )
+        case .paste:
+            return OriginalSource(kind: .pastedText, title: "Pasted text", text: text)
+        case .url:
+            let url = URL(string: urlString.trimmingCharacters(in: .whitespaces))
+            return OriginalSource(kind: .webPage, title: url?.host ?? "Web page", text: text, url: url)
         }
     }
 }

@@ -60,6 +60,8 @@ Device and simulator logs:
 ```bash
 xcrun simctl spawn D62334E0-1BBB-4781-A549-36CFD4B56907 log show --last 5m --predicate 'process == "AIQuiz"' --style compact
 ```
+Back up or inspect the iPad's library (read-only) by copying `default.store`, `default.store-wal` and `default.store-shm` from `Library/Application Support` with `xcrun devicectl device copy from --domain-type appDataContainer --domain-identifier com.jaimerodriguez.aiquiz`. Copy all three, and only after the app has opened its library (check that the files' modification time is after launch): a copy taken before or during a SwiftData migration shows the old columns or zero rows. Open a copy with `sqlite3`, never the originals. Back up before any change to a `@Model`, and compare quiz and card counts after deploying.
+
 Crash reports from the iPad: Xcode → Window → Devices and Simulators → View Device Logs, or `~/Library/Developer/Xcode/DeviceLogs/`.
 
 Voice capture (microphone + speech recognition) is only trusted on the physical iPad. The simulator is fine for everything else.
@@ -70,6 +72,7 @@ XCUITest gotchas seen in this project:
 - Tap through typed queries (`app.buttons["id"]`). `descendants(matching: .any)["id"]` can match a wrapper and its child; use `.matching(identifier:).firstMatch` for assertions only.
 - A SwiftUI `Label` with an identifier exposes the icon as its first match (label "Warning", "Selected"). Add `.accessibilityElement(children: .combine)` before the identifier when a test reads the text.
 - A `Menu` in a `Form` row only opens when its label content is hit; XCUITest taps the row's centre. Give the menu label `.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())`.
+- XCUITest throws if a query string (identifier or label) is longer than 128 characters. Match long labels with `NSPredicate(format: "label BEGINSWITH %@", prefix)`.
 - To read why a UI test failed, export the xcresult attachments: `xcrun xcresulttool export attachments --path <xcresult> --output-path <dir>`; the `.txt` files hold the element hierarchy at failure.
 - Test bundles need `GENERATE_INFOPLIST_FILE: YES` in `Project.yml`; the app target sets it to NO.
 - `scripts/test.sh` runs under macOS bash 3.2: expand optional arrays as `${ARR[@]+"${ARR[@]}"}` with `set -u`.

@@ -52,7 +52,8 @@ public struct StructuredTask<Output: Decodable & Sendable>: Sendable {
             maxTokens: maxTokens,
             responseFormat: ResponseFormat(name: name, schema: schema),
             effort: effort,
-            timeout: timeout
+            timeout: timeout,
+            label: name
         )
     }
 }

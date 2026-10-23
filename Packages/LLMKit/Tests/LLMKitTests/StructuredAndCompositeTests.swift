@@ -23,6 +23,7 @@ struct StructuredTaskTests {
         #expect(client.recorder.count == 1)
         let request = try #require(client.recorder.requests.first)
         #expect(request.responseFormat?.name == "judge")
+        #expect(request.label == "judge")
         #expect(request.effort == .medium)
     }
 
