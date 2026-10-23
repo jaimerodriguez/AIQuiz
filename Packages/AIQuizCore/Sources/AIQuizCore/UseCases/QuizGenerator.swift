@@ -42,6 +42,48 @@ public enum QuizGenerator {
         try ContextBudget.check(system: task.system, user: task.user, contextWindow: client.endpoint.contextWindowTokens)
         return try await client.run(task).quiz
     }
+
+    /// Generates from a source of any length (SPEC §7.4). A source that fits goes in one
+    /// request; a longer one is split into parts of at most 40 % of the context window, each
+    /// part gets its share of the cards, and the decks are merged without repeated prompts.
+    /// No study notes are written (F-20 is on hold, CR-007).
+    public static func generateFromSource(
+        _ request: QuizGenRequest,
+        using client: LLMClient,
+        progress: (@Sendable (_ part: Int, _ of: Int) -> Void)? = nil
+    ) async throws -> QuizPayload {
+        let window = client.endpoint.contextWindowTokens
+        let probe = task(for: request)
+        let fits = ContextBudget.estimateTokens(probe.system) + ContextBudget.estimateTokens(probe.user) <= Int(Double(window) * ContextBudget.inputShare)
+        guard !fits, let content = request.sourceContent else {
+            progress?(1, 1)
+            return try await generate(request, using: client)
+        }
+        let parts = Chunker.chunks(content, maxCharacters: Int(Double(window) * ContextBudget.chunkShare) * 4)
+        var merged: QuizPayload?
+        var seen = Set<String>()
+        for (index, part) in parts.enumerated() {
+            try Task.checkCancellation()
+            progress?(index + 1, parts.count)
+            var partRequest = request
+            partRequest.sourceContent = part
+            partRequest.part = .init(index: index + 1, count: parts.count)
+            if let total = request.cardCount { partRequest.cardCount = max(2, Int((Double(total) / Double(parts.count)).rounded(.up))) }
+            let quiz = try await generate(partRequest, using: client)
+            let fresh = quiz.cards.filter { seen.insert(normalised($0.prompt)).inserted }
+            if merged == nil {
+                merged = QuizPayload(name: quiz.name, description: quiz.description, tags: quiz.tags, language: quiz.language, cards: fresh)
+            } else {
+                merged?.cards += fresh
+            }
+        }
+        guard let result = merged, !result.cards.isEmpty else { throw LLMError.malformedResponse("the source produced no cards") }
+        return result
+    }
+
+    static func normalised(_ prompt: String) -> String {
+        prompt.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
 }
 
 /// SPEC F-15. Grades a spoken or typed answer against the card's reference answer.
@@ -81,6 +123,8 @@ public enum AnswerJudge {
 /// Chunked summarisation for long sources arrives in PLAN Phase 5.
 public enum ContextBudget {
     public static let inputShare = 0.8
+    /// Each part of a long source is at most this share of the context window (§7.4).
+    public static let chunkShare = 0.4
 
     public static func estimateTokens(_ text: String) -> Int {
         (text.utf8.count + 3) / 4

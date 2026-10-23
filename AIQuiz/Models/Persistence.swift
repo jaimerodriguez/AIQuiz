@@ -230,6 +230,10 @@ enum QuizSourceKind: String, Codable, Sendable {
     case webPage
     case markdownFile
     case pastedText
+    /// A PDF in Files (Phase 5), linked by bookmark with its text saved.
+    case pdfFile
+    /// Photos or scanned pages; only the recognised text is kept.
+    case scannedPages
 }
 
 /// The original content to keep with a generated quiz.

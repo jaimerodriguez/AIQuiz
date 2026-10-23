@@ -6,7 +6,7 @@ import LLMKit
 enum UITestAIFixtures {
     static func factory(scenario: AppEnvironment.Scenario) -> AIRouter.ClientFactory {
         { endpoint, _, _ in
-            FakeLLMClient(endpoint: endpoint, latency: .milliseconds(300), handler: handler(scenario: scenario))
+            FakeLLMClient(endpoint: endpoint, latency: scenario == .slowGeneration ? .milliseconds(1_500) : .milliseconds(300), handler: handler(scenario: scenario))
         }
     }
 
@@ -17,7 +17,7 @@ enum UITestAIFixtures {
                 throw LLMError.server(status: 503)
             case .malformedJSON:
                 return "{ this is not valid json"
-            case .standard, .emptyLibrary, .noEndpoints, .largeLibrary:
+            case .standard, .emptyLibrary, .noEndpoints, .largeLibrary, .slowGeneration:
                 break
             }
             // One fixture per structured task, named after it (Phase 4 adds the card features).

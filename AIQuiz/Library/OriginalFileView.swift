@@ -1,5 +1,6 @@
 import SwiftUI
 import SafariServices
+import PDFKit
 
 /// Reads the Markdown file a quiz was generated from, through the bookmark saved at generation
 /// time (CR-007). Falls back to the copy saved with the quiz when the file can't be opened.
@@ -91,6 +92,10 @@ struct SourceMaterialsView: View {
             }
         case .pastedText?:
             MarkdownReaderView(title: "Source text", markdown: quiz.sourceText ?? "")
+        case .pdfFile?:
+            PDFSourceView(title: quiz.sourceTitle ?? "PDF", bookmark: quiz.sourceBookmark, savedText: quiz.sourceText)
+        case .scannedPages?:
+            MarkdownReaderView(title: "Scanned text", markdown: quiz.sourceText ?? "", notice: "The text recognised from your photos when the quiz was made.")
         case nil:
             ContentUnavailableView("No source materials", systemImage: "doc.questionmark",
                                    description: Text("This quiz was generated from a topic, not a source."))
@@ -107,4 +112,56 @@ struct SafariView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
+}
+
+/// A quiz's PDF, shown as itself through its bookmark; the saved text stands in when the
+/// file can't be opened (Phase 5).
+struct PDFSourceView: View {
+    let title: String
+    let bookmark: Data?
+    let savedText: String?
+    @State private var document: PDFDocument?
+    @State private var scopedURL: URL?
+    @State private var loaded = false
+
+    var body: some View {
+        Group {
+            if let document {
+                PDFKitView(document: document)
+                    .ignoresSafeArea(edges: .bottom)
+                    .accessibilityIdentifier("reader.pdf")
+            } else if loaded {
+                MarkdownReaderView(title: title, markdown: savedText ?? "",
+                                   notice: "The PDF couldn't be opened, so this is the text saved when the quiz was made.")
+            } else {
+                ProgressView()
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { open() }
+        .onDisappear { scopedURL?.stopAccessingSecurityScopedResource() }
+    }
+
+    private func open() {
+        defer { loaded = true }
+        guard document == nil, let bookmark else { return }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else { return }
+        if url.startAccessingSecurityScopedResource() { scopedURL = url }
+        document = PDFDocument(url: url)
+    }
+}
+
+private struct PDFKitView: UIViewRepresentable {
+    let document: PDFDocument
+
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.autoScales = true
+        view.document = document
+        return view
+    }
+
+    func updateUIView(_ view: PDFView, context: Context) {}
 }

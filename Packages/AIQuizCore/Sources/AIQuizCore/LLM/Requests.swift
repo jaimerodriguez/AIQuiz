@@ -2,10 +2,12 @@ import Foundation
 
 /// Input to quiz generation (SPEC F-19). Provider-independent.
 public struct QuizGenRequest: Sendable, Hashable {
-    public enum Source: Sendable, Hashable {
+    public enum Source: Sendable, Hashable, Codable {
         case topic
         case markdown
         case article
+        /// Text from a PDF or a scanned photo.
+        case document
     }
 
     public var source: Source
@@ -17,6 +19,14 @@ public struct QuizGenRequest: Sendable, Hashable {
     public var tone: String?
     public var focus: String?
     public var exclude: String?
+    /// "part 2 of 5" when a long source is split (SPEC §7.4).
+    public var part: Part?
+
+    public struct Part: Sendable, Hashable {
+        public var index: Int
+        public var count: Int
+        public init(index: Int, count: Int) { self.index = index; self.count = count }
+    }
 
     public init(
         source: Source,

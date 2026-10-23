@@ -1,33 +1,39 @@
 import SwiftUI
 import AIQuizCore
 import LLMKit
-import SwiftData
+import PhotosUI
 import UniformTypeIdentifiers
+import VisionKit
 
+/// The Generate screen (SPEC §6, F-19). It builds a job and adds it to the generation queue
+/// (F-61); progress and the new quiz appear in the library.
 struct GenerateQuizView: View {
     enum Source: String, CaseIterable, Identifiable {
         case topic
-        case markdown
-        case paste
         case url
+        case document
+        case photo
+        case paste
 
         var id: String { rawValue }
 
         var label: String {
             switch self {
             case .topic: return "Topic"
-            case .markdown: return "Markdown file"
+            case .url: return "Web page"
+            case .document: return "Document"
+            case .photo: return "Photo"
             case .paste: return "Paste text"
-            case .url: return "Web URL"
             }
         }
 
         var icon: String {
             switch self {
             case .topic: return "text.bubble"
-            case .markdown: return "doc.text"
-            case .paste: return "square.and.pencil"
-            case .url: return "link"
+            case .url: return "globe"
+            case .document: return "doc.text"
+            case .photo: return "camera.viewfinder"
+            case .paste: return "doc.on.clipboard"
             }
         }
     }
@@ -44,56 +50,61 @@ struct GenerateQuizView: View {
         var label: String { rawValue.capitalized }
     }
 
+    /// A document picked in Files.
+    struct PickedDocument: Equatable {
+        var name: String
+        var bookmark: Data
+        var kind: GenerationJob.FileKind
+    }
+
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
     @Environment(AIRouter.self) private var router
+    @Environment(GenerationQueue.self) private var queue
 
-    @State private var source: Source = .topic
-    @State private var topic: String = ""
-    @State private var cardCount: Int = 20
+    @State private var source: Source
+    @State private var topic = ""
+    @State private var cardCount = 20
     @State private var difficulty: Difficulty = .intermediate
-    @State private var language: String = ""
+    @State private var language = ""
     @State private var tone: Tone = .formal
-    @State private var focus: String = ""
-    @State private var excludeText: String = ""
-
-    @State private var pickedMarkdownURL: URL?
-    @State private var markdownBookmark: Data?
-    @State private var markdownContent: String?
-    @State private var pickingMarkdown = false
-
-    @State private var pasted: String = ""
-
-    @State private var urlString: String = ""
-
-    @State private var generating = false
+    @State private var focus = ""
+    @State private var excludeText = ""
+    @State private var urlString = ""
+    @State private var pasted = ""
+    @State private var document: PickedDocument?
+    @State private var pickingDocument = false
+    @State private var images: [Data] = []
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var scanning = false
     @State private var errorMessage: String?
-    @State private var showProviderSetup = false
-    @State private var setupIssue: String?
-    @State private var generatedQuizId: UUID?
-    @State private var exportingJSON: Data?
-    @State private var exporting = false
+    @State private var gate = AIGate()
+
+    init(initialSource: Source = .topic) {
+        _source = State(initialValue: initialSource)
+    }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            Form {
-                sourceSection
-
-                switch source {
-                case .topic: topicSection
-                case .markdown: markdownSection
-                case .paste: pasteSection
-                case .url: urlSection
+        Form {
+            sourceSection
+            switch source {
+            case .topic: topicSection
+            case .url: urlSection
+            case .document: documentSection
+            case .photo: photoSection
+            case .paste: pasteSection
+            }
+            Section {
+                if let errorMessage {
+                    Text(errorMessage).font(.footnote).foregroundStyle(.red)
+                        .accessibilityIdentifier("generate.error")
                 }
-
-                generateSection
-            }
-            // The sheet is short on iPad; bring the outcome into view when generation ends.
-            .onChange(of: generatedQuizId) { _, id in
-                if id != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
-            }
-            .onChange(of: errorMessage) { _, message in
-                if message != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let note = keptNote { Text(note) }
+                    Text("The quiz is made in the background; you can keep studying meanwhile.")
+                    Text("Endpoint: \(router.summary(for: .generation))")
+                }
+                .font(.footnote)
             }
         }
         .navigationTitle("Generate quiz")
@@ -105,56 +116,33 @@ struct GenerateQuizView: View {
             }
             // The primary action: greyed out until the source is filled in, then accent (CR-011).
             ToolbarItem(placement: .confirmationAction) {
-                if generating {
-                    ProgressView()
-                        .accessibilityIdentifier("generate.progress")
-                } else {
-                    Button {
-                        Task { await generate() }
-                    } label: {
-                        Text("Generate").fontWeight(.semibold)
-                    }
-                    .primaryActionStyle()
-                    .disabled(!canGenerate)
-                    .accessibilityIdentifier("generate.run")
+                Button {
+                    enqueue()
+                } label: {
+                    Text("Generate").fontWeight(.semibold)
                 }
+                .primaryActionStyle()
+                .disabled(!canGenerate)
+                .accessibilityIdentifier("generate.run")
             }
         }
-        .fileImporter(
-            isPresented: $pickingMarkdown,
-            allowedContentTypes: markdownContentTypes,
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let url = urls.first else { return }
-                pickedMarkdownURL = url
-                markdownBookmark = OriginalFileLoader.bookmark(for: url)
-                Task {
-                    do {
-                        markdownContent = try await ContentExtractor.loadMarkdown(url)
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                }
-            case .failure(let error):
-                errorMessage = error.localizedDescription
+        .fileImporter(isPresented: $pickingDocument, allowedContentTypes: documentTypes, allowsMultipleSelection: false) { result in
+            pickDocument(result)
+        }
+        .sheet(isPresented: $scanning) {
+            DocumentScanner { scanned in
+                images += scanned.compactMap { $0.jpegData(compressionQuality: 0.8) }
+                scanning = false
             }
+            .ignoresSafeArea()
         }
-        .fileExporter(
-            isPresented: $exporting,
-            document: exportingJSON.map { QuizJSONDocument(data: $0) },
-            contentType: .json,
-            defaultFilename: defaultExportFilename
-        ) { result in
-            if case .failure(let error) = result {
-                errorMessage = error.localizedDescription
-            }
+        .onChange(of: photoItems) { _, items in
+            Task { await loadPhotos(items) }
         }
-        .sheet(isPresented: $showProviderSetup) {
-            NavigationStack { EndpointsListView(setupIssue: setupIssue, showsDoneButton: true) }
-        }
+        .aiSetupSheet(gate)
     }
+
+    // MARK: Sections
 
     private var sourceSection: some View {
         Section {
@@ -196,31 +184,6 @@ struct GenerateQuizView: View {
         }
     }
 
-    private var markdownSection: some View {
-        Section("Markdown file") {
-            Button {
-                pickingMarkdown = true
-            } label: {
-                Label(pickedMarkdownURL?.lastPathComponent ?? "Pick a markdown file",
-                      systemImage: "doc.text")
-            }
-            if let content = markdownContent {
-                Text("\(content.count) characters loaded")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var pasteSection: some View {
-        Section("Paste text or markdown") {
-            TextEditor(text: $pasted)
-                .frame(minHeight: 220)
-                .accessibilityIdentifier("generate.paste")
-            Text("\(pasted.count) characters")
-                .font(.caption).foregroundStyle(.secondary)
-        }
-    }
-
     private var urlSection: some View {
         Section {
             TextField("https://en.wikipedia.org/wiki/…", text: $urlString)
@@ -228,190 +191,209 @@ struct GenerateQuizView: View {
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+            PasteButton(payloadType: URL.self) { urls in
+                if let url = urls.first { urlString = url.absoluteString }
+            }
+            .labelStyle(.titleAndIcon)
         } header: {
-            Text("Web URL")
+            Text("Web page")
         } footer: {
-            Text("AIQuiz fetches the page, extracts the main article text, and sends just that to the AI.")
+            Text("AIQuiz fetches the page, keeps just the article, and sends that to the AI. A link to a PDF works too.")
         }
     }
 
-    private var generateSection: some View {
+    private var documentSection: some View {
         Section {
-            if generating {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Generating…")
-                }
+            Button {
+                pickingDocument = true
+            } label: {
+                Label(document?.name ?? "Pick a PDF or markdown file", systemImage: document?.kind == .pdf ? "doc.richtext" : "doc.text")
             }
-
-            if generatedQuizId != nil {
-                Button {
-                    if exportingJSON != nil {
-                        exporting = true
-                    }
-                } label: {
-                    Label("Also save JSON to Files", systemImage: "square.and.arrow.up")
-                }
-                .disabled(exportingJSON == nil)
-                .accessibilityIdentifier("generate.saveJSON")
-                Button {
-                    dismiss()
-                } label: {
-                    Label("Open in library", systemImage: "checkmark.circle")
-                }
-                .accessibilityIdentifier("generate.openLibrary")
-                .id(Self.resultAnchor)
-            }
-
-            if let err = errorMessage {
-                Text(err).font(.footnote).foregroundStyle(.red)
-                    .accessibilityIdentifier("generate.error")
-                    .id(Self.resultAnchor)
-            }
+            .accessibilityIdentifier("generate.document")
+        } header: {
+            Text("Document")
         } footer: {
-            VStack(alignment: .leading, spacing: 4) {
-                if source != .topic {
-                    Text(source == .paste
-                         ? "We keep the original text so you can review it later."
-                         : "We keep a link to the original \(source == .url ? "page" : "file") so you can review it later.")
-                }
-                Text("Endpoint: \(router.summary(for: .generation))")
-            }
-            .font(.footnote)
+            Text("PDFs are read page by page; scanned pages are read with text recognition.")
         }
     }
 
-    private static let resultAnchor = "generate.result"
+    private var photoSection: some View {
+        Section {
+            if VNDocumentCameraViewController.isSupported {
+                Button {
+                    scanning = true
+                } label: {
+                    Label("Scan pages", systemImage: "doc.viewfinder")
+                }
+                .accessibilityIdentifier("generate.photo.scan")
+            }
+            PhotosPicker(selection: $photoItems, maxSelectionCount: 20, matching: .images) {
+                Label("Choose photos", systemImage: "photo.on.rectangle")
+            }
+            .accessibilityIdentifier("generate.photo.pick")
+            if !images.isEmpty {
+                HStack {
+                    Label("\(images.count) page\(images.count == 1 ? "" : "s") ready", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.accent)
+                    Spacer()
+                    Button("Clear", role: .destructive) {
+                        images = []
+                        photoItems = []
+                    }
+                    .buttonStyle(.borderless)
+                }
+                .accessibilityIdentifier("generate.photo.count")
+            }
+        } header: {
+            Text("Photo")
+        } footer: {
+            Text("The text on the pages is recognised on this device; only the text goes to the AI.")
+        }
+    }
+
+    private var pasteSection: some View {
+        Section {
+            TextEditor(text: $pasted)
+                .frame(minHeight: 220)
+                .accessibilityIdentifier("generate.paste")
+            HStack {
+                Text("\(pasted.count) characters")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                PasteButton(payloadType: String.self) { strings in
+                    if let text = strings.first { pasted = text }
+                }
+                .labelStyle(.iconOnly)
+            }
+        } header: {
+            Text("Paste text or markdown")
+        }
+    }
+
+    // MARK: Logic
 
     private var canGenerate: Bool {
         switch source {
         case .topic: return !topic.trimmingCharacters(in: .whitespaces).isEmpty
-        case .markdown: return markdownContent != nil
+        case .url: return validURL != nil
+        case .document: return document != nil
+        case .photo: return !images.isEmpty
         case .paste: return !pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .url: return URL(string: urlString.trimmingCharacters(in: .whitespaces))?.scheme?.hasPrefix("http") == true
         }
     }
 
-    private var markdownContentTypes: [UTType] {
-        var types: [UTType] = [.plainText]
-        if let md = UTType(filenameExtension: "md") { types.append(md) }
-        if let markdown = UTType(filenameExtension: "markdown") { types.append(markdown) }
-        return types
+    private var validURL: URL? {
+        guard let url = URL(string: urlString.trimmingCharacters(in: .whitespaces)),
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https", url.host != nil else { return nil }
+        return url
     }
 
-    private var defaultExportFilename: String {
-        let raw = (topic.isEmpty ? "quiz" : topic)
-            .lowercased()
-            .replacingOccurrences(of: " ", with: "-")
-        return raw + ".json"
-    }
-
-    private func generate() async {
-        errorMessage = nil
-        generatedQuizId = nil
-        exportingJSON = nil
-
-        if let issue = router.issue(for: .generation) {
-            setupIssue = issue.localizedDescription
-            showProviderSetup = true
-            return
-        }
-
-        let request: QuizGenRequest
-        do {
-            request = try await buildRequest()
-        } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            return
-        }
-
-        generating = true
-        defer { generating = false }
-        do {
-            let client = try router.client(for: .generation)
-            let payload = try await QuizGenerator.generate(request, using: client)
-            try saveQuiz(payload, request: request, endpoint: client.endpoint)
-        } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    private func buildRequest() async throws -> QuizGenRequest {
+    private var keptNote: String? {
         switch source {
-        case .topic:
-            return QuizGenRequest(
-                source: .topic,
-                topic: topic,
-                sourceContent: nil,
-                cardCount: cardCount,
-                difficulty: difficulty.rawValue,
-                language: language.isEmpty ? Locale.current.identifier : language,
-                tone: tone.rawValue,
-                focus: focus.isEmpty ? nil : focus,
-                exclude: excludeText.isEmpty ? nil : excludeText
-            )
-        case .markdown:
-            guard let content = markdownContent else { throw ContentExtractor.ExtractError.empty(URL(string: "file://")!) }
-            return QuizGenRequest(
-                source: .markdown,
-                topic: pickedMarkdownURL?.deletingPathExtension().lastPathComponent ?? "Quiz",
-                sourceContent: content
-            )
-        case .paste:
-            return QuizGenRequest(
-                source: .markdown,
-                topic: "Quiz",
-                sourceContent: pasted
-            )
-        case .url:
-            guard let url = URL(string: urlString.trimmingCharacters(in: .whitespaces)) else {
-                throw NSError(domain: "GenerateQuizView", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        case .topic: return nil
+        case .url: return "We keep a link to the original page so you can review it later."
+        case .document: return "We keep a link to the original file so you can review it later."
+        case .photo: return "We keep the recognised text so you can review it later."
+        case .paste: return "We keep the original text so you can review it later."
+        }
+    }
+
+    private var documentTypes: [UTType] {
+        [.pdf, .plainText] + ["md", "markdown"].compactMap { UTType(filenameExtension: $0) }
+    }
+
+    private func pickDocument(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first, let bookmark = OriginalFileLoader.bookmark(for: url) else {
+                errorMessage = "That file couldn't be opened."
+                return
             }
-            let extracted = try await ContentExtractor.fetchAndExtract(url)
-            return QuizGenRequest(
-                source: .article,
-                topic: url.host ?? "Quiz",
-                sourceContent: extracted
-            )
+            let isPDF = url.pathExtension.lowercased() == "pdf"
+            document = PickedDocument(name: url.lastPathComponent, bookmark: bookmark, kind: isPDF ? .pdf : .markdown)
+            errorMessage = nil
+        case .failure(let error):
+            errorMessage = error.localizedDescription
         }
     }
 
-    /// Saves the quiz and, for source modes, its original content (CR-007).
-    private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest, endpoint: LLMEndpoint) throws {
-        let record = QuizRecord.make(from: payload, origin: origin, source: originalSource(text: request.sourceContent))
-        record.generatedByEndpointName = endpoint.name
-        record.generatedByModel = endpoint.model
-        context.insert(record)
-        try context.save()
-        generatedQuizId = record.id
-        exportingJSON = try? QuizDecoder.encode(payload)
-    }
-
-    private var origin: QuizOrigin {
-        switch source {
-        case .topic: return .topic
-        case .markdown: return .markdown
-        case .paste: return .pastedText
-        case .url: return .url
+    private func loadPhotos(_ items: [PhotosPickerItem]) async {
+        var loaded: [Data] = []
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self) { loaded.append(data) }
         }
+        images = loaded
     }
 
-    private func originalSource(text: String?) -> OriginalSource? {
+    /// Builds the job and queues it (F-61), then closes the sheet.
+    private func enqueue() {
+        guard gate.client(.generation, from: router) != nil else { return }
+        errorMessage = nil
+        let job: GenerationJob
         switch source {
         case .topic:
-            return nil
-        case .markdown:
-            return OriginalSource(
-                kind: .markdownFile,
-                title: pickedMarkdownURL?.lastPathComponent ?? "Markdown file",
-                text: text,
-                fileBookmark: markdownBookmark
+            let options = GenerationJob.TopicOptions(
+                topic: topic.trimmingCharacters(in: .whitespaces), cardCount: cardCount, difficulty: difficulty.rawValue,
+                language: language.isEmpty ? Locale.current.identifier : language, tone: tone.rawValue,
+                focus: focus.isEmpty ? nil : focus, exclude: excludeText.isEmpty ? nil : excludeText
             )
-        case .paste:
-            return OriginalSource(kind: .pastedText, title: "Pasted text", text: text)
+            job = GenerationJob(title: options.topic, source: .topic(options))
         case .url:
-            let url = URL(string: urlString.trimmingCharacters(in: .whitespaces))
-            return OriginalSource(kind: .webPage, title: url?.host ?? "Web page", text: text, url: url)
+            guard let url = validURL else { return }
+            job = GenerationJob(title: url.host ?? url.absoluteString, source: .url(url))
+        case .document:
+            guard let document else { return }
+            job = GenerationJob(title: document.name, source: .file(name: document.name, bookmark: document.bookmark, kind: document.kind))
+        case .photo:
+            let names = images.indices.map { "page-\($0 + 1).jpg" }
+            let candidate = GenerationJob(title: "\(images.count) scanned page\(images.count == 1 ? "" : "s")", source: .images(names))
+            let folder = queue.folder(for: candidate.id)
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                for (data, name) in zip(images, names) { try data.write(to: folder.appending(path: name)) }
+            } catch {
+                errorMessage = "The photos couldn't be saved: \(error.localizedDescription)"
+                return
+            }
+            job = candidate
+        case .paste:
+            let text = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+            job = GenerationJob(title: String(text.prefix(40)), source: .text(text))
+        }
+        queue.enqueue(job)
+        Notifier.requestPermissionIfNeeded()
+        dismiss()
+    }
+}
+
+/// VisionKit's document camera (F-3 *From photo*).
+struct DocumentScanner: UIViewControllerRepresentable {
+    let onFinish: ([UIImage]) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+
+    func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
+        let controller = VNDocumentCameraViewController()
+        controller.delegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: VNDocumentCameraViewController, context: Context) {}
+
+    final class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
+        let onFinish: ([UIImage]) -> Void
+        init(onFinish: @escaping ([UIImage]) -> Void) { self.onFinish = onFinish }
+
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+            onFinish((0..<scan.pageCount).map { scan.imageOfPage(at: $0) })
+        }
+
+        func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+            onFinish([])
+        }
+
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+            onFinish([])
         }
     }
 }

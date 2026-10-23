@@ -18,8 +18,8 @@ How to use this document:
 | — | Original content and Read Source Materials (CR-007, CR-008) | merged into `claude` | jaimerodriguez/AIQuiz#4, landed by jaimerodriguez/AIQuiz#6 |
 | 2 | Schema v2 and migration | merged into `claude` | jaimerodriguez/AIQuiz#5 |
 | 3 | Session UI consolidation and v1 drift fixes | merged into `claude` | jaimerodriguez/AIQuiz#7 |
-| 4 | AI grading, explanations, hints, lint | in review | jaimerodriguez/AIQuiz#8 |
-| 5 | Ingestion: notes, PDF, reader mode, photo, share | not started | |
+| 4 | AI grading, explanations, hints, lint | in review; accepted on the iPad 2026-10-23 | jaimerodriguez/AIQuiz#8 |
+| 5 | Ingestion: notes, PDF, reader mode, photo, share | in review | phase-5-ingestion (merge after #8) |
 | 6 | Card types and the Choice player | not started | |
 | 7 | FSRS scheduling, Due today, notifications, insights | not started | |
 | 8 | Audio coordinator, tutor chat, oral exam | not started | |

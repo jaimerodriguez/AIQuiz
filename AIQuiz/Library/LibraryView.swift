@@ -16,7 +16,9 @@ struct LibraryView: View {
     @State private var selectedTag: String?
     @State private var importing = false
     @State private var importError: String?
-    @State private var generating = false
+    @State private var generateSource: GenerateQuizView.Source?
+    @State private var batching = false
+    @Environment(GenerationQueue.self) private var queue
     @State private var actions = QuizActions()
     @State private var sourceStatus = SourceStatus()
 
@@ -25,7 +27,7 @@ struct LibraryView: View {
 
     var body: some View {
         Group {
-            if activeQuizzes.isEmpty && archivedQuizzes.isEmpty {
+            if activeQuizzes.isEmpty && archivedQuizzes.isEmpty && queue.jobs.isEmpty {
                 ContentUnavailableView(
                     "No quizzes yet",
                     systemImage: "rectangle.stack.badge.plus",
@@ -65,12 +67,20 @@ struct LibraryView: View {
             // The app's main action: an accent circle without the toolbar's glass (CR-011).
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button {
-                        generating = true
-                    } label: {
-                        Label("Generate with AI", systemImage: "sparkles")
+                    // F-3: every source opens the Generate screen with that source chosen.
+                    Section("Generate with AI") {
+                        addItem("From a topic", "sparkles", .topic, id: "library.generate")
+                        addItem("From a web page", "globe", .url, id: "library.fromURL")
+                        addItem("From a document", "doc.text", .document, id: "library.fromDocument")
+                        addItem("From photos", "camera.viewfinder", .photo, id: "library.fromPhoto")
+                        addItem("From pasted text", "doc.on.clipboard", .paste, id: "library.fromPaste")
+                        Button {
+                            batching = true
+                        } label: {
+                            Label("Batch from a list of links", systemImage: "list.bullet.rectangle")
+                        }
+                        .accessibilityIdentifier("library.batch")
                     }
-                    .accessibilityIdentifier("library.generate")
                     Button {
                         importing = true
                     } label: {
@@ -89,10 +99,13 @@ struct LibraryView: View {
             }
             .sharedBackgroundVisibility(.hidden)
         }
-        .sheet(isPresented: $generating) {
+        .sheet(item: $generateSource) { source in
             NavigationStack {
-                GenerateQuizView()
+                GenerateQuizView(initialSource: source)
             }
+        }
+        .sheet(isPresented: $batching) {
+            NavigationStack { BatchFromListView() }
         }
         .navigationDestination(for: QuizRecord.self) { quiz in
             QuizDetailView(quiz: quiz)
@@ -122,7 +135,19 @@ struct LibraryView: View {
             Text(importError ?? "")
         }
         .quizActions(actions)
-        .onAppear { actions.sourceStatus = sourceStatus }
+        .onAppear {
+            actions.sourceStatus = sourceStatus
+            actions.queue = queue
+        }
+    }
+
+    private func addItem(_ title: String, _ icon: String, _ source: GenerateQuizView.Source, id: String) -> some View {
+        Button {
+            generateSource = source
+        } label: {
+            Label(title, systemImage: icon)
+        }
+        .accessibilityIdentifier(id)
     }
 
     /// Every tag on an active quiz, most used first.
@@ -141,6 +166,7 @@ private struct LibraryList: View {
     @Query private var archived: [QuizRecord]
     @Binding var sortSelection: LibrarySort
     let inlineSearch: Binding<String>?
+    private let searching: Bool
     let tags: [String]
     @Binding var selectedTag: String?
     let actions: QuizActions
@@ -168,6 +194,7 @@ private struct LibraryList: View {
         self.tags = tags
         _sortSelection = sortSelection
         self.inlineSearch = inlineSearch
+        self.searching = !term.isEmpty
         _selectedTag = selectedTag
         self.actions = actions
         self.sourceStatus = sourceStatus
@@ -186,6 +213,7 @@ private struct LibraryList: View {
 
     var body: some View {
         List {
+            GeneratingSection()
             if !tags.isEmpty {
                 tagChips
             }
@@ -193,7 +221,7 @@ private struct LibraryList: View {
                 ForEach(quizzes) { quiz in
                     row(quiz)
                 }
-                if quizzes.isEmpty {
+                if quizzes.isEmpty && (selectedTag != nil || searching) {
                     Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("library.noMatches")
