@@ -271,7 +271,9 @@ struct GenerateQuizView: View {
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 if source != .topic {
-                    Text("The original \(source == .url ? "page link" : source == .markdown ? "file link" : "text") is kept with the quiz so you can read it later.")
+                    Text(source == .paste
+                         ? "We keep the original text so you can review it later."
+                         : "We keep a link to the original \(source == .url ? "page" : "file") so you can review it later.")
                 }
                 Text("Endpoint: \(router.summary(for: .generation))")
             }
