@@ -22,7 +22,7 @@ enum UITestFixtures {
         default:
             break
         }
-        await SampleQuizzes.seedIfNeeded(in: context)
+        SampleQuizzes.seedMissing(in: context)
 
         let name = deckName
         let descriptor = FetchDescriptor<QuizRecord>(predicate: #Predicate { $0.name == name })

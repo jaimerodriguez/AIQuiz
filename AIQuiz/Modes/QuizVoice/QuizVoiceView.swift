@@ -1,269 +1,99 @@
 import SwiftUI
 import AIQuizCore
-import LLMKit
 import SwiftData
-import AVFoundation
-import Speech
 
-@Observable @MainActor
-final class QuizVoicePlayer {
-    enum Phase {
-        case awaitingAnswer
-        case listening
-        case reveal
-        case ended
-    }
-
-    let deck: SessionDeck
-    private(set) var phase: Phase = .awaitingAnswer
-    var transcript: String = ""
-    private(set) var hintRevealed: Bool = false
-    var sttError: String?
-    var aiVerdict: AIVerdict?
-
-    struct AIVerdict {
-        let verdict: CardVerdict
-        let reason: String
-    }
-
-    private let stt: STTService
-
-    init(deck: SessionDeck, stt: STTService = .shared) {
-        self.deck = deck
-        self.stt = stt
-    }
-
-    func startListening() async {
-        Log.audio.debug("QV.startListening invoked, phase=\(phase)")
-        guard phase == .awaitingAnswer else { return }
-        sttError = nil
-        transcript = ""
-        aiVerdict = nil
-
-        let micGranted: Bool = await withCheckedContinuation { cont in
-            AVAudioApplication.requestRecordPermission { granted in
-                cont.resume(returning: granted)
-            }
-        }
-        guard micGranted else {
-            sttError = "Microphone access denied. Enable it in Settings → AIQuiz."
-            return
-        }
-
-        if stt.authorisationStatus() != .authorized {
-            let result = await stt.requestAuthorisation()
-            guard result == .authorized else {
-                sttError = "Speech recognition not authorised."
-                return
-            }
-        }
-
-        do {
-            phase = .listening
-            try stt.startListening(
-                onTranscript: { [weak self] text in
-                    Task { @MainActor in self?.transcript = text }
-                },
-                onError: { [weak self] error in
-                    Task { @MainActor in
-                        self?.sttError = self?.friendlyMessage(for: error) ?? error.localizedDescription
-                        self?.phase = .reveal
-                    }
-                }
-            )
-        } catch {
-            sttError = friendlyMessage(for: error)
-            phase = .awaitingAnswer
-        }
-    }
-
-    func stopListeningAndReveal() {
-        stt.stopListening()
-        phase = .reveal
-    }
-
-    func revealAnswerWithoutVoice() {
-        stt.stopListening()
-        phase = .reveal
-    }
-
-    func revealHint() {
-        hintRevealed = true
-    }
-
-    func record(_ verdict: CardVerdict) {
-        deck.record(verdict)
-        advance()
-    }
-
-    func advance() {
-        transcript = ""
-        hintRevealed = false
-        aiVerdict = nil
-        deck.next()
-        if deck.ended {
-            phase = .ended
-        } else {
-            phase = .awaitingAnswer
-        }
-    }
-
-    func abandon() {
-        stt.stopListening()
-        deck.abandon()
-        phase = .ended
-    }
-
-    private func friendlyMessage(for error: Error) -> String {
-        let raw = error.localizedDescription
-        let lower = raw.lowercased()
-        if lower.contains("siri") && lower.contains("dictation") {
-            return "Speech recognition needs Siri or Dictation enabled. Open Settings → Apple Intelligence & Siri (turn Siri on), or Settings → General → Keyboard → Dictation."
-        }
-        if lower.contains("not authorized") || lower.contains("denied") {
-            return "Speech recognition isn't authorised. Enable it in Settings → AIQuiz."
-        }
-        if lower.contains("no speech") {
-            return "Didn't catch any speech — tap the mic and try again."
-        }
-        return raw
-    }
-}
-
+/// Quiz — Voice answer (SPEC F-14). State lives in `QuizVoicePlayer`; this view adds the
+/// summary and *Practice missed cards*, which starts a new recorded session (F-18).
 struct QuizVoiceView: View {
     let quiz: QuizRecord
-    @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
-    @Environment(AIRouter.self) private var router
-    @State private var player: QuizVoicePlayer
-    @State private var showAbandonAlert = false
-    @State private var sessionRecorded = false
-    @State private var aiJudging = false
-    @State private var aiError: String?
-    @State private var showProviderSetup = false
-    @State private var setupIssue: String?
-
-    init(quiz: QuizRecord) {
-        self.quiz = quiz
-        let deck = ScoreStore.makeDeck(for: quiz)
-        _player = State(wrappedValue: QuizVoicePlayer(deck: deck))
-    }
+    @Environment(SpeechServices.self) private var speech
+    @State private var player: QuizVoicePlayer?
 
     var body: some View {
         Group {
-            switch player.phase {
-            case .ended:
-                SessionSummaryView(
-                    deck: player.deck,
-                    onDone: { dismiss() },
-                    onPracticeMissed: nil
-                )
-            default:
+            if let player {
+                QuizVoiceSession(quiz: quiz, player: player) { missed in
+                    self.player = makePlayer(ScoreStore.makeDeck(cards: missed))
+                }
+                .id(ObjectIdentifier(player))
+            } else {
+                ProgressView()
+            }
+        }
+        .onAppear {
+            if player == nil { player = makePlayer(ScoreStore.makeDeck(for: quiz)) }
+        }
+    }
+
+    private func makePlayer(_ deck: SessionDeck) -> QuizVoicePlayer {
+        QuizVoicePlayer(deck: deck, recognizer: speech.recognizer, locale: settings.sttLocale)
+    }
+}
+
+private struct QuizVoiceSession: View {
+    let quiz: QuizRecord
+    let player: QuizVoicePlayer
+    let onPracticeMissed: ([CardSnapshot]) -> Void
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AIRouter.self) private var router
+    @State private var showProviderSetup = false
+    @State private var setupIssue: String?
+
+    var body: some View {
+        Group {
+            if player.phase == .ended {
+                SessionSummaryView(deck: player.deck, onDone: { dismiss() }, onPracticeMissed: onPracticeMissed)
+            } else {
                 sessionBody
             }
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if player.phase != .ended {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(role: .destructive) {
-                        showAbandonAlert = true
-                    } label: {
-                        Label("End", systemImage: "xmark.circle")
-                    }
-                    .accessibilityIdentifier("session.end")
-                }
-            }
-        }
-        .alert("End session?", isPresented: $showAbandonAlert) {
-            Button("End", role: .destructive) {
-                player.abandon()
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your progress in this session won't be saved.")
+        .endSessionConfirmation(isEnabled: player.phase != .ended) {
+            player.abandon()
+            dismiss()
         }
         .sheet(isPresented: $showProviderSetup) {
             NavigationStack { EndpointsListView(setupIssue: setupIssue, showsDoneButton: true) }
         }
-        .onChange(of: player.phase) { _, new in
-            if new == .ended && !sessionRecorded {
-                sessionRecorded = true
+        .onChange(of: player.phase) { _, phase in
+            if phase == .ended {
                 ScoreStore.recordSession(for: quiz, deck: player.deck, mode: .quizVoice, in: context)
             }
         }
     }
 
-    @ViewBuilder
     private var sessionBody: some View {
         VStack(spacing: 16) {
-            header
-
+            SessionProgressHeader(deck: player.deck)
             if let card = player.deck.current {
-                cardContent(card)
+                CardFaceView(card: card, showsAnswer: player.phase == .reveal, answerCaption: "Correct answer", hintRevealed: player.hintRevealed) {
+                    if player.phase == .listening || (player.phase == .reveal && !player.transcript.isEmpty) {
+                        transcriptBlock
+                    }
+                } footer: {
+                    if let verdict = player.aiVerdict, player.phase == .reveal {
+                        aiVerdictBlock(verdict)
+                    }
+                    if let error = player.sttError {
+                        Text(error).font(.footnote).foregroundStyle(.red)
+                    }
+                }
             } else {
                 ContentUnavailableView("Empty quiz", systemImage: "tray")
             }
-
             Spacer()
-
             controls
         }
         .padding()
     }
 
-    private var header: some View {
-        let p = player.deck.progress
-        return VStack(spacing: 4) {
-            ProgressView(value: Double(p.current), total: Double(p.total))
-            Text("Card \(p.current) of \(p.total)")
-                .font(.caption).foregroundStyle(.secondary)
-                .accessibilityIdentifier("session.progress")
-        }
-    }
-
-    @ViewBuilder
-    private func cardContent(_ card: CardSnapshot) -> some View {
-        let typo = settings.quizFontSize
-        VStack(alignment: .leading, spacing: 16) {
-            Text(card.prompt)
-                .font(typo.promptFont)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("session.card.prompt")
-
-            if player.phase == .listening || (player.phase == .reveal && !player.transcript.isEmpty) {
-                transcriptBlock(typo: typo)
-            }
-
-            if player.phase == .reveal {
-                answerReveal(card, typo: typo)
-            }
-
-            if player.hintRevealed, let hint = card.hint {
-                Text(hint)
-                    .font(typo.bodyFont)
-                    .foregroundStyle(.secondary)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.yellow.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-            }
-
-            if let err = player.sttError {
-                Text(err).font(.footnote).foregroundStyle(.red)
-            }
-        }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func transcriptBlock(typo: QuizFontSize) -> some View {
+    private var transcriptBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Your answer")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text("Your answer").font(.caption).foregroundStyle(.secondary)
                 if player.phase == .listening {
                     Spacer()
                     Image(systemName: "waveform")
@@ -272,44 +102,27 @@ struct QuizVoiceView: View {
                 }
             }
             Text(player.transcript.isEmpty ? "Listening…" : player.transcript)
-                .font(typo.bodyFont)
                 .foregroundStyle(player.transcript.isEmpty ? .secondary : .primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
                 .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityIdentifier("quiz.transcript")
         }
     }
 
-    @ViewBuilder
-    private func answerReveal(_ card: CardSnapshot, typo: QuizFontSize) -> some View {
-        Divider()
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Correct answer")
-                .font(.caption).foregroundStyle(.secondary)
-            if let s = card.shortAnswer {
-                Text(s).font(typo.emphasisFont).foregroundStyle(.tint)
-                    .accessibilityIdentifier("session.card.shortAnswer")
+    private func aiVerdictBlock(_ v: QuizVoicePlayer.AIVerdict) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "sparkles")
+                Text("AI verdict: \(v.verdict.rawValue.capitalized)")
+                    .font(.subheadline.weight(.medium))
             }
-            Text(card.longAnswer).font(typo.bodyFont)
-                .accessibilityIdentifier("session.card.longAnswer")
+            Text(v.reason).font(.footnote).foregroundStyle(.secondary)
         }
-
-        if let v = player.aiVerdict {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: "sparkles")
-                    Text("AI verdict: \(verdictLabel(v.verdict))")
-                        .font(.subheadline.weight(.medium))
-                }
-                Text(v.reason)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-            .accessibilityIdentifier("quiz.aiVerdict")
-        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityIdentifier("quiz.aiVerdict")
     }
 
     @ViewBuilder
@@ -326,21 +139,9 @@ struct QuizVoiceView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("quiz.tapToAnswer")
-
                 HStack {
-                    Button {
-                        player.revealHint()
-                    } label: {
-                        Label(player.hintRevealed ? "Hint shown" : "Hint", systemImage: "lightbulb")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(player.deck.current?.hint == nil)
-                    .accessibilityIdentifier("session.hint")
-
-                    Button {
-                        player.revealAnswerWithoutVoice()
-                    } label: {
+                    HintButton(hint: player.deck.current?.hint, revealed: player.hintRevealed, action: player.toggleHint)
+                    Button(action: player.revealAnswerWithoutVoice) {
                         Label("Show answer", systemImage: "eye")
                             .frame(maxWidth: .infinity)
                     }
@@ -349,9 +150,7 @@ struct QuizVoiceView: View {
                 }
             }
         case .listening:
-            Button {
-                player.stopListeningAndReveal()
-            } label: {
+            Button(action: player.stopListeningAndReveal) {
                 Label("Stop & reveal", systemImage: "stop.fill")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
@@ -362,42 +161,15 @@ struct QuizVoiceView: View {
         case .reveal:
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
-                    Button {
-                        player.record(.wrong)
-                    } label: {
-                        Label("Wrong", systemImage: "xmark")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-                    .accessibilityIdentifier("quiz.grade.wrong")
-
-                    Button {
-                        player.record(.partial)
-                    } label: {
-                        Label("Partial", systemImage: "circle.lefthalf.filled")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                    .accessibilityIdentifier("quiz.grade.partial")
-
-                    Button {
-                        player.record(.correct)
-                    } label: {
-                        Label("Correct", systemImage: "checkmark")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .accessibilityIdentifier("quiz.grade.correct")
+                    gradeButton("Wrong", systemImage: "xmark", tint: .red, id: "quiz.grade.wrong", verdict: .wrong)
+                    gradeButton("Partial", systemImage: "circle.lefthalf.filled", tint: .orange, id: "quiz.grade.partial", verdict: .partial)
+                    gradeButton("Correct", systemImage: "checkmark", tint: .green, id: "quiz.grade.correct", verdict: .correct, prominent: true)
                 }
-
                 Button {
                     Task { await askAIToJudge() }
                 } label: {
                     HStack {
-                        if aiJudging {
+                        if player.aiJudging {
                             ProgressView()
                             Text("Asking AI…")
                         } else {
@@ -407,11 +179,10 @@ struct QuizVoiceView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(aiJudging || player.transcript.isEmpty)
+                .disabled(player.aiJudging || player.transcript.isEmpty)
                 .accessibilityIdentifier("quiz.askAI")
-
-                if let err = aiError {
-                    Text(err).font(.footnote).foregroundStyle(.red)
+                if let error = player.aiError {
+                    Text(error).font(.footnote).foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("quiz.aiError")
                 }
@@ -421,36 +192,26 @@ struct QuizVoiceView: View {
         }
     }
 
+    @ViewBuilder
+    private func gradeButton(_ title: String, systemImage: String, tint: Color, id: String, verdict: CardVerdict, prominent: Bool = false) -> some View {
+        let button = Button { player.record(verdict) } label: {
+            Label(title, systemImage: systemImage).frame(maxWidth: .infinity)
+        }
+        Group {
+            if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
+        }
+        .tint(tint)
+        .accessibilityIdentifier(id)
+    }
+
     private func askAIToJudge() async {
-        guard let card = player.deck.current else { return }
-        aiError = nil
         if let issue = router.issue(for: .grading) {
             setupIssue = issue.localizedDescription
             showProviderSetup = true
             return
         }
-        aiJudging = true
-        defer { aiJudging = false }
-        do {
-            let client = try router.client(for: .grading)
-            let verdict = try await AnswerJudge.judge(JudgeRequest(
-                prompt: card.prompt,
-                userAnswer: player.transcript,
-                correctShort: card.shortAnswer,
-                correctLong: card.longAnswer
-            ), using: client)
-            player.aiVerdict = .init(verdict: verdict.verdict, reason: verdict.reason)
-        } catch {
-            aiError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    private func verdictLabel(_ v: CardVerdict) -> String {
-        switch v {
-        case .correct: return "Correct"
-        case .partial: return "Partial"
-        case .wrong: return "Wrong"
-        case .skipped: return "Skipped"
+        await player.judge { request in
+            try await AnswerJudge.judge(request, using: try router.client(for: .grading))
         }
     }
 }

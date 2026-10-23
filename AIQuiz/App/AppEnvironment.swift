@@ -5,6 +5,7 @@ import Foundation
 ///
 /// Launch arguments:
 /// - `-UITestMode`            in-memory store, seeded fixtures, fake AI provider, throwaway defaults
+/// - `-UITestOnboarding`     show onboarding (UI-test mode skips it otherwise)
 /// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`, `noEndpoints`, `largeLibrary`
 struct AppEnvironment: Sendable {
     enum Scenario: String, Sendable, CaseIterable {
@@ -21,6 +22,8 @@ struct AppEnvironment: Sendable {
 
     let isUITest: Bool
     let scenario: Scenario
+    /// Onboarding (F-60) is skipped in UI-test mode unless a test asks for it.
+    let allowsOnboarding: Bool
 
     static let current = AppEnvironment(arguments: ProcessInfo.processInfo.arguments)
 
@@ -45,6 +48,7 @@ struct AppEnvironment: Sendable {
 
     init(arguments: [String]) {
         isUITest = arguments.contains("-UITestMode")
+        allowsOnboarding = !isUITest || arguments.contains("-UITestOnboarding")
         if let i = arguments.firstIndex(of: "-UITestScenario"),
            i + 1 < arguments.count,
            let s = Scenario(rawValue: arguments[i + 1]) {

@@ -9,6 +9,7 @@ struct AIQuizApp: App {
     private let environment = AppEnvironment.current
     @State private var settings = AppSettings.shared
     @State private var router = AIRouter.makeForCurrentEnvironment()
+    @State private var speech = SpeechServices.make(for: AppEnvironment.current)
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -28,13 +29,14 @@ struct AIQuizApp: App {
                 .modelContainer(container)
                 .environment(settings)
                 .environment(router)
+                .environment(speech)
                 .preferredColorScheme(settings.appearanceMode.colorScheme)
                 .task {
                     Log.app.info("AIQuiz launched (uiTest=\(environment.isUITest), scenario=\(environment.scenario.rawValue))")
                     if environment.isUITest {
                         await UITestFixtures.seed(scenario: environment.scenario, in: container.mainContext)
                     } else {
-                        await SampleQuizzes.seedIfNeeded(in: container.mainContext)
+                        SampleQuizzes.seedOnFirstLaunch(in: container.mainContext, defaults: AppEnvironment.defaults)
                     }
                     QuizStats.refreshStale(in: container.mainContext)
                 }

@@ -60,7 +60,8 @@ final class STTService {
     }
 
     private(set) var liveTranscript: String = ""
-    private var transcriptHandler: ((String) -> Void)?
+    /// Called with each transcript and whether it is final.
+    private var transcriptHandler: ((String, Bool) -> Void)?
     private var errorHandler: ((Error) -> Void)?
     private(set) var isListening: Bool = false
 
@@ -86,7 +87,7 @@ final class STTService {
 
     func startListening(
         locale: Locale = .current,
-        onTranscript: ((String) -> Void)? = nil,
+        onTranscript: ((String, Bool) -> Void)? = nil,
         onError: ((Error) -> Void)? = nil
     ) throws {
         Log.audio.debug("STT.startListening: entering")
@@ -150,7 +151,7 @@ final class STTService {
                 Task { @MainActor in
                     guard let me = selfBox.value else { return }
                     me.liveTranscript = text
-                    me.transcriptHandler?(text)
+                    me.transcriptHandler?(text, isFinal)
                     if isFinal { me.teardown() }
                 }
             }
@@ -199,5 +200,41 @@ final class STTService {
         errorHandler = nil
         isListening = false
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+    }
+}
+
+/// Apple speech recognition behind the `SpeechRecognizing` protocol (SPEC F-51). The audio
+/// tap and recognition callbacks above are unchanged (see `known_issues.md` §1).
+extension STTService: SpeechRecognizing {
+    func authorisation() async -> SpeechAuthorisation {
+        let micGranted: Bool = await withCheckedContinuation { cont in
+            AVAudioApplication.requestRecordPermission { granted in
+                cont.resume(returning: granted)
+            }
+        }
+        guard micGranted else { return .microphoneDenied }
+        if authorisationStatus() != .authorized, await requestAuthorisation() != .authorized {
+            return .speechDenied
+        }
+        return .authorized
+    }
+
+    func start(
+        locale: Locale,
+        onPartial: @escaping @MainActor (String) -> Void,
+        onFinal: @escaping @MainActor (String) -> Void,
+        onError: @escaping @MainActor (Error) -> Void
+    ) throws {
+        try startListening(
+            locale: locale,
+            onTranscript: { text, isFinal in
+                if isFinal { onFinal(text) } else { onPartial(text) }
+            },
+            onError: { error in onError(error) }
+        )
+    }
+
+    func stop() {
+        stopListening()
     }
 }

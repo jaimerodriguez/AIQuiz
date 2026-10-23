@@ -12,6 +12,8 @@ public final class SessionDeck {
     public private(set) var outcomes: [UUID: CardVerdict] = [:]
     public private(set) var ended: Bool = false
     public private(set) var abandoned: Bool = false
+    /// Set once the session has been saved, so no screen records it twice.
+    public private(set) var recorded: Bool = false
 
     public init(cards: [CardSnapshot], startedAt: Date = .now) {
         self.cards = cards
@@ -45,6 +47,10 @@ public final class SessionDeck {
 
     public func back() {
         if index > 0 { index -= 1 }
+    }
+
+    public func markRecorded() {
+        recorded = true
     }
 
     /// End early and discard the result (SPEC §5: abandon).

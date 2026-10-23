@@ -17,6 +17,7 @@ struct LibraryView: View {
     @State private var importError: String?
     @State private var generating = false
     @State private var actions = QuizActions()
+    @State private var sourceStatus = SourceStatus()
 
     /// Tag chips appear once the library is big enough to need them (F-1).
     static let tagChipThreshold = 10
@@ -36,7 +37,8 @@ struct LibraryView: View {
                     tag: selectedTag,
                     tags: activeQuizzes.count > Self.tagChipThreshold ? allTags : [],
                     selectedTag: $selectedTag,
-                    actions: actions
+                    actions: actions,
+                    sourceStatus: sourceStatus
                 )
                 .searchable(text: $searchText, prompt: "Search names and #tags")
             }
@@ -117,6 +119,7 @@ struct LibraryView: View {
             Text(importError ?? "")
         }
         .quizActions(actions)
+        .onAppear { actions.sourceStatus = sourceStatus }
     }
 
     /// Every tag on an active quiz, most used first.
@@ -136,10 +139,11 @@ private struct LibraryList: View {
     let tags: [String]
     @Binding var selectedTag: String?
     let actions: QuizActions
+    let sourceStatus: SourceStatus
     @State private var showArchived = false
     @State private var launchMilliseconds: Int?
 
-    init(sort: LibrarySort, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions) {
+    init(sort: LibrarySort, search: String, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
         let term = search.trimmingCharacters(in: .whitespaces).lowercased()
         let needle = tag.map(TagsSearch.needle(forTag:)) ?? ""
         _quizzes = Query(
@@ -159,6 +163,7 @@ private struct LibraryList: View {
         self.tags = tags
         _selectedTag = selectedTag
         self.actions = actions
+        self.sourceStatus = sourceStatus
     }
 
     static func sortDescriptors(_ sort: LibrarySort) -> [SortDescriptor<QuizRecord>] {
@@ -211,8 +216,9 @@ private struct LibraryList: View {
 
     private func row(_ quiz: QuizRecord) -> some View {
         NavigationLink(value: quiz) {
-            QuizRow(quiz: quiz)
+            QuizRow(quiz: quiz, sourceMissing: sourceStatus.isMissing(quiz))
         }
+        .task(id: quiz.sourceBookmark) { await sourceStatus.check(quiz) }
         .accessibilityIdentifier("library.row.\(quiz.id.uuidString)")
         .onAppear {
             if AppEnvironment.current.isUITest, launchMilliseconds == nil {
@@ -220,7 +226,7 @@ private struct LibraryList: View {
                 launchMilliseconds = LaunchMetric.firstRowMilliseconds
             }
         }
-        .contextMenu { actions.menu(for: quiz, idPrefix: "library") }
+        .contextMenu { actions.menu(for: quiz, idPrefix: "library", sourceMissing: sourceStatus.isMissing(quiz)) }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 actions.confirmDelete(quiz)
@@ -266,10 +272,20 @@ private struct LibraryList: View {
 /// One library row: stored fields only (SPEC D-11, N-8).
 private struct QuizRow: View {
     let quiz: QuizRecord
+    var sourceMissing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(quiz.name).font(.headline)
+            HStack {
+                Text(quiz.name).font(.headline)
+                if sourceMissing {
+                    Label("Source missing", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("library.sourceMissing")
+                }
+            }
             HStack(spacing: 12) {
                 Label("\(quiz.cardCount) cards", systemImage: "rectangle.on.rectangle")
                 if let best = quiz.bestScore {

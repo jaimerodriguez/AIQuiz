@@ -1,4 +1,5 @@
 import AVFoundation
+import AIQuizCore
 import Foundation
 
 @MainActor
@@ -117,3 +118,6 @@ final class TTSService: NSObject, AVSpeechSynthesizerDelegate {
         cont?.resume()
     }
 }
+
+/// Apple text to speech behind the `SpeechSynthesizing` protocol (SPEC F-51).
+extension TTSService: SpeechSynthesizing {}

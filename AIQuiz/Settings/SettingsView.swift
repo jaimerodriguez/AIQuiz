@@ -1,12 +1,38 @@
 import SwiftUI
 import AIQuizCore
 import AVFoundation
+import Speech
+import SwiftData
 import UIKit
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(AIRouter.self) private var router
+    @Environment(\.modelContext) private var context
     @State private var voicePreviewing: String?
+    @State private var pendingClear: PrivacyClear?
+    @State private var clearResult: String?
+    @State private var logSize = 0
+
+    /// S-15 actions, each confirmed first.
+    enum PrivacyClear: String, Identifiable {
+        case keys, history, library
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .keys: return "Clear API keys?"
+            case .history: return "Clear session history?"
+            case .library: return "Clear quiz library?"
+            }
+        }
+        var message: String {
+            switch self {
+            case .keys: return "Every saved API key is removed from the Keychain. Endpoints stay; you'll need to enter keys again."
+            case .history: return "Every study and quiz session and every card's right/wrong counts are deleted. Quizzes and cards stay."
+            case .library: return "Every quiz, with its cards, history and saved source, is deleted. This can't be undone."
+            }
+        }
+    }
 
     var body: some View {
         Form {
@@ -15,9 +41,26 @@ struct SettingsView: View {
             readingSizeSection
             voiceSection
             voiceTuningSection
+            recognitionSection
             studyVoiceSection
             studyReadSection
+            debugSection
+            privacySection
+            introSection
         }
+        .alert(pendingClear?.title ?? "", isPresented: Binding(get: { pendingClear != nil }, set: { if !$0 { pendingClear = nil } }), presenting: pendingClear) { clear in
+            Button("Clear", role: .destructive) { perform(clear) }
+                .accessibilityIdentifier("settings.confirmClear")
+            Button("Cancel", role: .cancel) {}
+        } message: { clear in
+            Text(clear.message)
+        }
+        .alert("Done", isPresented: Binding(get: { clearResult != nil }, set: { if !$0 { clearResult = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(clearResult ?? "")
+        }
+        .onAppear { logSize = Log.file.size }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -142,6 +185,103 @@ struct SettingsView: View {
                 Button("Preview") { Task { await TTSService.shared.speak("This is the AIQuiz voice. Ready to study?") } }
                     .buttonStyle(.bordered)
             }
+        }
+    }
+
+    /// S-5: the language Quiz — Voice answer listens for.
+    private var recognitionSection: some View {
+        @Bindable var settings = settings
+        let locales = SFSpeechRecognizer.supportedLocales()
+            .sorted { displayName($0.identifier) < displayName($1.identifier) }
+        return Section {
+            Picker("Language", selection: $settings.sttLocaleIdentifier) {
+                Text("Device language (\(displayName(Locale.current.identifier)))").tag(String?.none)
+                ForEach(locales, id: \.identifier) { locale in
+                    Text(displayName(locale.identifier)).tag(Optional(locale.identifier))
+                }
+            }
+            .accessibilityIdentifier("settings.sttLanguage")
+        } header: {
+            Text("Speech recognition")
+        } footer: {
+            Text("The language Quiz — Voice answer listens for. Pick the quiz's language when it differs from your device's.")
+        }
+    }
+
+    private func displayName(_ identifier: String) -> String {
+        Locale.current.localizedString(forIdentifier: identifier) ?? identifier
+    }
+
+    /// S-14: opt-in log file for troubleshooting.
+    private var debugSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Toggle("Debug logging", isOn: $settings.debugLogging)
+                .accessibilityIdentifier("settings.debugLogging")
+            if logSize > 0 {
+                ShareLink(item: Log.file.url) {
+                    Label("Share log (\(ByteCountFormatter.string(fromByteCount: Int64(logSize), countStyle: .file)))", systemImage: "square.and.arrow.up")
+                }
+                .accessibilityIdentifier("settings.shareLog")
+                Button("Delete log", role: .destructive) {
+                    Log.file.clear()
+                    logSize = 0
+                }
+                .accessibilityIdentifier("settings.deleteLog")
+            }
+        } header: {
+            Text("Troubleshooting")
+        } footer: {
+            Text("When on, AIQuiz keeps a log on this device that you can share when reporting a problem. It never includes API keys.")
+        }
+        .onChange(of: settings.debugLogging) { _, on in
+            if on { Log.app.info("Debug logging turned on") }
+            logSize = Log.file.size
+        }
+    }
+
+    /// S-15.
+    private var privacySection: some View {
+        Section {
+            Button("Clear API keys", role: .destructive) { pendingClear = .keys }
+                .accessibilityIdentifier("settings.clearKeys")
+            Button("Clear session history", role: .destructive) { pendingClear = .history }
+                .accessibilityIdentifier("settings.clearHistory")
+            Button("Clear quiz library", role: .destructive) { pendingClear = .library }
+                .accessibilityIdentifier("settings.clearLibrary")
+        } header: {
+            Text("Privacy")
+        } footer: {
+            Text("Each asks before deleting anything.")
+        }
+    }
+
+    private var introSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Button("Show the introduction again") { settings.onboardingDone = false }
+                .disabled(!settings.onboardingDone)
+                .accessibilityIdentifier("settings.showIntro")
+        } footer: {
+            Text("It appears the next time AIQuiz starts.")
+        }
+    }
+
+    private func perform(_ clear: PrivacyClear) {
+        do {
+            switch clear {
+            case .keys:
+                router.clearAllKeys()
+                clearResult = "API keys cleared."
+            case .history:
+                try LibraryMaintenance.clearSessionHistory(in: context)
+                clearResult = "Session history cleared."
+            case .library:
+                try LibraryMaintenance.clearLibrary(in: context)
+                clearResult = "Quiz library cleared."
+            }
+        } catch {
+            clearResult = "Couldn't finish: \(error.localizedDescription)"
         }
     }
 

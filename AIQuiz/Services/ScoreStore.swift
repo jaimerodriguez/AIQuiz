@@ -19,7 +19,7 @@ enum ScoreStore {
         SessionDeck(cards: cards)
     }
 
-    /// Persist the session result and update per-card history.
+    /// Persist the session result and update per-card history. Records a deck at most once.
     /// Skipped cards do not affect history. Abandoned sessions are not persisted.
     /// Quiz-mode sessions with no graded cards are not persisted either.
     static func recordSession(
@@ -28,7 +28,8 @@ enum ScoreStore {
         mode: SessionMode,
         in context: ModelContext
     ) {
-        guard !deck.abandoned else { return }
+        guard !deck.abandoned, !deck.recorded else { return }
+        deck.markRecorded()
         guard !deck.outcomes.isEmpty || mode != .quizVoice else { return }
 
         let byId = Dictionary(uniqueKeysWithValues: quiz.cards.map { ($0.id, $0) })

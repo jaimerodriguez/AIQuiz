@@ -8,9 +8,9 @@ final class AIQuizUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(scenario: String? = nil) -> XCUIApplication {
+    private func launch(scenario: String? = nil, extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-UITestMode"]
+        app.launchArguments = ["-UITestMode"] + extra
         if let scenario {
             app.launchArguments += ["-UITestScenario", scenario]
         }
@@ -568,5 +568,158 @@ final class AIQuizUITests: XCTestCase {
 
         let chip = app.buttons["library.tag.history"]
         XCTAssertTrue(chip.exists || app.buttons["#history"].exists, "tag chips show above a library of more than 10 quizzes")
+    }
+
+    // MARK: Phase 3: onboarding, modes end to end, practice missed, privacy
+
+    func testOnboardingWalksThroughAndClosesWithLater() {
+        let app = launch(extra: ["-UITestOnboarding"])
+        XCTAssertTrue(element(app, "onboarding.title.0").waitForExistence(timeout: timeout), "onboarding appears on first launch")
+        app.buttons["onboarding.next"].tap()
+        XCTAssertTrue(element(app, "onboarding.title.1").waitForExistence(timeout: timeout))
+        app.buttons["onboarding.next"].tap()
+        XCTAssertTrue(app.buttons["onboarding.later"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.buttons["onboarding.addEndpoint"].exists)
+        app.buttons["onboarding.later"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout), "the library shows; samples were seeded regardless")
+    }
+
+    func testOnboardingSkipAndAddEndpointNow() {
+        var app = launch(extra: ["-UITestOnboarding"])
+        XCTAssertTrue(app.buttons["onboarding.skip"].waitForExistence(timeout: timeout))
+        app.buttons["onboarding.skip"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        app.terminate()
+
+        app = launch(extra: ["-UITestOnboarding"])
+        XCTAssertTrue(app.buttons["onboarding.next"].waitForExistence(timeout: timeout))
+        app.buttons["onboarding.next"].tap()
+        app.buttons["onboarding.next"].tap()
+        XCTAssertTrue(app.buttons["onboarding.addEndpoint"].waitForExistence(timeout: timeout))
+        app.buttons["onboarding.addEndpoint"].tap()
+        XCTAssertTrue(button(app, id: "endpoints.add", label: "Add endpoint").waitForExistence(timeout: timeout), "the endpoint list opens")
+    }
+
+    func testOnboardingIsNotShownByDefaultInTests() {
+        let app = launch()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["onboarding.skip"].exists)
+    }
+
+    func testStudyVoicePlaysPausesAndSkipsToTheEnd() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.studyVoice"].tap()
+        let state = app.staticTexts["studyVoice.state"]
+        XCTAssertTrue(state.waitForExistence(timeout: timeout))
+        XCTAssertEqual(state.label, "Playing")
+        app.buttons["studyVoice.pause"].tap()
+        XCTAssertEqual(state.label, "Paused")
+        app.buttons["studyVoice.play"].tap()
+        XCTAssertEqual(state.label, "Playing")
+        // Smart ordering shuffles the deck; skip to a card that has a hint, then pause on it.
+        let hint = app.buttons["session.hint"]
+        var skips = 0
+        while !hint.isEnabled && skips < 5 {
+            app.buttons["studyVoice.skip"].tap()
+            skips += 1
+        }
+        app.buttons["studyVoice.pause"].tap()
+        hint.tap()
+        XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: timeout))
+        // Playback also advances on its own, so skip until the session ends.
+        let skip = app.buttons["studyVoice.skip"]
+        for _ in 0..<8 where skip.exists && skip.isHittable {
+            skip.tap()
+        }
+        XCTAssertTrue(app.buttons["detail.mode.studyVoice"].waitForExistence(timeout: timeout), "the session ends and returns to the quiz")
+        let sessions = element(app, "detail.stat.sessions")
+        XCTAssertTrue(sessions.label.contains("1"), "the session was recorded: \(sessions.label)")
+    }
+
+    func testStudyReadToTheEndRecordsASessionAndHintResets() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.studyRead"].tap()
+        let hint = app.buttons["session.hint"]
+        XCTAssertTrue(hint.waitForExistence(timeout: timeout))
+        // Smart ordering shuffles the deck; move to a card that has a hint.
+        var position = 1
+        while !hint.isEnabled && position < 6 {
+            app.buttons["studyRead.next"].tap()
+            position += 1
+        }
+        XCTAssertLessThan(position, 6, "4 of the 6 fixture cards have hints")
+        hint.tap()
+        XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: timeout))
+        app.buttons["studyRead.next"].tap()
+        XCTAssertFalse(element(app, "session.card.hint").exists, "the hint resets on the next card")
+        for _ in (position + 1)...6 { app.buttons["studyRead.next"].tap() }
+        XCTAssertTrue(app.buttons["detail.mode.studyRead"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(element(app, "detail.stat.sessions").label.contains("1"))
+    }
+
+    func testQuizVoiceAnswerByVoiceWithScriptedRecognition() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        app.buttons["quiz.tapToAnswer"].tap()
+        let transcript = app.staticTexts["quiz.transcript"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: timeout))
+        for _ in 0..<50 where transcript.label != "Fixture answer" {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertEqual(transcript.label, "Fixture answer", "the final transcript replaces the partial one")
+        app.buttons["quiz.stopReveal"].tap()
+        XCTAssertTrue(app.staticTexts["session.card.longAnswer"].waitForExistence(timeout: timeout))
+        app.buttons["quiz.grade.correct"].tap()
+        XCTAssertEqual(app.staticTexts["session.progress"].label, "Card 2 of 6")
+    }
+
+    func testPracticeMissedCardsRunsARecordedSession() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        for i in 0..<6 {
+            XCTAssertTrue(app.buttons["quiz.showAnswer"].waitForExistence(timeout: timeout))
+            app.buttons["quiz.showAnswer"].tap()
+            app.buttons[i < 2 ? "quiz.grade.wrong" : "quiz.grade.correct"].tap()
+        }
+        let practice = app.buttons["summary.practiceMissed"]
+        XCTAssertTrue(practice.waitForExistence(timeout: timeout))
+        practice.tap()
+        XCTAssertTrue(app.staticTexts["session.progress"].waitForExistence(timeout: timeout))
+        XCTAssertEqual(app.staticTexts["session.progress"].label, "Card 1 of 2", "only the missed cards")
+        for _ in 0..<2 {
+            XCTAssertTrue(app.buttons["quiz.showAnswer"].waitForExistence(timeout: timeout))
+            app.buttons["quiz.showAnswer"].tap()
+            app.buttons["quiz.grade.correct"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["summary.score"].waitForExistence(timeout: timeout))
+        XCTAssertEqual(app.staticTexts["summary.score"].label, "100%")
+        app.buttons["summary.done"].tap()
+        let sessions = element(app, "detail.stat.sessions")
+        XCTAssertTrue(sessions.waitForExistence(timeout: timeout))
+        XCTAssertTrue(sessions.label.contains("2"), "both sessions are recorded: \(sessions.label)")
+    }
+
+    func testClearQuizLibraryEmptiesTheLibrary() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
+        app.buttons["library.settings"].tap()
+        let clear = app.buttons["settings.clearLibrary"]
+        for _ in 0..<8 where !(clear.exists && clear.isHittable) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(clear.waitForExistence(timeout: timeout))
+        clear.tap()
+        let confirm = app.buttons.matching(identifier: "settings.confirmClear").firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: timeout))
+        confirm.tap()
+        XCTAssertTrue(app.buttons["OK"].waitForExistence(timeout: timeout))
+        app.buttons["OK"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["No quizzes yet"].waitForExistence(timeout: timeout), "the library is empty, like the emptyLibrary scenario")
     }
 }

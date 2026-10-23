@@ -171,3 +171,14 @@ One entry per decision that shapes the codebase. Each records the conversation w
 **Verification.** Unit tests build V0 and V1 stores on disk and check every field after migration. Opening twice is idempotent, and an unreadable store is backed up and replaced. Two real copies of the iPad library also migrate in a test with no loss: the v0.1 copy from earlier on 2026-10-22 (7 quizzes, 207 cards) and the CR-007 copy (8 quizzes, 226 cards). The test runs when `AIQUIZ_REAL_STORES` lists the folders.
 
 **Consequences.** Every later schema change adds a `SchemaV3` and a stage; the frozen schemas are never edited. The backup folder lives in the app's data, not in Files. Recovering a backup means copying it back over the store, for example with `devicectl`. The `studyNotes` column stays until Jaime agrees to drop it.
+
+## ADR-015 — Players and speech protocols live in AIQuizCore; UI tests use scripted speech
+**Date:** 2026-10-22. **Status:** accepted (PLAN Phase 3, SPEC F-51, CR-010).
+
+**Context.** REVIEW §4.4 asked for every mode to be a dumb view over a player. PLAN put the speech protocols in the app with the players tested in `AIQuizTests`. Two of the three players depended on the concrete `TTSService` and `STTService` singletons, so no test could drive them, and the voice flows could not run in UI tests at all.
+
+**Options.** (a) Protocols and players in the app target, tested on the simulator. (b) Protocols and players in AIQuizCore, with Apple implementations in the app. (c) Keep concrete services and test only through UI tests.
+
+**Decision.** (b). `SpeechSynthesizing` and `SpeechRecognizing` are `@MainActor` protocols in AIQuizCore, next to `ScriptedSynthesizer` and `ScriptedRecognizer`. `TTSService` and `STTService` conform in the app. `STTService`'s audio tap and recognition callbacks are untouched (known_issues §1); only its transcript callback now says whether a result is final. The composition root builds a `SpeechServices` value: Apple's services normally, scripted ones in UI-test mode.
+
+**Consequences.** Player logic runs in `swift test` in under a second (14 player tests). The simulator exercises Study voice and Quiz voice end to end, including a voice answer. Real audio still needs the iPad: hearing TTS and seeing a live transcript are owner checks, since an agent can neither hear nor speak. Phase 8's audio coordinator plugs in behind the same protocols.

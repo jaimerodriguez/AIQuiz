@@ -21,9 +21,22 @@ final class QuizActions {
     var exportName = "Quiz"
     var deleting: QuizRecord?
     var exportError: String?
+    /// The quiz whose source file is being re-linked (F-5).
+    var relinking: QuizRecord?
+    var relinkError: String?
+    /// Told when a quiz was re-linked, so the library rechecks it.
+    var sourceStatus: SourceStatus?
 
     @ViewBuilder
-    func menu(for quiz: QuizRecord, idPrefix: String, includeDelete: Bool = true) -> some View {
+    func menu(for quiz: QuizRecord, idPrefix: String, includeDelete: Bool = true, sourceMissing: Bool = false) -> some View {
+        if sourceMissing {
+            Button {
+                self.relinking = quiz
+            } label: {
+                Label("Re-link file", systemImage: "link")
+            }
+            .accessibilityIdentifier("\(idPrefix).relink")
+        }
         Button {
             self.editing = EditRequest(quiz: quiz, focus: .name)
         } label: {
@@ -129,6 +142,28 @@ private struct QuizActionsModifier: ViewModifier {
                 Button("Cancel", role: .cancel) {}
             } message: { quiz in
                 Text("Its \(quiz.cardCount) cards and study history are deleted too. This can't be undone.")
+            }
+            .background {
+                Color.clear.fileImporter(
+                    isPresented: Binding(get: { actions.relinking != nil }, set: { if !$0 { actions.relinking = nil } }),
+                    allowedContentTypes: actions.relinking.map(SourceLink.contentTypes(for:)) ?? [.json]
+                ) { result in
+                    guard let quiz = actions.relinking else { return }
+                    actions.relinking = nil
+                    do {
+                        try SourceLink.relink(quiz, to: try result.get())
+                        if let status = actions.sourceStatus {
+                            Task { await status.check(quiz) }
+                        }
+                    } catch {
+                        actions.relinkError = error.localizedDescription
+                    }
+                }
+            }
+            .alert("Re-link failed", isPresented: Binding(get: { actions.relinkError != nil }, set: { if !$0 { actions.relinkError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(actions.relinkError ?? "")
             }
             .alert("Export failed", isPresented: Binding(get: { actions.exportError != nil }, set: { if !$0 { actions.exportError = nil } })) {
                 Button("OK", role: .cancel) {}
