@@ -121,6 +121,9 @@ public struct ChatRequest: Sendable, Hashable {
     public var effort: Effort?
     /// Seconds without data before the request times out.
     public var timeout: TimeInterval
+    /// Short name of the feature making the call ("quiz", "judge", "notes"). Never sent to the
+    /// provider; used for logs and by fakes to pick a fixture.
+    public var label: String?
 
     public init(
         system: String,
@@ -128,7 +131,8 @@ public struct ChatRequest: Sendable, Hashable {
         maxTokens: Int = 16_000,
         responseFormat: ResponseFormat? = nil,
         effort: Effort? = nil,
-        timeout: TimeInterval = 120
+        timeout: TimeInterval = 120,
+        label: String? = nil
     ) {
         self.system = system
         self.messages = messages
@@ -136,6 +140,7 @@ public struct ChatRequest: Sendable, Hashable {
         self.responseFormat = responseFormat
         self.effort = effort
         self.timeout = timeout
+        self.label = label
     }
 
     /// Rough token estimate for context-budget checks (SPEC §7.4): UTF-8 bytes / 4.

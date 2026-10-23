@@ -41,7 +41,8 @@ Unchanged from v1, with optional additions. A quiz is one JSON file:
         "explanation": "optional, shown after grading",
         "mnemonic": "optional"
       }
-    ]
+    ],
+    "study_notes": "optional Markdown notes for reading the topic as a whole (CR-006)"
   }
 }
 ```
@@ -50,6 +51,7 @@ Unchanged from v1, with optional additions. A quiz is one JSON file:
 - **D-2** `kind` is one of `recall` (default), `multipleChoice`, `cloze`, `trueFalse`. For `multipleChoice`, `options` lists 2–6 choices and `short_answer` must equal one of them. For `cloze`, `prompt` contains one or more `{{blank}}` markers and `short_answer` holds the blanked text(s) joined by `|`. For `trueFalse`, `short_answer` is `true` or `false`.
 - **D-3** Any `score` block is ignored on import. Scores live in the app only. The source file is never modified.
 - **D-4** A malformed file produces a friendly error naming the file and the first problem. It never crashes.
+- **D-5** `study_notes` (or `study-notes`) is optional Markdown. It is kept on import, written on export, and shown in the quiz's Study section (CR-006).
 
 ---
 
@@ -58,7 +60,7 @@ Unchanged from v1, with optional additions. A quiz is one JSON file:
 Versioned schema. v2 is the first versioned schema; a migration plan from the unversioned v1 store is mandatory (**D-10**). All fields listed are stored.
 
 ### QuizRecord
-`id`, `name`, `descriptionText?`, `tags: [String]`, `tagsSearch: String` (lowercased name + tags joined by spaces, for `contains` predicates), `language?`, `createdAt`, `importedAt`, `lastStudiedAt?`, `isArchived: Bool`, `sourceKind` (`bundled` / `imported` / `topic` / `markdown` / `pastedText` / `url` / `pdf` / `image` / `share`), `sourceURLString?`, `sourceBookmark?`, `bundledSampleId?`, `generatedByEndpointName?`, `generatedByModel?`, `summaryMarkdown?` (`@Attribute(.externalStorage)`, study notes, see F-20), `cards` (cascade), `sessions` (cascade).
+`id`, `name`, `descriptionText?`, `tags: [String]`, `tagsSearch: String` (lowercased name + tags joined by spaces, for `contains` predicates), `language?`, `createdAt`, `importedAt`, `lastStudiedAt?`, `isArchived: Bool`, `sourceKind` (`bundled` / `imported` / `topic` / `markdown` / `pastedText` / `url` / `pdf` / `image` / `share`), `sourceURLString?`, `sourceBookmark?`, `bundledSampleId?`, `generatedByEndpointName?`, `generatedByModel?`, `studyNotes?` (Markdown study notes, F-20 / CR-006; replaces the planned `summaryMarkdown`), `sourceTextData?` (`@Attribute(.externalStorage)`, original source text), `sourceURLString?`, `cards` (cascade), `sessions` (cascade).
 
 Stored counters (**D-11**, never computed in list rows): `cardCount`, `sessionCount` (non-abandoned), `bestScore?`, `averageScore?`, `dueCount` (cards with `dueAt <= now` or never reviewed, as of `countersUpdatedAt`), `countersUpdatedAt`. A single function `QuizStats.refresh(_ quiz:)` recomputes them after import, card add/edit/delete, session record, scheduling update, and on app foreground for quizzes whose `countersUpdatedAt` is older than the last midnight (because `dueCount` drifts as time passes). `#Index` on `CardRecord.dueAt` and `SessionRecord.startedAt`.
 
@@ -306,3 +308,4 @@ Every change to behaviour after the v2 draft is recorded here before or with the
 | CR-003 | 2026-10-22 | Claude (Phase 0 implementation) | Sessions run on `CardSnapshot` values rather than `CardRecord` objects (ADR-009). `LLMKit` package is created in Phase 1, not Phase 0; Phase 0's fake AI provider implements the v1 `LLMProvider` protocol and is replaced by `FakeLLMClient` in Phase 1. The Phase 0 UI-test fixture deck is named `UITest Deck` and gains card kinds in Phase 6. | accepted |
 | CR-004 | 2026-10-22 | Claude (Phase 1 implementation) | §8.3–8.4: the tolerant response parser moved from AIQuizCore to LLMKit. The Apple on-device client lives in the app target (it needs FoundationModels; LLMKit stays testable on macOS). Anthropic requests add `fallbacks: "default"` on supported models (ADR-010). OpenAI requests use `max_completion_tokens` on api.openai.com and `max_tokens` elsewhere. `EndpointKind.fake` exists for tests and UI-test mode only. Optional JSON fields are expressed as required-but-nullable so one schema satisfies both Anthropic and OpenAI strict mode. Context-budget rejection (§7.4) is in place; chunked summarisation remains Phase 5. New UI-test scenario `noEndpoints`. | accepted |
 | CR-005 | 2026-10-22 | Owner (trying Phase 1 on the iPad) | §8.1 S-1: the API key field is visible by default, wraps so long keys show in full, and has a hide toggle; a saved key shows as `sk-ant-api…wxyz` with a reveal toggle. Pasted keys are trimmed of whitespace, quotes and zero-width characters; a space inside the key or the wrong provider prefix (`sk-ant-` for Anthropic, `sk-` for api.openai.com) shows a warning. Test connection now lists chat-capable models only (embedding, speech, image and moderation models are filtered) and sends the selected model a one-word hello (`AIRouter.helloRequest`, low effort, not counted in usage), showing the reply and latency. Saving a newly entered key runs the same check first; if it fails the user can keep editing or save anyway. No model is guessed for OpenAI or OpenRouter, whose catalogues are long. | accepted |
+| CR-006 | 2026-10-22 | Owner ("no way to view the topic so I can study it as a whole") | Study notes delivered ahead of Phase 5 for every generation source, including Topic (F-20 previously excluded Topic). Generation writes Markdown study notes first (summary route), then draws the cards from them; a "Write study notes first" toggle (on by default) skips it. Quiz detail gains a Study section: Study notes (native Markdown reader at the user's reading size, share), Source material (original pasted text, Markdown file, or extracted article), Open original page (URL sources), and Create study notes for quizzes that have none (written from the cards). Quiz JSON gains optional `study_notes` (§2). QuizRecord gains `studyNotes`, `sourceTextData` (external storage) and `sourceURLString` (§3) as optional fields, migrated automatically. Markdown is the single stored format (ADR-013); PDF sources and PDF rendering remain Phase 5. | accepted |

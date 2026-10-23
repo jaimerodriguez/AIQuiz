@@ -60,6 +60,8 @@ Device and simulator logs:
 ```bash
 xcrun simctl spawn D62334E0-1BBB-4781-A549-36CFD4B56907 log show --last 5m --predicate 'process == "AIQuiz"' --style compact
 ```
+Back up or inspect the iPad's library (read-only) by copying `default.store`, `default.store-wal` and `default.store-shm` from `Library/Application Support` with `xcrun devicectl device copy from --domain-type appDataContainer --domain-identifier com.jaimerodriguez.aiquiz`. Copy all three, and only after the app has settled: a copy taken during a SwiftData migration can show zero rows. Open a copy with `sqlite3`, never the originals. Back up before any change to a `@Model`, and compare quiz and card counts after deploying.
+
 Crash reports from the iPad: Xcode → Window → Devices and Simulators → View Device Logs, or `~/Library/Developer/Xcode/DeviceLogs/`.
 
 Voice capture (microphone + speech recognition) is only trusted on the physical iPad. The simulator is fine for everything else.

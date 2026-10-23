@@ -5,8 +5,18 @@ import SwiftData
 struct QuizDetailView: View {
     let quiz: QuizRecord
 
+    @Environment(\.modelContext) private var context
+    @Environment(AIRouter.self) private var router
+    @State private var creatingNotes = false
+    @State private var notesWords = 0
+    @State private var notesError: String?
+    @State private var showSetup = false
+    @State private var setupIssue: String?
+
     var body: some View {
         List {
+            studySection
+
             Section("Modes") {
                 NavigationLink {
                     StudyVoiceView(quiz: quiz)
@@ -80,6 +90,105 @@ struct QuizDetailView: View {
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showSetup) {
+            NavigationStack { EndpointsListView(setupIssue: setupIssue, showsDoneButton: true) }
+        }
+    }
+
+    // MARK: Study material (CR-006)
+
+    @ViewBuilder
+    private var studySection: some View {
+        Section {
+            if let notes = quiz.studyNotes {
+                NavigationLink {
+                    StudyNotesView(title: "\(quiz.name): study notes", markdown: notes, sourceURL: quiz.sourceURL)
+                } label: {
+                    LabeledContent {
+                        Text("\(StudyNotesWriter.wordCount(notes)) words")
+                    } label: {
+                        Label("Study notes", systemImage: "doc.richtext")
+                    }
+                }
+                .accessibilityIdentifier("detail.notes")
+            } else {
+                Button {
+                    Task { await createNotes() }
+                } label: {
+                    HStack {
+                        Label(creatingNotes ? notesProgressText : "Create study notes", systemImage: "sparkles")
+                        if creatingNotes {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(creatingNotes || quiz.cards.isEmpty)
+                .accessibilityIdentifier("detail.createNotes")
+            }
+
+            if let sourceText = quiz.sourceText {
+                NavigationLink {
+                    StudyNotesView(title: "\(quiz.name): source", markdown: sourceText, sourceURL: quiz.sourceURL)
+                } label: {
+                    Label("Source material", systemImage: "doc.text")
+                }
+                .accessibilityIdentifier("detail.source")
+            }
+
+            if let url = quiz.sourceURL {
+                Link(destination: url) {
+                    Label("Open original page", systemImage: "safari")
+                }
+                .accessibilityIdentifier("detail.openOriginal")
+            }
+
+            if let notesError {
+                Text(notesError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("detail.notesError")
+            }
+        } header: {
+            Text("Study")
+        } footer: {
+            if quiz.studyNotes == nil {
+                Text("Writes notes that teach everything this quiz's cards test, so you can study the topic as a whole.")
+            }
+        }
+    }
+
+    private var notesProgressText: String {
+        notesWords > 0 ? "Writing study notes… \(notesWords) words" : "Writing study notes…"
+    }
+
+    private func createNotes() async {
+        notesError = nil
+        if let issue = router.issue(for: .summary) {
+            setupIssue = issue.localizedDescription
+            showSetup = true
+            return
+        }
+        creatingNotes = true
+        notesWords = 0
+        defer { creatingNotes = false }
+        do {
+            let client = try router.client(for: .summary)
+            let relay = WordCountRelay()
+            let task = Task { @MainActor in
+                for await words in relay.stream { notesWords = words }
+            }
+            defer { task.cancel(); relay.finish() }
+            let notes = try await StudyNotesWriter.write(
+                .cards(quizName: quiz.name, cards: quiz.payload.cards),
+                using: client,
+                onProgress: { words in relay.send(words) }
+            )
+            quiz.studyNotes = notes
+            try context.save()
+        } catch {
+            notesError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     private var recentSessions: [SessionRecord] {
@@ -164,4 +273,17 @@ struct QuizDetailView: View {
             Spacer()
         }
     }
+}
+
+/// Carries word counts from the notes writer's background callback to the main actor.
+private final class WordCountRelay: Sendable {
+    let stream: AsyncStream<Int>
+    private let continuation: AsyncStream<Int>.Continuation
+
+    init() {
+        (stream, continuation) = AsyncStream.makeStream(of: Int.self, bufferingPolicy: .bufferingNewest(1))
+    }
+
+    func send(_ words: Int) { continuation.yield(words) }
+    func finish() { continuation.finish() }
 }

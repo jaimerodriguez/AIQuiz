@@ -141,3 +141,18 @@ One entry per decision that shapes the codebase. Each records the conversation w
 **Decision.** `AIRouter` stores a list of `LLMEndpoint` values (JSON in UserDefaults, keys in the Keychain under per-endpoint accounts) and a purpose → endpoint map with optional fallbacks. Presets only pre-fill the form. When a purpose has no explicit route, the first non-Apple endpoint serves it, else Apple on-device. v1's two Keychain keys and generation/grading choices migrate automatically on first launch of 1.1.0. OpenAI endpoints carry no default model; the user picks one from Test connection.
 
 **Consequences.** Adding a provider that speaks OpenAI's format needs no code. A migrated OpenAI endpoint shows "No model selected" until Jaime runs Test connection once.
+
+---
+
+## ADR-013 — Markdown is the single format for study material, rendered natively
+**Date:** 2026-10-22. **Status:** accepted.
+
+**Context.** Jaime wanted to study a generated topic as a whole, and asked whether the app could render the material if files were always Markdown, HTML or PDF.
+
+**Options.** (a) Store HTML and show it in a web view. (b) Store PDFs. (c) Store Markdown and render it natively. (d) A third-party Markdown renderer.
+
+**Trade-offs.** HTML in a web view ignores the reading-size setting and adds a WebKit dependency for content we generate ourselves. PDF is a good display format for documents the user brings, but a poor one for notes the model writes and for later editing. Markdown is what models write most reliably, is diff-able and exportable, and covers what notes need (headings, lists, emphasis). A third-party renderer conflicts with the dependency rule (ADR-007).
+
+**Decision.** (c). Notes are stored as Markdown. `MarkdownParser` (AIQuizCore, unit-tested) splits blocks; `MarkdownView` renders them with SwiftUI at the user's reading size and uses `AttributedString(markdown:)` for inline formatting. Web sources keep their extracted article text plus the original URL. PDF sources, when added in Phase 5, are displayed with PDFKit and summarised into Markdown notes like any other source.
+
+**Consequences.** No new dependency; notes follow reading size and dark mode. Tables, images and footnotes are not rendered; the notes prompt asks the model not to use them.

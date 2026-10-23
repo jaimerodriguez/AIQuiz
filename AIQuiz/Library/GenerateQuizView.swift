@@ -66,6 +66,8 @@ struct GenerateQuizView: View {
     @State private var urlString: String = ""
 
     @State private var generating = false
+    @State private var writeNotes = true
+    @State private var progress = GenerationProgress()
     @State private var errorMessage: String?
     @State private var showProviderSetup = false
     @State private var setupIssue: String?
@@ -74,17 +76,26 @@ struct GenerateQuizView: View {
     @State private var exporting = false
 
     var body: some View {
-        Form {
-            sourceSection
+        ScrollViewReader { proxy in
+            Form {
+                sourceSection
 
-            switch source {
-            case .topic: topicSection
-            case .markdown: markdownSection
-            case .paste: pasteSection
-            case .url: urlSection
+                switch source {
+                case .topic: topicSection
+                case .markdown: markdownSection
+                case .paste: pasteSection
+                case .url: urlSection
+                }
+
+                generateSection
             }
-
-            generateSection
+            // The sheet is short on iPad; bring the outcome into view when generation ends.
+            .onChange(of: generatedQuizId) { _, id in
+                if id != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
+            }
+            .onChange(of: errorMessage) { _, message in
+                if message != nil { withAnimation { proxy.scrollTo(Self.resultAnchor, anchor: .bottom) } }
+            }
         }
         .navigationTitle("Generate quiz")
         .navigationBarTitleDisplayMode(.inline)
@@ -208,13 +219,25 @@ struct GenerateQuizView: View {
 
     private var generateSection: some View {
         Section {
+            Toggle(isOn: $writeNotes) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Write study notes first")
+                    Text("Notes you can read as a whole; the cards are drawn from them.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .disabled(generating)
+            .accessibilityIdentifier("generate.writeNotes")
+
             Button {
                 Task { await generate() }
             } label: {
                 HStack {
                     if generating {
                         ProgressView()
-                        Text("Generating…")
+                        Text(progress.label)
+                            .accessibilityIdentifier("generate.progress")
                     } else {
                         Label("Generate quiz", systemImage: "sparkles")
                     }
@@ -240,11 +263,13 @@ struct GenerateQuizView: View {
                     Label("Open in library", systemImage: "checkmark.circle")
                 }
                 .accessibilityIdentifier("generate.openLibrary")
+                .id(Self.resultAnchor)
             }
 
             if let err = errorMessage {
                 Text(err).font(.footnote).foregroundStyle(.red)
                     .accessibilityIdentifier("generate.error")
+                    .id(Self.resultAnchor)
             }
         } header: {
             Text("Generate")
@@ -253,6 +278,8 @@ struct GenerateQuizView: View {
                 .font(.footnote)
         }
     }
+
+    private static let resultAnchor = "generate.result"
 
     private var canGenerate: Bool {
         switch source {
@@ -282,7 +309,7 @@ struct GenerateQuizView: View {
         generatedQuizId = nil
         exportingJSON = nil
 
-        if let issue = router.issue(for: .generation) {
+        if let issue = router.issue(for: .generation) ?? (writeNotes ? router.issue(for: .summary) : nil) {
             setupIssue = issue.localizedDescription
             showProviderSetup = true
             return
@@ -297,11 +324,20 @@ struct GenerateQuizView: View {
         }
 
         generating = true
+        progress.phase = nil
         defer { generating = false }
         do {
-            let client = try router.client(for: .generation)
-            let payload = try await QuizGenerator.generate(request, using: client)
-            try saveQuiz(payload)
+            let cardsClient = try router.client(for: .generation)
+            let notesClient = writeNotes ? try router.client(for: .summary) : nil
+            let progress = self.progress
+            let payload = try await QuizCreationPipeline.run(
+                request,
+                notesClient: notesClient,
+                cardsClient: cardsClient
+            ) { phase in
+                Task { @MainActor in progress.phase = phase }
+            }
+            try saveQuiz(payload, request: request)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -347,29 +383,33 @@ struct GenerateQuizView: View {
         }
     }
 
-    private func saveQuiz(_ payload: QuizPayload) throws {
-        let record = QuizRecord(name: payload.name, sourceBookmark: nil, bundledSampleId: nil)
-        for (idx, card) in payload.cards.enumerated() {
-            let cr = CardRecord(
-                prompt: card.prompt,
-                longAnswer: card.longAnswer,
-                shortAnswer: card.shortAnswer,
-                hint: card.hint,
-                orderIndex: idx
-            )
-            cr.quiz = record
-            record.cards.append(cr)
-        }
+    /// Saves the quiz with its study notes and, for source modes, the original source to read.
+    private func saveQuiz(_ payload: QuizPayload, request: QuizGenRequest) throws {
+        let sourceURL = source == .url ? URL(string: urlString.trimmingCharacters(in: .whitespaces)) : nil
+        let record = QuizRecord.make(from: payload, sourceText: request.sourceContent, sourceURL: sourceURL)
         context.insert(record)
         try context.save()
         generatedQuizId = record.id
 
-        // Build JSON for optional export
-        let file = QuizFile(quiz: payload)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(file) {
-            exportingJSON = data
+        // JSON for the optional export, including study notes.
+        exportingJSON = try? QuizDecoder.encode(payload)
+    }
+}
+
+/// Shared with the pipeline's progress callback, which runs off the main actor.
+@MainActor
+@Observable
+final class GenerationProgress {
+    var phase: QuizCreationPhase?
+
+    var label: String {
+        switch phase {
+        case .writingNotes(let words)?:
+            return words > 0 ? "Writing study notes… \(words) words" : "Writing study notes…"
+        case .writingCards?:
+            return "Writing cards…"
+        case nil:
+            return "Generating…"
         }
     }
 }

@@ -37,18 +37,6 @@ enum SampleQuizzes {
 
     @MainActor
     private static func insert(quiz: QuizPayload, bundledId: String?, into context: ModelContext) {
-        let record = QuizRecord(name: quiz.name, bundledSampleId: bundledId)
-        for (idx, card) in quiz.cards.enumerated() {
-            let cardRecord = CardRecord(
-                prompt: card.prompt,
-                longAnswer: card.longAnswer,
-                shortAnswer: card.shortAnswer,
-                hint: card.hint,
-                orderIndex: idx
-            )
-            cardRecord.quiz = record
-            record.cards.append(cardRecord)
-        }
-        context.insert(record)
+        context.insert(QuizRecord.make(from: quiz, bundledSampleId: bundledId))
     }
 }

@@ -145,6 +145,52 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(keyField(app).waitForExistence(timeout: timeout))
     }
 
+    // MARK: Study notes (CR-006)
+
+    /// The fixture notes (Resources/TestFixtures/notes.md) contain this heading.
+    private let fixtureHeading = "Key ideas"
+
+    func testGeneratedTopicQuizHasReadableStudyNotes() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        app.buttons["library.generate"].tap()
+        let topic = app.textFields["generate.topic"]
+        XCTAssertTrue(topic.waitForExistence(timeout: timeout))
+        topic.tap()
+        topic.typeText("Roman emperors")
+
+        let run = app.buttons["generate.run"]
+        scrollGenerateForm(app, until: run)
+        XCTAssertTrue(element(app, "generate.writeNotes").exists, "notes toggle is shown")
+        run.tap()
+        let open = app.buttons["generate.openLibrary"]
+        scrollGenerateForm(app, until: open)
+        XCTAssertTrue(open.waitForExistence(timeout: timeout))
+        open.tap()
+
+        openQuiz(app, named: "Fake Generated Quiz")
+        let notesLink = button(app, id: "detail.notes", label: "Study notes")
+        XCTAssertTrue(notesLink.waitForExistence(timeout: timeout), "a generated quiz links to its notes")
+        notesLink.tap()
+        XCTAssertTrue(app.staticTexts[fixtureHeading].waitForExistence(timeout: timeout), "notes render their headings")
+        XCTAssertTrue(app.buttons["notes.share"].exists)
+    }
+
+    func testCreateStudyNotesForAnExistingQuiz() {
+        let app = launch()
+        openQuiz(app, named: "Roman Emperors")
+        let create = button(app, id: "detail.createNotes", label: "Create study notes")
+        XCTAssertTrue(create.waitForExistence(timeout: timeout))
+        create.tap()
+
+        let notesLink = button(app, id: "detail.notes", label: "Study notes")
+        XCTAssertTrue(notesLink.waitForExistence(timeout: timeout), "notes appear once written")
+        XCTAssertFalse(app.buttons["detail.createNotes"].exists)
+        notesLink.tap()
+        XCTAssertTrue(app.staticTexts[fixtureHeading].waitForExistence(timeout: timeout))
+    }
+
     func testGenerateWithoutEndpointShowsSetupSheet() {
         let app = launch(scenario: "noEndpoints")
         XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))

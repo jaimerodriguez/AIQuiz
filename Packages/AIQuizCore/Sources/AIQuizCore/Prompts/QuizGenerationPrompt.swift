@@ -1,8 +1,10 @@
 import Foundation
 
-// Prompt: quiz generation (SPEC F-19). Version 2 — 2026-10-22.
+// Prompt: quiz generation (SPEC F-19). Version 3 — 2026-10-22.
 // v2: optional fields are now `null` rather than omitted, matching the strict JSON schema in
-// QuizGenerator.schema. Wording otherwise unchanged from v1.
+// QuizGenerator.schema.
+// v3: when study notes were written first (CR-006), they are included and every card must be
+// answerable from them. A source may be dropped (notes only) when both don't fit.
 // Output contract: QuizFile JSON (see Models/QuizPayload.swift).
 
 public enum PromptBuilder {}
@@ -46,12 +48,19 @@ public extension PromptBuilder {
             if let t = req.tone { lines.append("Tone: \(t)") }
             if let f = req.focus, !f.isEmpty { lines.append("Focus areas: \(f)") }
             if let e = req.exclude, !e.isEmpty { lines.append("Exclude: \(e)") }
+        case .markdown where req.sourceContent == nil && req.studyNotes != nil,
+             .article where req.sourceContent == nil && req.studyNotes != nil:
+            lines.append("Read the following study notes, then produce a JSON quiz that best teaches their key ideas. Decide the card count, difficulty, language, tone, and focus from the notes.")
         case .markdown:
             lines.append("Read the following markdown content, then produce a JSON quiz that best teaches its key ideas. Decide the card count, difficulty, language, tone, and focus from the content itself.")
             if let c = req.sourceContent { lines.append("\n---SOURCE-MARKDOWN---\n\(c)\n---END-SOURCE---") }
         case .article:
             lines.append("Read the following article (extracted from a web page), then produce a JSON quiz that best teaches its key ideas. Decide the card count, difficulty, language, tone, and focus from the content itself.")
             if let c = req.sourceContent { lines.append("\n---SOURCE-ARTICLE---\n\(c)\n---END-SOURCE---") }
+        }
+        if let notes = req.studyNotes {
+            lines.append("\nThe learner studies from these notes. Every card must be answerable from them, and the cards together should cover their main points.")
+            lines.append("---STUDY-NOTES---\n\(notes)\n---END-NOTES---")
         }
         lines.append("\n" + quizSchemaInstruction)
         return lines.joined(separator: "\n")

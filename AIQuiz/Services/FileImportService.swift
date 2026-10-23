@@ -58,19 +58,7 @@ actor FileImportService {
             relativeTo: nil
         )
 
-        let record = QuizRecord(name: payload.name, sourceBookmark: bookmark)
-        for (idx, card) in payload.cards.enumerated() {
-            let cr = CardRecord(
-                prompt: card.prompt,
-                longAnswer: card.longAnswer,
-                shortAnswer: card.shortAnswer,
-                hint: card.hint,
-                orderIndex: idx
-            )
-            cr.quiz = record
-            record.cards.append(cr)
-        }
-        context.insert(record)
+        context.insert(QuizRecord.make(from: payload, sourceBookmark: bookmark))
     }
 
     func resolveBookmark(_ data: Data) -> URL? {

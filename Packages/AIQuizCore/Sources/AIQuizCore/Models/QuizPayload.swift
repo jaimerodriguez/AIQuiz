@@ -10,13 +10,32 @@ public struct QuizFile: Codable, Hashable, Sendable {
 }
 
 /// A quiz as it appears in a JSON file or in a model response. Pure value type.
+/// `study_notes` (Markdown) is optional; it round-trips through export and import (CR-006).
 public struct QuizPayload: Codable, Hashable, Sendable {
     public let name: String
     public let cards: [CardPayload]
+    public var studyNotes: String?
 
-    public init(name: String, cards: [CardPayload]) {
+    public init(name: String, cards: [CardPayload], studyNotes: String? = nil) {
         self.name = name
         self.cards = cards
+        self.studyNotes = studyNotes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: AnyKey.self)
+        name = try c.decode(String.self, forKey: AnyKey("name"))
+        cards = try c.decode([CardPayload].self, forKey: AnyKey("cards"))
+        let notes = (try? c.decode(String.self, forKey: AnyKey("study_notes")))
+            ?? (try? c.decode(String.self, forKey: AnyKey("study-notes")))
+        studyNotes = (notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) ? nil : notes
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: AnyKey.self)
+        try c.encode(name, forKey: AnyKey("name"))
+        try c.encode(cards, forKey: AnyKey("cards"))
+        try c.encodeIfPresent(studyNotes, forKey: AnyKey("study_notes"))
     }
 }
 
