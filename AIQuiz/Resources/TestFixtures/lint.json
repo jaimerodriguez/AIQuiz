@@ -1,0 +1,4 @@
+{"issues": [
+  {"index": 0, "severity": "warn", "kind": "leakyHint", "message": "Fixture lint: the hint gives the answer away.", "suggested_fix": {"prompt": "Linted fixture prompt", "long_answer": "Linted fixture long answer.", "short_answer": "Linted", "hint": "A gentler hint."}},
+  {"index": 1, "severity": "error", "kind": "ambiguous", "message": "Fixture lint: more than one answer fits.", "suggested_fix": null}
+]}

@@ -30,13 +30,14 @@ extension SessionProgressHeader where Trailing == EmptyView {
     }
 }
 
-/// The card: prompt, then mode-specific content, the answer when shown, then the hint.
+/// The card: prompt, then mode-specific content, the answer when shown, then the hints.
 struct CardFaceView<Middle: View, Footer: View>: View {
     let card: CardSnapshot
     var showsAnswer: Bool
     /// A caption above the answer, e.g. "Correct answer" in quiz mode.
     var answerCaption: String?
-    var hintRevealed: Bool
+    /// Hints revealed so far, weakest first (F-24).
+    var hints: [String]
     @ViewBuilder var middle: Middle
     @ViewBuilder var footer: Footer
     @Environment(AppSettings.self) private var settings
@@ -57,14 +58,15 @@ struct CardFaceView<Middle: View, Footer: View>: View {
                 AnswerBlock(card: card)
             }
             footer
-            if hintRevealed, let hint = card.hint {
-                Text(hint)
+            ForEach(Array(hints.enumerated()), id: \.offset) { index, hint in
+                Label(hint, systemImage: "lightbulb")
                     .font(typo.bodyFont)
                     .foregroundStyle(.secondary)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.yellow.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                    .accessibilityIdentifier("session.card.hint")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(index == 0 ? "session.card.hint" : "session.card.hint.\(index)")
             }
         }
         .padding()
@@ -73,8 +75,8 @@ struct CardFaceView<Middle: View, Footer: View>: View {
 }
 
 extension CardFaceView where Middle == EmptyView, Footer == EmptyView {
-    init(card: CardSnapshot, showsAnswer: Bool, hintRevealed: Bool) {
-        self.init(card: card, showsAnswer: showsAnswer, answerCaption: nil, hintRevealed: hintRevealed) { EmptyView() } footer: { EmptyView() }
+    init(card: CardSnapshot, showsAnswer: Bool, hints: [String]) {
+        self.init(card: card, showsAnswer: showsAnswer, answerCaption: nil, hints: hints) { EmptyView() } footer: { EmptyView() }
     }
 }
 
@@ -100,19 +102,19 @@ struct AnswerBlock: View {
     }
 }
 
-/// The Hint button every mode shows; the hint itself appears on the card face.
+/// The Hint button every mode shows: each tap reveals the next hint (the author's, then
+/// stored AI hints, F-24); after the last, it hides them. Hints appear on the card face.
 struct HintButton: View {
-    let hint: String?
-    let revealed: Bool
+    let progress: HintProgress
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(revealed ? "Hide hint" : "Hint", systemImage: "lightbulb")
+            Label(progress.buttonLabel, systemImage: "lightbulb")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
-        .disabled(hint == nil)
+        .disabled(!progress.isAvailable)
         .accessibilityIdentifier("session.hint")
     }
 }

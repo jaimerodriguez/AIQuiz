@@ -37,7 +37,7 @@ Live API tests (spend real money, a few cents a run; never in CI). Keys live in 
 scripts/live-test.sh
 ```
 Defaults are `claude-sonnet-5-5` and `gpt-6-luna` (owner's choice); override with `-m <openai-model>` or `AIQuiz_Ant_test_model=<model>`.
-The owner stores the keys; agents never ask for them, read them, or type them anywhere. Run the live tests at the end of any phase that changes `Packages/LLMKit` or a client.
+The owner stores the keys; agents never ask for them, read them, or type them anywhere. Run the live tests at the end of any phase that changes `Packages/LLMKit`, a client, or a prompt; they cover LLMKit's clients and every AIQuizCore AI feature.
 
 App tests alone:
 ```bash
@@ -79,6 +79,8 @@ XCUITest gotchas seen in this project:
 - Rows of a `List` or `Form` that are off screen do not exist for XCUITest. Put anything a test must find near the top, or swipe on a static text until it is hittable.
 - `Text("\(number)")` localizes the number (`1,177`). Use `Text(verbatim:)` for values a test parses.
 - A `confirmationDialog` button's identifier matches twice; tap `app.buttons.matching(identifier:).firstMatch`.
+- Never attach `.sheet` or `.alert` to a view inside a `List` row or `Section`: when the row redraws, SwiftUI can dismiss the whole enclosing sheet. Present from the list itself (see `cardAIPresentation`).
+- AI results shown inline below a short sheet's fold are invisible to people and tests; show them in their own sheet.
 
 SwiftData gotchas seen in this project:
 - `#Predicate` cannot force-unwrap. Write `(card.dueAt ?? distantPast) <= now` with `distantPast` captured as a local.

@@ -1,0 +1,5 @@
+{"cards": [
+  {"prompt": "Expanded prompt one", "long_answer": "Expanded long answer one.", "short_answer": "Expanded one", "hint": null},
+  {"prompt": "Expanded prompt two", "long_answer": "Expanded long answer two.", "short_answer": null, "hint": null},
+  {"prompt": "Expanded prompt three", "long_answer": "Expanded long answer three.", "short_answer": null, "hint": "A hint."}
+]}

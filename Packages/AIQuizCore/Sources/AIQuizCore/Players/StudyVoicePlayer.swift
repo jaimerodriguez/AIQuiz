@@ -10,7 +10,8 @@ public final class StudyVoicePlayer {
 
     public let deck: SessionDeck
     public private(set) var state: State = .idle
-    public private(set) var hintRevealed = false
+    public private(set) var hints = HintProgress(hints: [])
+    public var hintRevealed: Bool { hints.level > 0 }
 
     private let speech: any SpeechSynthesizing
     private let pauseSeconds: Double
@@ -22,6 +23,11 @@ public final class StudyVoicePlayer {
         self.speech = speech
         self.pauseSeconds = pauseSeconds
         self.repeatCount = max(1, repeatCount)
+        resetHints()
+    }
+
+    private func resetHints() {
+        hints = HintProgress(hints: deck.current?.hints ?? [])
     }
 
     public func start() {
@@ -69,11 +75,9 @@ public final class StudyVoicePlayer {
         restart { deck.back() }
     }
 
-    /// Reveals the hint and says "Hint." (F-11); a second tap hides it.
+    /// Reveals the next hint and says "Hint." (F-11, F-24); after the last, hides them.
     public func toggleHint() {
-        guard deck.current?.hint != nil else { return }
-        hintRevealed.toggle()
-        if hintRevealed {
+        if hints.advance() {
             Task { await speech.speak("Hint.") }
         }
     }
@@ -81,8 +85,8 @@ public final class StudyVoicePlayer {
     private func restart(_ move: () -> Void) {
         task?.cancel()
         speech.stop()
-        hintRevealed = false
         move()
+        resetHints()
         if deck.ended {
             state = .ended
         } else {
@@ -111,8 +115,8 @@ public final class StudyVoicePlayer {
                 }
             }
             if Task.isCancelled { return }
-            hintRevealed = false
             deck.next()
+            resetHints()
             if deck.ended {
                 state = .ended
                 return

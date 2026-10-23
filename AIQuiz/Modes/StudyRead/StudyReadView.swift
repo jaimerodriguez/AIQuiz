@@ -34,7 +34,7 @@ private struct StudyReadSession: View {
         VStack(spacing: 16) {
             SessionProgressHeader(deck: player.deck)
             if let card = player.deck.current {
-                CardFaceView(card: card, showsAnswer: player.showsAnswer, answerCaption: nil, hintRevealed: player.hintRevealed) {
+                CardFaceView(card: card, showsAnswer: player.showsAnswer, answerCaption: nil, hints: player.hints.shown) {
                     EmptyView()
                 } footer: {
                     if !player.showsAnswer {
@@ -49,7 +49,7 @@ private struct StudyReadSession: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("studyRead.reveal")
                     }
-                    HintButton(hint: card.hint, revealed: player.hintRevealed) {
+                    HintButton(progress: player.hints) {
                         withAnimation { player.toggleHint() }
                     }
                 }

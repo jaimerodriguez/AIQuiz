@@ -290,7 +290,8 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["quiz.showAnswer"].tap()
         XCTAssertTrue(app.staticTexts["session.card.longAnswer"].waitForExistence(timeout: timeout))
         XCTAssertTrue(app.buttons["quiz.grade.correct"].exists)
-        XCTAssertFalse(app.buttons["quiz.askAI"].isEnabled, "no transcript, so AI judge is disabled")
+        XCTAssertFalse(app.buttons["quiz.askAI"].exists, "auto-grade is on (S-3), so there is no Ask AI button")
+        XCTAssertFalse(element(app, "quiz.aiJudging").exists, "no transcript, so nothing to grade")
 
         app.buttons["quiz.grade.correct"].tap()
         XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
@@ -310,6 +311,7 @@ final class AIQuizUITests: XCTestCase {
         }
         XCTAssertTrue(app.staticTexts["summary.score"].waitForExistence(timeout: timeout))
         XCTAssertEqual(app.staticTexts["summary.score"].label, "50%")
+        XCTAssertTrue(element(app, "summary.recap").waitForExistence(timeout: timeout), "the AI recap arrives (F-44)")
         app.buttons["summary.done"].tap()
         XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
     }
@@ -736,5 +738,80 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["OK"].tap()
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["No quizzes yet"].waitForExistence(timeout: timeout), "the library is empty, like the emptyLibrary scenario")
+    }
+
+    // MARK: Phase 4: AI grading, card AI actions, lint
+
+    func testVoiceAnswerIsAutoGradedAndCanBeOverridden() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        app.buttons["quiz.tapToAnswer"].tap()
+        // No tap on Stop: two seconds of silence after the answer reveal it (F-14).
+        let verdict = element(app, "quiz.aiVerdict")
+        XCTAssertTrue(verdict.waitForExistence(timeout: timeout), "the AI verdict chip appears (F-15)")
+        XCTAssertTrue(app.staticTexts["AI: Partial"].exists)
+        XCTAssertTrue(app.buttons["quiz.grade.partial"].isSelected, "the AI's grade is pre-selected")
+        XCTAssertFalse(app.buttons["quiz.askAI"].exists, "auto-grade replaces Ask AI")
+
+        let why = app.buttons["quiz.whyWrong"]
+        XCTAssertTrue(why.waitForExistence(timeout: timeout), "Why was I wrong? appears after a partial verdict (F-16)")
+        why.tap()
+        XCTAssertTrue(element(app, "quiz.whyWrongText").waitForExistence(timeout: timeout))
+
+        app.buttons["quiz.grade.correct"].tap()
+        XCTAssertEqual(app.staticTexts["session.progress"].label, "Card 2 of 6", "the user's grade wins")
+    }
+
+    func testLintListsIssuesAndAppliesAFix() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let lint = app.buttons["detail.lint"]
+        XCTAssertTrue(lint.waitForExistence(timeout: timeout))
+        lint.tap()
+        XCTAssertTrue(element(app, "lint.issue.0").waitForExistence(timeout: timeout), "lint lists issues (F-29)")
+        XCTAssertTrue(element(app, "lint.issue.1").exists)
+        XCTAssertFalse(app.buttons["lint.apply.1"].exists, "no fix offered without a suggestion")
+        app.buttons["lint.apply.0"].tap()
+        XCTAssertFalse(element(app, "lint.issue.0").exists, "an applied issue leaves the list")
+        app.buttons["lint.done"].tap()
+        XCTAssertTrue(app.buttons["detail.card.0"].staticTexts["Linted fixture prompt"].waitForExistence(timeout: timeout), "the fix is applied to the card")
+    }
+
+    func testExpandAddsCards() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.card.0"].tap()
+        let expand = app.buttons["card.ai.expand"]
+        XCTAssertTrue(expand.waitForExistence(timeout: timeout))
+        expand.tap()
+        let add = app.buttons["card.ai.save"]
+        XCTAssertTrue(add.waitForExistence(timeout: timeout), "a preview of the new cards appears (F-27)")
+        XCTAssertEqual(add.label, "Add 3")
+        add.tap()
+        app.buttons["card.done"].tap()
+        XCTAssertTrue(app.buttons["detail.card.1"].staticTexts["Expanded prompt one"].waitForExistence(timeout: timeout), "new cards follow the expanded card")
+        XCTAssertTrue(element(app, "detail.stat.cards").label.contains("9"))
+    }
+
+    func testRewriteAndExplainOnACard() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.card.0"].tap()
+        let explain = app.buttons["card.ai.explain"]
+        XCTAssertTrue(explain.waitForExistence(timeout: timeout))
+        explain.tap()
+        XCTAssertTrue(element(app, "card.ai.result").waitForExistence(timeout: timeout), "the explanation appears (F-23)")
+        app.buttons["card.ai.save"].tap()
+        XCTAssertTrue(element(app, "card.explanation").waitForExistence(timeout: timeout), "saved as the card's explanation")
+
+        app.buttons["card.ai.rewrite"].tap()
+        let simplify = button(app, id: "card.ai.rewrite.Simplify", label: "Simplify")
+        XCTAssertTrue(simplify.waitForExistence(timeout: timeout))
+        simplify.tap()
+        XCTAssertTrue(app.buttons["card.ai.save"].waitForExistence(timeout: timeout))
+        app.buttons["card.ai.save"].tap()
+        XCTAssertTrue(app.staticTexts["Rewritten fixture prompt"].waitForExistence(timeout: timeout), "the card is replaced (F-28)")
     }
 }

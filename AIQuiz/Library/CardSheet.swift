@@ -2,14 +2,19 @@ import SwiftUI
 import SwiftData
 import AIQuizCore
 
-/// A card's full content with Edit and Delete (SPEC F-9). The AI actions (Explain,
-/// Mnemonic, Expand, Rewrite) join in Phase 4.
+/// A card's full content with its AI actions, Edit and Delete (SPEC F-9).
 struct CardSheet: View {
     let card: CardRecord
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @State private var editing = false
     @State private var confirmingDelete = false
+    @State private var assistant: CardAssistant
+
+    init(card: CardRecord) {
+        self.card = card
+        _assistant = State(initialValue: CardAssistant(card: card))
+    }
 
     var body: some View {
         NavigationStack {
@@ -18,6 +23,11 @@ struct CardSheet: View {
                 if let short = card.shortAnswer, !short.isEmpty { field("Short answer", short, id: "card.shortAnswer") }
                 field("Long answer", card.longAnswer, id: "card.longAnswer")
                 if let hint = card.hint, !hint.isEmpty { field("Hint", hint, id: "card.hint") }
+                CardAISection(assistant: assistant)
+                if let difficulty = card.aiDifficulty {
+                    LabeledContent("Difficulty (AI)", value: "\(difficulty) of 5")
+                        .accessibilityIdentifier("card.difficulty")
+                }
                 if card.cardKind != .recall {
                     Section("Kind") {
                         Text(card.cardKind.label)
@@ -43,6 +53,7 @@ struct CardSheet: View {
                         .accessibilityIdentifier("card.delete")
                 }
             }
+            .cardAIPresentation(assistant)
             .navigationTitle("Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

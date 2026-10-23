@@ -6,9 +6,29 @@ struct QuizDetailView: View {
     let quiz: QuizRecord
     @State private var selectedCard: CardRecord?
     @State private var actions = QuizActions()
+    @Environment(AIRouter.self) private var router
+    @Environment(\.modelContext) private var context
+    @State private var gate = AIGate()
+    @State private var linting = false
+    @State private var rating = false
+    @State private var ratingError: String?
 
     var body: some View {
         List {
+            if rating || ratingError != nil {
+                Section {
+                    if rating {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Rating difficulty…").foregroundStyle(.secondary)
+                        }
+                        .accessibilityIdentifier("detail.rating")
+                    } else if let ratingError {
+                        Text(ratingError).foregroundStyle(.red)
+                    }
+                }
+            }
+
             Section("Modes") {
                 NavigationLink {
                     StudyVoiceView(quiz: quiz)
@@ -94,8 +114,13 @@ struct QuizDetailView: View {
 
             if !quiz.sessions.isEmpty {
                 Section("Recent sessions") {
-                    ForEach(recentSessions) { session in
-                        sessionRow(session)
+                    ForEach(Array(recentSessions.enumerated()), id: \.element.id) { index, session in
+                        NavigationLink {
+                            SessionOutcomesView(session: session, quiz: quiz)
+                        } label: {
+                            sessionRow(session)
+                        }
+                        .accessibilityIdentifier("detail.session.\(index)")
                     }
                 }
             }
@@ -116,8 +141,25 @@ struct QuizDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Button {
+                    linting = true
+                } label: {
+                    Label("Lint cards", systemImage: "checklist")
+                }
+                .disabled(quiz.cardCount == 0)
+                .accessibilityIdentifier("detail.lint")
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     actions.menu(for: quiz, idPrefix: "detail", includeDelete: false)
+                    Divider()
+                    Button {
+                        Task { await rateDifficulty() }
+                    } label: {
+                        Label("Rate difficulty with AI", systemImage: "chart.bar.xaxis")
+                    }
+                    .disabled(rating || quiz.cardCount == 0)
+                    .accessibilityIdentifier("detail.rateDifficulty")
                 } label: {
                     Label("More", systemImage: "ellipsis.circle")
                 }
@@ -126,8 +168,31 @@ struct QuizDetailView: View {
         }
         .sheet(item: $selectedCard) { card in
             CardSheet(card: card)
+                .presentationSizing(.page)
         }
+        .sheet(isPresented: $linting) {
+            NavigationStack { LintView(quiz: quiz) }
+        }
+        .aiSetupSheet(gate)
         .quizActions(actions)
+    }
+
+    /// F-26: rates every card 1-5 in batches of 20 and stores it on the card.
+    private func rateDifficulty() async {
+        guard let client = gate.client(.grading, from: router) else { return }
+        let cards = quiz.sortedCards
+        ratingError = nil
+        rating = true
+        defer { rating = false }
+        do {
+            let ratings = try await DifficultyRater.rate(cards.map(\.payload), using: client)
+            for (card, value) in zip(cards, ratings) where value != nil {
+                card.aiDifficulty = value
+            }
+            try? context.save()
+        } catch {
+            ratingError = aiMessage(error)
+        }
     }
 
     private func cardRow(_ card: CardRecord) -> some View {
@@ -145,6 +210,13 @@ struct QuizDetailView: View {
             }
             if let s = card.shortAnswer { Text(s).font(.subheadline).foregroundStyle(.secondary) }
             Text(card.longAnswer).font(.body)
+            if let difficulty = card.aiDifficulty {
+                Label("Difficulty \(difficulty)/5", systemImage: "chart.bar.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detail.card.difficulty")
+            }
             if card.correctCount + card.partialCount + card.wrongCount > 0 {
                 historyBadges(card)
             }

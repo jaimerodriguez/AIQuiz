@@ -118,6 +118,8 @@ struct SettingsView: View {
                 LabeledContent("AI endpoints", value: router.summary(for: .generation))
             }
             .accessibilityIdentifier("settings.endpoints")
+            Toggle("Auto-grade spoken answers", isOn: Bindable(settings).autoGrade)
+                .accessibilityIdentifier("settings.autoGrade")
         } header: {
             Text("AI")
         } footer: {

@@ -229,3 +229,132 @@ struct QuizVoicePlayerTests {
         #expect(!practice.recorded, "a practice session is recorded on its own")
     }
 }
+
+/// A judge the test resolves by hand.
+@MainActor
+private final class ManualJudge {
+    private var pending: CheckedContinuation<JudgeVerdict, Error>?
+    private(set) var calls = 0
+
+    func judge(_ request: JudgeRequest) async throws -> JudgeVerdict {
+        calls += 1
+        return try await withCheckedThrowingContinuation { pending = $0 }
+    }
+
+    func resolve(_ verdict: CardVerdict, _ reason: String = "Because.") {
+        pending?.resume(returning: JudgeVerdict(verdict: verdict, reason: reason))
+        pending = nil
+    }
+
+    func fail(_ error: Error) {
+        pending?.resume(throwing: error)
+        pending = nil
+    }
+}
+
+private struct Down: LocalizedError { var errorDescription: String? { "The grading endpoint is down." } }
+
+@Suite("QuizVoicePlayer auto-grade (F-15, F-16, S-3)")
+@MainActor
+struct QuizVoiceAutoGradeTests {
+    private func answered(_ player: QuizVoicePlayer) async throws {
+        await player.startListening()
+        try await Task.sleep(for: .milliseconds(40))
+        player.stopListeningAndReveal()
+        await settle()
+    }
+
+    @Test("a verdict pre-selects; a different tap records an override")
+    func overrideRecorded() async throws {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(2), recognizer: ScriptedRecognizer(delay: .milliseconds(5)), autoJudge: judge.judge)
+        #expect(player.autoGrades)
+        try await answered(player)
+        #expect(player.aiJudging)
+        judge.resolve(.partial, "Missed the date.")
+        await settle()
+        #expect(player.aiVerdict == AIGrade(verdict: .partial, reason: "Missed the date."))
+        #expect(!player.aiJudging)
+        player.record(.correct)
+        let outcome = try #require(player.deck.toCardOutcomes().first)
+        #expect(outcome.verdict == .correct)
+        #expect(outcome.aiVerdict == .partial)
+        #expect(outcome.aiReason == "Missed the date.")
+        #expect(outcome.userOverrode)
+    }
+
+    @Test("agreeing with the AI is not an override")
+    func agreement() async throws {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(1), recognizer: ScriptedRecognizer(delay: .milliseconds(5)), autoJudge: judge.judge)
+        try await answered(player)
+        judge.resolve(.wrong)
+        await settle()
+        player.record(.wrong)
+        #expect(player.deck.toCardOutcomes().first?.userOverrode == false)
+    }
+
+    @Test("grading before the AI answers works, and the late verdict is ignored")
+    func lateVerdictIgnored() async throws {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(2), recognizer: ScriptedRecognizer(delay: .milliseconds(5)), autoJudge: judge.judge)
+        try await answered(player)
+        player.record(.correct)
+        #expect(player.phase == .awaitingAnswer)
+        #expect(!player.aiJudging, "advance cancels the pending judge")
+        judge.resolve(.wrong)
+        await settle()
+        #expect(player.aiVerdict == nil, "the old card's verdict never lands on the new card")
+        #expect(player.deck.toCardOutcomes().first?.aiVerdict == nil)
+    }
+
+    @Test("an AI error leaves self-grading working")
+    func errorDoesNotBlock() async throws {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(1), recognizer: ScriptedRecognizer(delay: .milliseconds(5)), autoJudge: judge.judge)
+        try await answered(player)
+        judge.fail(Down())
+        await settle()
+        #expect(player.aiError == "The grading endpoint is down.")
+        player.record(.partial)
+        #expect(player.phase == .ended)
+        #expect(player.deck.counts.partial == 1)
+    }
+
+    @Test("no auto-grade without a transcript (Show answer) or when S-3 is off")
+    func noTranscriptNoJudge() async {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(1), recognizer: ScriptedRecognizer(), autoJudge: judge.judge)
+        player.revealAnswerWithoutVoice()
+        await settle()
+        #expect(judge.calls == 0)
+        #expect(!QuizVoicePlayer(deck: deck(1), recognizer: ScriptedRecognizer()).autoGrades)
+    }
+
+    @Test("two seconds of silence after speech stops listening and reveals")
+    func silenceStops() async throws {
+        let recognizer = ScriptedRecognizer(delay: .milliseconds(5))
+        let player = QuizVoicePlayer(deck: deck(1), recognizer: recognizer, silenceTimeout: .milliseconds(80))
+        await player.startListening()
+        #expect(player.phase == .listening)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(player.phase == .reveal)
+        #expect(recognizer.stopCount >= 1)
+        #expect(player.transcript == "Fixture answer")
+    }
+
+    @Test("why-wrong appears after a partial or wrong verdict and is kept on the outcome")
+    func whyWrong() async throws {
+        let judge = ManualJudge()
+        let player = QuizVoicePlayer(deck: deck(1), recognizer: ScriptedRecognizer(delay: .milliseconds(5)), autoJudge: judge.judge)
+        try await answered(player)
+        #expect(!player.canAskWhyWrong)
+        judge.resolve(.wrong)
+        await settle()
+        #expect(player.canAskWhyWrong)
+        await player.explainWhyWrong { card, answer in "You said \(answer); the answer is \(card.shortAnswer ?? "")." }
+        #expect(player.whyWrong == "You said Fixture answer; the answer is S0.")
+        player.record(.wrong)
+        #expect(player.deck.toCardOutcomes().first?.explanation == "You said Fixture answer; the answer is S0.")
+    }
+}

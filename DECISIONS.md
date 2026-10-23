@@ -204,3 +204,18 @@ One entry per decision that shapes the codebase. Each records the conversation w
 The files are used unmodified, next to the provider's name and only to identify the provider. If an image set is removed, the tile falls back to a neutral monogram. Apple uses the `apple.logo` SF Symbol, which refers to Apple's own on-device model.
 
 **Consequences.** Later screens follow N-9. Phase 6's choice buttons and Phase 7's due badge will use the accent only for the selected or primary state.
+
+## ADR-017 — AI never blocks a learner; AI results are offers
+**Date:** 2026-10-23. **Status:** accepted (PLAN Phase 4, CR-013).
+
+**Context.** Phase 4 puts AI inside the study loop: auto-grading, "why was I wrong", hints, and edits to cards. Model calls take seconds, fail, or return something the learner disagrees with. The plan's acceptance criterion is that errors never block grading.
+
+**Options.** (a) Wait for the AI before letting the learner continue. This is simple, but a slow or failing endpoint stalls the session. (b) Run AI in the background, show it when it arrives, and let the learner act at any time. (c) Apply AI output automatically: grades, lint fixes, rewrites.
+
+**Decision.** (b), and AI output is never applied without a tap.
+- **Auto-grade** runs in a child task when the answer is revealed. The grade buttons work throughout. Grading or moving on cancels the task, and a reply that arrives later is checked against the current card and dropped.
+- **Overrides:** the AI's grade is shown filled. The learner's tap is what counts, and a different tap is stored as an override next to the AI's verdict and reason.
+- **Card-sheet results** (explanation, mnemonic, rewrite, expansion) and **lint fixes** appear as previews with Save, Replace or Add next to Discard.
+- **The session recap** loads in the background and is saved when it arrives. A failure just leaves it out.
+
+**Consequences.** Every AI path has a test for errors and late replies, and the core suite drives them with a judge it resolves by hand. Recording keeps both verdicts, so later phases such as FSRS and insights can see where the AI and the learner disagree.
