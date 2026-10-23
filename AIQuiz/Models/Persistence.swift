@@ -24,10 +24,24 @@ extension CardRecord {
         set { optionsData = newValue.flatMap { try? JSONEncoder().encode($0) } }
     }
 
-    /// History in the shape the ordering algorithm consumes.
-    var history: SmartOrdering.History {
-        .init(correct: correctCount, partial: partialCount, wrong: wrongCount, lastSeenAt: lastSeenAt)
+    /// FSRS scheduling state (SPEC §10, F-40).
+    var schedule: FSRS.State {
+        get {
+            FSRS.State(stability: stability, difficulty: difficulty, dueAt: dueAt, reps: reps, lapses: lapses,
+                       lastRating: lastRating, lastReviewedAt: lastReviewedAt)
+        }
+        set {
+            stability = newValue.stability
+            difficulty = newValue.difficulty
+            dueAt = newValue.dueAt
+            reps = newValue.reps
+            lapses = newValue.lapses
+            lastRating = newValue.lastRating
+            lastReviewedAt = newValue.lastReviewedAt
+        }
     }
+
+    var isNewCard: Bool { schedule.isNew }
 
     var payload: CardPayload {
         CardPayload(prompt: prompt, longAnswer: longAnswer, shortAnswer: shortAnswer, hint: hint,

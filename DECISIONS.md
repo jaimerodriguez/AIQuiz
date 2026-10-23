@@ -234,3 +234,17 @@ The files are used unmodified, next to the provider's name and only to identify 
 - **Sharing:** the extension writes `<id>.json` plus any file into the App Group container's `Inbox`. The app drains it on launch and foreground; shared PDFs are kept in Documents/Shared so the quiz can link to them.
 
 **Consequences.** Reader mode lives in AIQuizCore on SwiftSoup, the dependency SPEC N-5 allows, so it is tested with `swift test` on hand-written pages. The App Group `group.com.jaimerodriguez.aiquiz` is registered by automatic signing (`-allowProvisioningUpdates`) the first time the app is deployed with the extension. UI-test mode uses a fake extractor and a throwaway job file. The `slowGeneration` scenario makes the queue visible.
+
+## ADR-019 — FSRS-4.5 on day boundaries; the reminder is rescheduled, not repeated
+**Date:** 2026-10-23. **Status:** accepted (PLAN Phase 7, SPEC §10, F-42, CR-016).
+
+**Context.** Phase 7 replaces v1's weighting with FSRS and adds a daily reminder that says how many cards are due. FSRS has several published versions. A repeating notification can't change its text.
+
+**Options.** (a) FSRS-5, with short-term stability and a different difficulty mean reversion. (b) FSRS-4.5, the version the wiki documents with complete formulas. (c) A fixed-text repeating reminder. (d) A one-off reminder recomputed whenever the numbers may have changed.
+
+**Decision.** (b) and (d).
+- **FSRS-4.5:** default parameters and published formulas, implemented in `AIQuizCore/Scheduling/FSRS.swift`. It is tested to within 1 % of values computed independently in Python from the same formulas.
+- **Day-based scheduling:** intervals are whole days, a lapse returns in 10 minutes, and there are no learning steps. This suits a quiz app studied in sessions rather than an Anki-style queue.
+- **Reminder:** recomputed on launch, on going to the background (which follows any session) and on a settings change. It is scheduled for the next fire time with the count due then.
+
+**Consequences.** Moving to FSRS-5 later means new weights and three formulas, with the same `State`. Card difficulty from FSRS is separate from the AI's 1–5 rating (F-26). The reminder may be a day late if the app isn't opened for days, since it is a one-off. The tap opens the Due today review through `ReviewRouter`.

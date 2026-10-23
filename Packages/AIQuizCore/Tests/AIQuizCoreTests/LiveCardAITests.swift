@@ -108,4 +108,19 @@ struct LiveCardAITests {
             print("LIVE \(client.endpoint.name) mixed quiz: \(quiz.cards.map(\.kind.rawValue)); converted options \(converted.options ?? [])")
         }
     }
+
+    @Test("an insights report from a small history (Phase 7)")
+    func insights() async throws {
+        let clients = liveClients()
+        try #require(!clients.isEmpty)
+        let cards = deck.enumerated().map { InsightsQuiz.Card(id: UUID(), prompt: $0.element.prompt, correct: 2, partial: $0.offset == 2 ? 2 : 0, wrong: $0.offset == 2 ? 3 : 0, lapses: $0.offset == 2 ? 2 : 0) }
+        let history = [InsightsQuiz(name: "Roman emperors", sessions: (0..<4).map { .init(date: Date(timeIntervalSinceNow: Double(-$0) * 86_400), mode: "quizVoice", score: 0.6 + Double($0) * 0.05) }, cards: cards)]
+        for client in clients {
+            let report = try await InsightsReporter.report(history, using: client)
+            #expect(!report.headline.isEmpty)
+            #expect(!report.drillCards.isEmpty, "\(client.endpoint.name) wrote drill cards")
+            #expect(report.confusions.contains { $0.cardIds.contains(cards[2].id) }, "\(client.endpoint.name) points at the troublesome card")
+            print("LIVE \(client.endpoint.name) insights: \(report.headline) — \(report.drillCards.count) drill cards")
+        }
+    }
 }

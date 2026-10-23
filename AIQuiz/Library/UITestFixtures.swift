@@ -46,6 +46,39 @@ enum UITestFixtures {
         context.insert(QuizRecord.make(from: payload, origin: .imported))
         context.insert(QuizRecord.make(from: mixedDeck, origin: .imported))
         try? context.save()
+        scheduleForTests(in: context)
+    }
+
+    /// Phase 7: every seeded card is reviewed and due next week, except the 2 due cards of
+    /// *UITest Due Deck*, so Due today shows exactly 2. The due deck has one past session for
+    /// Insights. Quiz modes on the other decks fall back to the whole deck (nothing is due).
+    @MainActor
+    static func scheduleForTests(in context: ModelContext, now: Date = .now) {
+        let reviewed = FSRS.State(stability: 7, difficulty: 5, dueAt: now.addingTimeInterval(7 * 86_400), reps: 1, lastRating: 3, lastReviewedAt: now.addingTimeInterval(-86_400))
+        for card in (try? context.fetch(FetchDescriptor<CardRecord>())) ?? [] {
+            card.schedule = reviewed
+        }
+        let due = QuizRecord.make(from: QuizPayload(name: "UITest Due Deck", tags: ["fixture"], cards: [
+            CardPayload(prompt: "Due prompt one", longAnswer: "Due answer one.", shortAnswer: "Due one"),
+            CardPayload(prompt: "Due prompt two", longAnswer: "Due answer two.", shortAnswer: "Due two"),
+            CardPayload(prompt: "Later prompt three", longAnswer: "Later answer three.")
+        ]), origin: .imported)
+        for (index, card) in due.sortedCards.enumerated() {
+            var state = reviewed
+            state.lapses = index == 0 ? 1 : 0
+            if index < 2 { state.dueAt = now.addingTimeInterval(-Double(index + 1) * 3_600) }
+            card.schedule = state
+            card.wrongCount = index == 0 ? 2 : 0
+            card.correctCount = 1
+        }
+        let session = SessionRecord(mode: .quizVoice, startedAt: now.addingTimeInterval(-2 * 86_400), endedAt: now.addingTimeInterval(-2 * 86_400 + 120), scorePercent: 0.5)
+        session.quiz = due
+        due.sessions.append(session)
+        context.insert(due)
+        for quiz in (try? context.fetch(FetchDescriptor<QuizRecord>())) ?? [] {
+            QuizStats.refresh(quiz, now: now)
+        }
+        try? context.save()
     }
 
     /// One card of each kind (Phase 6, F-17).

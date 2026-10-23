@@ -83,6 +83,14 @@ public final class ChoicePlayer {
         self.verdict = verdict
     }
 
+    /// Correct, rated Easy for scheduling (long-press in review sessions, §10).
+    public func gradeEasy() {
+        guard stage == .checked, let card else { return }
+        override(.correct)
+        deck.markEasy(card.id)
+        next()
+    }
+
     /// Records the verdict and moves on. A recall card needs a grade first.
     public func next() {
         guard stage == .checked, let verdict else { return }

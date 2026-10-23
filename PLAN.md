@@ -20,8 +20,8 @@ How to use this document:
 | 3 | Session UI consolidation and v1 drift fixes | merged into `claude` | jaimerodriguez/AIQuiz#7 |
 | 4 | AI grading, explanations, hints, lint | in review; accepted on the iPad 2026-10-23 | jaimerodriguez/AIQuiz#8 |
 | 5 | Ingestion: notes, PDF, reader mode, photo, share | in review; device check waits on the developer agreement | jaimerodriguez/AIQuiz#9 (merge after #8) |
-| 6 | Card types and the Choice player | in review | phase-6-choice-player (merge after #9) |
-| 7 | FSRS scheduling, Due today, notifications, insights | not started | |
+| 6 | Card types and the Choice player | in review | jaimerodriguez/AIQuiz#10 (merge after #9) |
+| 7 | FSRS scheduling, Due today, notifications, insights | in review | phase-7-scheduling (merge after #10) |
 | 8 | Audio coordinator, tutor chat, oral exam | not started | |
 
 Decisions already taken (change only with the owner's agreement):

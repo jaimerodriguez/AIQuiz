@@ -8,6 +8,8 @@ struct SessionSummaryView: View {
     /// F-44: fetches the recap; nil when no grading endpoint is ready.
     var recap: (() async throws -> String)? = nil
     var onRecap: ((String) -> Void)? = nil
+    /// Card id → quiz name: a review's summary is grouped by quiz (F-41).
+    var quizNames: [UUID: String] = [:]
 
     @Environment(AppSettings.self) private var settings
     @State private var recapText: String?
@@ -22,6 +24,10 @@ struct SessionSummaryView: View {
 
                 if recap != nil {
                     recapBlock
+                }
+
+                if !quizNames.isEmpty {
+                    byQuiz
                 }
 
                 if !deck.missedCards.isEmpty {
@@ -43,6 +49,32 @@ struct SessionSummaryView: View {
                 onRecap?(text)
             } catch {
                 recapFailed = true
+            }
+        }
+    }
+
+    /// Per-quiz results of a review session.
+    private var byQuiz: some View {
+        let groups = Dictionary(grouping: deck.scoredCards) { quizNames[$0.card.id] ?? "Quiz" }
+            .sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("By quiz").font(.headline)
+            ForEach(groups, id: \.key) { name, entries in
+                let scored = entries.compactMap { $0.verdict.score }
+                HStack {
+                    Text(name)
+                    Spacer()
+                    Text("\(entries.filter { $0.verdict == .correct }.count) of \(entries.count)")
+                        .foregroundStyle(.secondary)
+                    if !scored.isEmpty {
+                        Text("\(Int((scored.reduce(0, +) / Double(scored.count) * 100).rounded()))%")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .padding(10)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("summary.quiz.\(name)")
             }
         }
     }

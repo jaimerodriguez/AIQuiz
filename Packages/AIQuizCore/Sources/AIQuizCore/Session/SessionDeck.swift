@@ -15,6 +15,8 @@ public final class SessionDeck {
     /// AI grades and "why wrong" explanations, by card (F-15, F-16).
     public private(set) var aiGrades: [UUID: AIGrade] = [:]
     public private(set) var explanations: [UUID: String] = [:]
+    /// Cards graded Easy (long-press Correct in review sessions, §10).
+    public private(set) var easyCards: Set<UUID> = []
     /// Set once the session has been saved, so no screen records it twice.
     public private(set) var recorded: Bool = false
 
@@ -39,6 +41,18 @@ public final class SessionDeck {
         guard let card = current else { return }
         outcomes[card.id] = verdict
         if let ai { aiGrades[card.id] = ai } else { aiGrades[card.id] = nil }
+    }
+
+    /// Records a verdict for a card by id (used to split a review across quizzes).
+    public func recordAll(_ verdict: CardVerdict, for cardId: UUID, ai: AIGrade? = nil, easy: Bool = false) {
+        guard cards.contains(where: { $0.id == cardId }) else { return }
+        outcomes[cardId] = verdict
+        aiGrades[cardId] = ai
+        if easy { easyCards.insert(cardId) }
+    }
+
+    public func markEasy(_ cardId: UUID) {
+        easyCards.insert(cardId)
     }
 
     public func setExplanation(_ text: String, for cardId: UUID) {

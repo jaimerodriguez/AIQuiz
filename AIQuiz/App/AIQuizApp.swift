@@ -13,6 +13,7 @@ struct AIQuizApp: App {
     @State private var router: AIRouter
     @State private var speech = SpeechServices.make(for: AppEnvironment.current)
     @State private var queue: GenerationQueue
+    @State private var reviewRouter = ReviewRouter()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -39,6 +40,7 @@ struct AIQuizApp: App {
                 .environment(router)
                 .environment(speech)
                 .environment(queue)
+                .environment(reviewRouter)
                 .preferredColorScheme(settings.appearanceMode.colorScheme)
                 .task {
                     Log.app.info("AIQuiz launched (uiTest=\(environment.isUITest), scenario=\(environment.scenario.rawValue))")
@@ -50,13 +52,20 @@ struct AIQuizApp: App {
                     QuizStats.refreshStale(in: container.mainContext)
                     ShareInbox.drain(into: queue)
                     queue.start()
+                    UNUserNotificationCenter.current().delegate = reviewRouter
+                    DueNotifications.reschedule(settings: settings, context: container.mainContext)
                 }
+                .onChange(of: settings.reminderOn) { _, _ in DueNotifications.reschedule(settings: settings, context: container.mainContext) }
+                .onChange(of: settings.reminderMinutes) { _, _ in DueNotifications.reschedule(settings: settings, context: container.mainContext) }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 QuizStats.refreshStale(in: container.mainContext)
                 ShareInbox.drain(into: queue)
                 queue.start()
+            }
+            if phase == .background {
+                DueNotifications.reschedule(settings: settings, context: container.mainContext)
             }
         }
     }

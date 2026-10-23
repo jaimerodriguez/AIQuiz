@@ -28,10 +28,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
-/// Library sort order (SPEC F-1). *Most due* arrives with scheduling in Phase 7.
+/// Library sort order (SPEC F-1).
 enum LibrarySort: String, CaseIterable, Identifiable {
     case recent
     case name
+    case mostDue
     case newest
 
     var id: String { rawValue }
@@ -40,6 +41,7 @@ enum LibrarySort: String, CaseIterable, Identifiable {
         switch self {
         case .recent: return "Recently studied"
         case .name: return "Name"
+        case .mostDue: return "Most due"
         case .newest: return "Newest"
         }
     }
@@ -63,6 +65,10 @@ final class AppSettings {
     private let kDebugLogging = "debugLogging"
     private let kOnboardingDone = "onboardingDone"
     private let kAutoGrade = "autoGrade"
+    private let kSessionCap = "sessionCap"
+    private let kIncludeNotDue = "includeNotDue"
+    private let kReminderOn = "reminderOn"
+    private let kReminderMinutes = "reminderMinutes"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -127,6 +133,25 @@ final class AppSettings {
         didSet { defaults.set(autoGrade, forKey: kAutoGrade) }
     }
 
+    /// Quiz session cap, 10–100 (S-11).
+    var sessionCap: Int {
+        didSet { defaults.set(sessionCap, forKey: kSessionCap) }
+    }
+
+    /// Quiz sessions also include cards that aren't due yet (§10).
+    var includeNotDue: Bool {
+        didSet { defaults.set(includeNotDue, forKey: kIncludeNotDue) }
+    }
+
+    /// Daily due reminder (S-12): off, or a time of day in minutes after midnight.
+    var reminderOn: Bool {
+        didSet { defaults.set(reminderOn, forKey: kReminderOn) }
+    }
+
+    var reminderMinutes: Int {
+        didSet { defaults.set(reminderMinutes, forKey: kReminderMinutes) }
+    }
+
     /// Onboarding (F-60) is shown once.
     var onboardingDone: Bool {
         didSet { defaults.set(onboardingDone, forKey: kOnboardingDone) }
@@ -160,6 +185,10 @@ final class AppSettings {
         self.debugLogging = defaults.bool(forKey: kDebugLogging)
         self.onboardingDone = defaults.bool(forKey: kOnboardingDone)
         self.autoGrade = defaults.object(forKey: kAutoGrade) as? Bool ?? true
+        self.sessionCap = min(100, max(10, defaults.object(forKey: kSessionCap) as? Int ?? 20))
+        self.includeNotDue = defaults.bool(forKey: kIncludeNotDue)
+        self.reminderOn = defaults.bool(forKey: kReminderOn)
+        self.reminderMinutes = defaults.object(forKey: kReminderMinutes) as? Int ?? 18 * 60
         Log.file.isEnabled = debugLogging
     }
 }
