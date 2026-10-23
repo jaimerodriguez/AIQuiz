@@ -41,6 +41,8 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - A first version (CR-006) generated AI study notes instead; it was withdrawn the same day at the owner's request. One quiz on the owner's iPad has notes from that build; they are kept in the database, unused.
   - New optional quiz fields are added to existing libraries automatically. Verified on the owner's iPad: 7 quizzes and 207 cards before and after.
   - The Generate form scrolls to the result or error when generation finishes; on iPad the outcome was below the fold.
+  - **Changed (CR-008):** the original content is now the fourth entry under **Modes**, called **Read Source Materials**, instead of a separate section. It appears only on quizzes that have a source.
+  - **Fixed (CR-008):** Markdown tables render as tables, with a header row, borders, column alignment and sideways scrolling when wide. Nested and numbered lists, block quotes, code blocks and underlined (setext) headings render properly too. The app now uses Apple's built-in Markdown parser instead of its own.
 
 ## [0.1.0] — 2026-10-21
 State of the app before this effort: library with bundled samples and JSON import, two study modes, voice quiz mode with live transcription and optional AI judging, AI quiz generation from topic / markdown / pasted text / URL via OpenAI, Anthropic or Apple on-device, settings for voice, reading size and appearance. See git history on `main` up to `2e94e8f`.

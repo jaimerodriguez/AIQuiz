@@ -4,12 +4,9 @@ import SwiftData
 
 struct QuizDetailView: View {
     let quiz: QuizRecord
-    @State private var webPage: IdentifiedURL?
 
     var body: some View {
         List {
-            originalContentSection
-
             Section("Modes") {
                 NavigationLink {
                     StudyVoiceView(quiz: quiz)
@@ -46,6 +43,19 @@ struct QuizDetailView: View {
                 }
                 .disabled(quiz.cards.isEmpty)
                 .accessibilityIdentifier("detail.mode.quizVoice")
+
+                if quiz.sourceKind != nil {
+                    NavigationLink {
+                        SourceMaterialsView(quiz: quiz)
+                    } label: {
+                        modeRow(
+                            title: "Read Source Materials",
+                            systemImage: "doc.richtext",
+                            subtitle: sourceSubtitle
+                        )
+                    }
+                    .accessibilityIdentifier("detail.mode.source")
+                }
             }
 
             Section("Stats") {
@@ -83,70 +93,15 @@ struct QuizDetailView: View {
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $webPage) { page in
-            SafariView(url: page.url)
-                .ignoresSafeArea()
-        }
     }
 
-    // MARK: Original content (CR-007)
-
-    @ViewBuilder
-    private var originalContentSection: some View {
-        if let kind = quiz.sourceKind {
-            Section {
-                switch kind {
-                case .webPage:
-                    if let url = quiz.sourceURL {
-                        Button {
-                            webPage = IdentifiedURL(url: url)
-                        } label: {
-                            LabeledContent {
-                                Text(quiz.sourceTitle ?? url.host ?? "")
-                            } label: {
-                                Label("Original page", systemImage: "safari")
-                            }
-                        }
-                        .accessibilityIdentifier("detail.originalPage")
-                    }
-                    if let text = quiz.sourceText {
-                        NavigationLink {
-                            MarkdownReaderView(title: quiz.sourceTitle ?? "Saved text", markdown: text, sourceURL: quiz.sourceURL)
-                        } label: {
-                            Label("Saved text (offline)", systemImage: "doc.text")
-                        }
-                        .accessibilityIdentifier("detail.savedText")
-                    }
-                case .markdownFile:
-                    NavigationLink {
-                        OriginalFileView(
-                            title: quiz.sourceTitle ?? "Markdown file",
-                            bookmark: quiz.sourceBookmark,
-                            savedCopy: quiz.sourceText
-                        )
-                    } label: {
-                        LabeledContent {
-                            Text(quiz.sourceTitle ?? "")
-                        } label: {
-                            Label("Original file", systemImage: "doc.richtext")
-                        }
-                    }
-                    .accessibilityIdentifier("detail.originalFile")
-                case .pastedText:
-                    if let text = quiz.sourceText {
-                        NavigationLink {
-                            MarkdownReaderView(title: "Original text", markdown: text)
-                        } label: {
-                            Label("Original text", systemImage: "doc.plaintext")
-                        }
-                        .accessibilityIdentifier("detail.originalText")
-                    }
-                }
-            } header: {
-                Text("Original content")
-            } footer: {
-                Text("What this quiz was generated from.")
-            }
+    /// "Web page · en.wikipedia.org", "Markdown file · notes.md", "Pasted text" (CR-008).
+    private var sourceSubtitle: String {
+        switch quiz.sourceKind {
+        case .webPage?: return "Web page · \(quiz.sourceTitle ?? quiz.sourceURL?.host ?? "")"
+        case .markdownFile?: return "Markdown file · \(quiz.sourceTitle ?? "")"
+        case .pastedText?: return "The text this quiz was generated from."
+        case nil: return ""
         }
     }
 
@@ -232,9 +187,4 @@ struct QuizDetailView: View {
             Spacer()
         }
     }
-}
-
-private struct IdentifiedURL: Identifiable {
-    let url: URL
-    var id: String { url.absoluteString }
 }

@@ -179,13 +179,15 @@ final class AIQuizUITests: XCTestCase {
 
     func testPastedTextQuizShowsItsOriginalText() {
         let app = launch()
-        generateFromPastedText(app, text: "## My pasted heading\nThe body of what I pasted.")
+        generateFromPastedText(app, text: "## My pasted heading\nThe body of what I pasted.\n\n| Term | Meaning |\n|---|---|\n| Cell A | Cell B |\n")
 
-        let original = button(app, id: "detail.originalText", label: "Original text")
-        XCTAssertTrue(original.waitForExistence(timeout: timeout), "a pasted-text quiz links to its original text")
-        XCTAssertFalse(app.buttons["detail.createNotes"].exists, "no AI notes")
+        let original = button(app, id: "detail.mode.source", label: "Read Source Materials")
+        XCTAssertTrue(original.waitForExistence(timeout: timeout), "a pasted-text quiz offers Read Source Materials in Modes")
+        XCTAssertFalse(app.staticTexts["Original content"].exists, "no separate section")
         original.tap()
         XCTAssertTrue(app.staticTexts["My pasted heading"].waitForExistence(timeout: timeout), "the original text renders")
+        XCTAssertTrue(element(app, "reader.table").exists, "the table renders as a table")
+        XCTAssertTrue(app.staticTexts["Cell B"].exists, "table cells render")
         XCTAssertTrue(app.buttons["reader.share"].exists)
     }
 
@@ -208,9 +210,7 @@ final class AIQuizUITests: XCTestCase {
 
         openQuiz(app, named: "Fake Generated Quiz")
         XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
-        XCTAssertFalse(app.staticTexts["Original content"].exists)
-        XCTAssertFalse(app.buttons["detail.originalText"].exists)
-        XCTAssertFalse(app.buttons["detail.originalPage"].exists)
+        XCTAssertFalse(app.buttons["detail.mode.source"].exists, "topic quizzes have no source materials")
     }
 
     func testGenerateWithoutEndpointShowsSetupSheet() {

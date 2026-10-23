@@ -68,6 +68,36 @@ struct OriginalFileView: View {
     }
 }
 
+/// "Read Source Materials" (CR-008): the content a quiz was generated from, in its own form.
+struct SourceMaterialsView: View {
+    let quiz: QuizRecord
+
+    var body: some View {
+        switch quiz.sourceKind {
+        case .markdownFile?:
+            OriginalFileView(title: quiz.sourceTitle ?? "Markdown file", bookmark: quiz.sourceBookmark, savedCopy: quiz.sourceText)
+        case .webPage?:
+            if let text = quiz.sourceText {
+                MarkdownReaderView(
+                    title: quiz.sourceTitle ?? "Web page",
+                    markdown: text,
+                    sourceURL: quiz.sourceURL,
+                    notice: "Text saved from the page when the quiz was made. Tap the Safari button to open the original page."
+                )
+            } else if let url = quiz.sourceURL {
+                SafariView(url: url).ignoresSafeArea()
+            } else {
+                ContentUnavailableView("Source unavailable", systemImage: "doc.questionmark")
+            }
+        case .pastedText?:
+            MarkdownReaderView(title: "Source text", markdown: quiz.sourceText ?? "")
+        case nil:
+            ContentUnavailableView("No source materials", systemImage: "doc.questionmark",
+                                   description: Text("This quiz was generated from a topic, not a source."))
+        }
+    }
+}
+
 /// The original web page, inside the app.
 struct SafariView: UIViewControllerRepresentable {
     let url: URL
