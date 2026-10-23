@@ -18,6 +18,8 @@ struct AppEnvironment: Sendable {
         /// 200 quizzes, 10 000 cards and 5 000 sessions in an on-disk store that survives
         /// relaunches, for the SPEC N-8 scale checks.
         case largeLibrary
+        /// Every AI call takes 1.5 s, so the generation queue is visible (F-61 tests).
+        case slowGeneration
     }
 
     let isUITest: Bool

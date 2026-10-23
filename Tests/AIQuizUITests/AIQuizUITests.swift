@@ -171,10 +171,13 @@ final class AIQuizUITests: XCTestCase {
         let run = app.buttons["generate.run"]
         scrollGenerateForm(app, until: run)
         run.tap()
-        let open = app.buttons["generate.openLibrary"]
-        XCTAssertTrue(open.waitForExistence(timeout: timeout))
-        open.tap()
+        waitForGeneratedQuiz(app)
         openQuiz(app, named: "Fake Generated Quiz")
+    }
+
+    /// Generation runs in the queue (F-61): the sheet closes and the quiz lands in the library.
+    private func waitForGeneratedQuiz(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(app.staticTexts["Fake Generated Quiz"].waitForExistence(timeout: 20), "the queued quiz arrives", file: file, line: line)
     }
 
     func testPastedTextQuizShowsItsOriginalText() {
@@ -204,9 +207,7 @@ final class AIQuizUITests: XCTestCase {
         scrollGenerateForm(app, until: run)
         XCTAssertFalse(app.switches["generate.writeNotes"].exists, "the AI notes toggle is gone")
         run.tap()
-        let open = app.buttons["generate.openLibrary"]
-        XCTAssertTrue(open.waitForExistence(timeout: timeout))
-        open.tap()
+        waitForGeneratedQuiz(app)
 
         openQuiz(app, named: "Fake Generated Quiz")
         XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout))
@@ -347,11 +348,8 @@ final class AIQuizUITests: XCTestCase {
         scrollGenerateForm(app, until: run)
         XCTAssertTrue(run.isHittable, "Generate button must be scrolled into view")
         run.tap()
-        let open = app.buttons["generate.openLibrary"]
-        scrollGenerateForm(app, until: open)
-        XCTAssertTrue(open.waitForExistence(timeout: timeout))
-        open.tap()
-        XCTAssertTrue(app.staticTexts["Fake Generated Quiz"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout), "the sheet closes right away")
+        waitForGeneratedQuiz(app)
     }
 
     func testGenerateShowsFriendlyErrorOnEndpointFailure() {
@@ -366,10 +364,15 @@ final class AIQuizUITests: XCTestCase {
         scrollGenerateForm(app, until: run)
         XCTAssertTrue(run.isHittable, "Generate button must be scrolled into view")
         run.tap()
-        let error = app.staticTexts["generate.error"]
-        scrollGenerateForm(app, until: error)
-        XCTAssertTrue(error.waitForExistence(timeout: timeout))
-        XCTAssertFalse(app.buttons["generate.openLibrary"].exists)
+        // The failure shows in the job list with a friendly message and Retry (F-61, §7.3).
+        let status = element(app, "library.job.0.status")
+        XCTAssertTrue(status.waitForExistence(timeout: timeout))
+        for _ in 0..<40 where !status.label.lowercased().contains("server") && !status.label.lowercased().contains("unavailable") {
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        XCTAssertFalse(status.label.contains("Waiting"), "the job failed: \(status.label)")
+        XCTAssertTrue(app.buttons["library.job.0.retry"].exists)
+        XCTAssertFalse(app.staticTexts["Fake Generated Quiz"].exists)
     }
 
     // MARK: Library and card management (PLAN Phase 2)
@@ -813,5 +816,82 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(app.buttons["card.ai.save"].waitForExistence(timeout: timeout))
         app.buttons["card.ai.save"].tap()
         XCTAssertTrue(app.staticTexts["Rewritten fixture prompt"].waitForExistence(timeout: timeout), "the card is replaced (F-28)")
+    }
+
+    // MARK: Phase 5: sources, queue, batch
+
+    private func openGenerate(_ app: XCUIApplication, entry: String) {
+        XCTAssertTrue(app.buttons["library.addButton"].waitForExistence(timeout: timeout))
+        app.buttons["library.addButton"].tap()
+        let item = app.buttons[entry]
+        XCTAssertTrue(item.waitForExistence(timeout: timeout), "\(entry) is in the Add menu")
+        item.tap()
+    }
+
+    func testGenerateFromAWebPageKeepsTheArticle() {
+        let app = launch()
+        openGenerate(app, entry: "library.fromURL")
+        let url = app.textFields["generate.url"]
+        XCTAssertTrue(url.waitForExistence(timeout: timeout), "the web page source is pre-selected (F-3)")
+        url.tap()
+        url.typeText("https://en.wikipedia.org/wiki/Tiberius")
+        app.buttons["generate.run"].tap()
+        waitForGeneratedQuiz(app)
+        openQuiz(app, named: "Fake Generated Quiz")
+        let source = button(app, id: "detail.mode.source", label: "Read Source Materials")
+        XCTAssertTrue(source.waitForExistence(timeout: timeout))
+        source.tap()
+        XCTAssertTrue(app.staticTexts["Fixture article"].waitForExistence(timeout: timeout), "the extracted article is kept")
+        XCTAssertTrue(app.buttons["reader.originalPage"].exists, "with a link to the page")
+    }
+
+    func testAFailingPageCanBeRetriedOrRemoved() {
+        let app = launch()
+        openGenerate(app, entry: "library.fromURL")
+        let url = app.textFields["generate.url"]
+        XCTAssertTrue(url.waitForExistence(timeout: timeout))
+        url.tap()
+        url.typeText("https://fail.example/paywalled")
+        app.buttons["generate.run"].tap()
+        let status = element(app, "library.job.0.status")
+        XCTAssertTrue(status.waitForExistence(timeout: timeout))
+        for _ in 0..<40 where !status.label.contains("Paste the text") { Thread.sleep(forTimeInterval: 0.25) }
+        XCTAssertTrue(status.label.contains("Paste the text instead"), "reader mode explains the failure: \(status.label)")
+        XCTAssertTrue(app.buttons["library.job.0.retry"].exists)
+        app.buttons["library.job.0.remove"].tap()
+        XCTAssertFalse(element(app, "library.generating").waitForExistence(timeout: 2), "the queue is empty again")
+    }
+
+    func testBatchFromListMakesFiveQuizzesWhileStudyingAnother() {
+        let app = launch(scenario: "slowGeneration")
+        openGenerate(app, entry: "library.batch")
+        let text = app.textViews["batch.text"]
+        XCTAssertTrue(text.waitForExistence(timeout: timeout))
+        text.tap()
+        text.typeText((1...5).map { "https://example.com/page\($0)" }.joined(separator: "\n") + "\nnot a link")
+        let add = app.buttons["batch.add"]
+        XCTAssertEqual(add.label, "Add 5", "the bad line is skipped")
+        add.tap()
+
+        let generating = element(app, "library.generating")
+        XCTAssertTrue(generating.waitForExistence(timeout: timeout))
+        XCTAssertTrue(generating.label.contains("Generating (5)") || generating.label.contains("Generating (4)"), generating.label)
+
+        // Study another quiz while the queue works.
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.studyRead"].tap()
+        XCTAssertTrue(app.buttons["studyRead.next"].waitForExistence(timeout: timeout))
+        app.buttons["studyRead.next"].tap()
+        app.buttons["session.end"].tap()
+        app.alerts.buttons["End"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        let generated = app.staticTexts.matching(identifier: "Fake Generated Quiz")
+        for _ in 0..<120 where app.staticTexts.matching(NSPredicate(format: "label == %@", "Fake Generated Quiz")).count < 5 {
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        _ = generated
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Fake Generated Quiz")).count, 5, "five new quizzes")
+        XCTAssertFalse(element(app, "library.generating").exists, "the queue drains")
     }
 }

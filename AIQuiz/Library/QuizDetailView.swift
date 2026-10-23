@@ -12,6 +12,7 @@ struct QuizDetailView: View {
     @State private var linting = false
     @State private var rating = false
     @State private var ratingError: String?
+    @Environment(GenerationQueue.self) private var queue
 
     var body: some View {
         List {
@@ -175,6 +176,7 @@ struct QuizDetailView: View {
         }
         .aiSetupSheet(gate)
         .quizActions(actions)
+        .onAppear { actions.queue = queue }
     }
 
     /// F-26: rates every card 1-5 in batches of 20 and stores it on the card.
@@ -232,6 +234,8 @@ struct QuizDetailView: View {
         case .webPage?: return "Web page · \(quiz.sourceTitle ?? quiz.sourceURL?.host ?? "")"
         case .markdownFile?: return "Markdown file · \(quiz.sourceTitle ?? "")"
         case .pastedText?: return "The text this quiz was generated from."
+        case .pdfFile?: return "PDF · \(quiz.sourceTitle ?? "")"
+        case .scannedPages?: return "Text from \(quiz.sourceTitle ?? "scanned pages")"
         case nil: return ""
         }
     }

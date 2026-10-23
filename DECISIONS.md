@@ -219,3 +219,18 @@ The files are used unmodified, next to the provider's name and only to identify 
 - **The session recap** loads in the background and is saved when it arrives. A failure just leaves it out.
 
 **Consequences.** Every AI path has a test for errors and late replies, and the core suite drives them with a judge it resolves by hand. Recording keeps both verdicts, so later phases such as FSRS and insights can see where the AI and the learner disagree.
+
+## ADR-018 — A main-actor generation queue with a JSON file; sharing through an App Group inbox
+**Date:** 2026-10-23. **Status:** accepted (PLAN Phase 5, SPEC F-61, F-22, CR-014).
+
+**Context.** Jaime wants to turn many summaries and pages into quizzes. Generation takes tens of seconds, and a PDF or a long page takes longer. It must survive leaving the Generate screen, a relaunch, and failures, while Jaime keeps studying. The share extension runs in a separate process that can't open the app.
+
+**Options.** (a) Keep generation inline on the Generate screen. This blocks the UI and loses work on dismiss. (b) A `BGProcessingTask`. iOS decides when it runs, and the work is short-lived and interactive. (c) A serial in-app queue with persisted jobs. (d) A Swift `actor` for the queue, as PLAN first said.
+
+**Decision.** (c), as a `@MainActor @Observable` class rather than an actor. The library observes it directly, and the heavy work runs in nonisolated extractors and network calls.
+- **Persistence:** jobs live in `Application Support/Generation/jobs.json`. A job that was running when the app quit returns as queued.
+- **Running:** one job at a time, through `GenerationPipeline` (fetch or read, then write cards). Cancel, retry and remove act on single jobs.
+- **Finishing:** the quiz is saved and the job leaves the list. A background notification posts when the app isn't active.
+- **Sharing:** the extension writes `<id>.json` plus any file into the App Group container's `Inbox`. The app drains it on launch and foreground; shared PDFs are kept in Documents/Shared so the quiz can link to them.
+
+**Consequences.** Reader mode lives in AIQuizCore on SwiftSoup, the dependency SPEC N-5 allows, so it is tested with `swift test` on hand-written pages. The App Group `group.com.jaimerodriguez.aiquiz` is registered by automatic signing (`-allowProvisioningUpdates`) the first time the app is deployed with the extension. UI-test mode uses a fake extractor and a throwaway job file. The `slowGeneration` scenario makes the queue visible.

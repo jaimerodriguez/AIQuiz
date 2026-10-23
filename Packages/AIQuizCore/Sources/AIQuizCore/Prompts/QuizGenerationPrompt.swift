@@ -1,6 +1,7 @@
 import Foundation
 
-// Prompt: quiz generation (SPEC F-19). Version 2 — 2026-10-22.
+// Prompt: quiz generation (SPEC F-19). Version 3 — 2026-10-23.
+// v3: document sources (PDF, scanned photo) and "part i of n" for long sources (§7.4).
 // v2: optional fields are now `null` rather than omitted, matching the strict JSON schema in
 // QuizGenerator.schema. Wording otherwise unchanged from v1.
 // Output contract: QuizFile JSON (see Models/QuizPayload.swift).
@@ -52,6 +53,12 @@ public extension PromptBuilder {
         case .article:
             lines.append("Read the following article (extracted from a web page), then produce a JSON quiz that best teaches its key ideas. Decide the card count, difficulty, language, tone, and focus from the content itself.")
             if let c = req.sourceContent { lines.append("\n---SOURCE-ARTICLE---\n\(c)\n---END-SOURCE---") }
+        case .document:
+            lines.append("Read the following document text (from a PDF or a scanned page; ignore page numbers, headers and OCR noise), then produce a JSON quiz that best teaches its key ideas. Decide the card count, difficulty, language, tone, and focus from the content itself.")
+            if let c = req.sourceContent { lines.append("\n---SOURCE-DOCUMENT---\n\(c)\n---END-SOURCE---") }
+        }
+        if let part = req.part {
+            lines.append("\nThis is part \(part.index) of \(part.count) of a longer source. Write cards about this part only.\(req.cardCount.map { " Write about \($0) cards." } ?? "")")
         }
         lines.append("\n" + quizSchemaInstruction)
         return lines.joined(separator: "\n")

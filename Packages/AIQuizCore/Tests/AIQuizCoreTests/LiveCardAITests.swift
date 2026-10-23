@@ -71,4 +71,24 @@ struct LiveCardAITests {
             print("LIVE \(name): judge=\(wrong.verdict) ratings=\(ratings) expanded=\(expanded.count) lint=\(issues.map { "\($0.index):\($0.kind.rawValue)" })")
         }
     }
+
+    @Test("reader mode on a real Wikipedia page, then a quiz from the article (Phase 5)")
+    func realPage() async throws {
+        let clients = liveClients()
+        try #require(!clients.isEmpty)
+        var request = URLRequest(url: URL(string: "https://en.wikipedia.org/wiki/Tiberius")!)
+        request.setValue(ReaderModeExtractor.userAgent, forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let html = ReaderModeExtractor.decode(data, contentType: (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type"))
+        let article = try ReaderModeExtractor.extract(html: html)
+        #expect(article.text.contains("Tiberius"))
+        #expect(article.text.count > 5_000, "the whole article: \(article.text.count) characters")
+        #expect(!article.text.contains("Jump to content"), "navigation is dropped")
+        print("LIVE reader mode: \(article.title ?? "-"), \(article.text.count) characters")
+        for client in clients {
+            let quiz = try await QuizGenerator.generateFromSource(QuizGenRequest(source: .article, topic: article.title ?? "Tiberius", sourceContent: article.text), using: client)
+            #expect(quiz.cards.count >= 5, "\(client.endpoint.name) made \(quiz.cards.count) cards")
+            print("LIVE \(client.endpoint.name) quiz from the page: \(quiz.name), \(quiz.cards.count) cards")
+        }
+    }
 }

@@ -87,6 +87,11 @@ SwiftData gotchas seen in this project:
 - The schemas in `AIQuiz/Models/Schema/` are frozen once shipped. A model change means a new `SchemaVn`, a stage in `AIQuizMigrationPlan`, and a test that opens the previous shape (ADR-014).
 - To prove a migration against the owner's real data, copy the iPad store (see below) and run `TEST_RUNNER_AIQUIZ_REAL_STORES=<folder>[:<folder>] ONLY=AIQuizTests/MigrationTests scripts/test.sh`.
 
+## Generation queue and share extension (ADR-018)
+- Generation never runs inline: build a `GenerationJob` and `queue.enqueue` it. The library shows progress; tests wait for the quiz row or `library.job.<n>.status`.
+- UI-test mode uses `FakeSourceExtractor` (no network; host `fail.example` fails like a paywall) and a fresh job file per launch. `-UITestScenario slowGeneration` makes every AI call take 1.5 s.
+- The share extension target is `AIQuizShare`; it and the app share the App Group `group.com.jaimerodriguez.aiquiz` (entitlements in each target folder). Inbox items are `<id>.json` (`kind`, `value`, `file`, `name`) plus the payload file.
+
 ## Visual design (SPEC N-9, ADR-016)
 - One accent color (`AccentColor`, blue). Use it for the single primary action on a screen (`primaryActionStyle()`, disabled and grey until it can run) and for feature icons (`AccentIcon`). Nowhere else.
 - Red, orange and green only when they mean something: destructive, recording, Wrong / Partial / Correct.

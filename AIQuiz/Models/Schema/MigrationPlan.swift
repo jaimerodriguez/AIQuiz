@@ -44,6 +44,8 @@ enum AIQuizMigrationPlan: SchemaMigrationPlan {
         case .webPage?: return .url
         case .markdownFile?: return .markdown
         case .pastedText?: return .pastedText
+        case .pdfFile?: return .pdf
+        case .scannedPages?: return .image
         case nil: return quiz.sourceBookmark != nil ? .imported : .unknown
         }
     }

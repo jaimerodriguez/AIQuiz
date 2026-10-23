@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 enum SourceLink {
     /// Quizzes whose source is a file in Files.
     static func hasFileSource(_ quiz: QuizRecord) -> Bool {
-        quiz.sourceBookmark != nil && (quiz.origin == .imported || quiz.sourceKind == .markdownFile)
+        quiz.sourceBookmark != nil && (quiz.origin == .imported || quiz.sourceKind == .markdownFile || quiz.sourceKind == .pdfFile)
     }
 
     /// True when the bookmark no longer leads to a readable file.
@@ -27,6 +27,7 @@ enum SourceLink {
         if quiz.sourceKind == .markdownFile {
             return [.plainText] + ["md", "markdown"].compactMap { UTType(filenameExtension: $0) }
         }
+        if quiz.sourceKind == .pdfFile { return [.pdf] }
         return [.json]
     }
 
@@ -42,7 +43,7 @@ enum SourceLink {
     static func relink(_ quiz: QuizRecord, to url: URL) throws {
         guard let bookmark = OriginalFileLoader.bookmark(for: url) else { throw RelinkError.unreadable(url) }
         quiz.sourceBookmark = bookmark
-        if quiz.sourceKind == .markdownFile {
+        if quiz.sourceKind == .markdownFile || quiz.sourceKind == .pdfFile {
             quiz.sourceTitle = url.lastPathComponent
         }
         try quiz.modelContext?.save()

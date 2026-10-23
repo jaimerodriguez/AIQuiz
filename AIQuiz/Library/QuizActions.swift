@@ -26,6 +26,8 @@ final class QuizActions {
     var relinkError: String?
     /// Told when a quiz was re-linked, so the library rechecks it.
     var sourceStatus: SourceStatus?
+    /// Where *Regenerate from source* sends its job (F-4).
+    var queue: GenerationQueue?
 
     @ViewBuilder
     func menu(for quiz: QuizRecord, idPrefix: String, includeDelete: Bool = true, sourceMissing: Bool = false) -> some View {
@@ -36,6 +38,14 @@ final class QuizActions {
                 Label("Re-link file", systemImage: "link")
             }
             .accessibilityIdentifier("\(idPrefix).relink")
+        }
+        if queue != nil, let job = Self.regenerationJob(for: quiz) {
+            Button {
+                self.queue?.enqueue(job)
+            } label: {
+                Label("Regenerate from source", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .accessibilityIdentifier("\(idPrefix).regenerate")
         }
         Button {
             self.editing = EditRequest(quiz: quiz, focus: .name)
@@ -68,6 +78,26 @@ final class QuizActions {
                 Label("Delete", systemImage: "trash")
             }
             .accessibilityIdentifier("\(idPrefix).delete")
+        }
+    }
+
+    /// F-4: a new job from the quiz's kept source; the new quiz arrives next to the old one.
+    static func regenerationJob(for quiz: QuizRecord) -> GenerationJob? {
+        let title = "Regenerate: \(quiz.name)"
+        switch quiz.sourceKind {
+        case .webPage?:
+            guard let url = quiz.sourceURL else { return nil }
+            return GenerationJob(title: title, source: .url(url), regenerating: quiz.id)
+        case .markdownFile?, .pdfFile?:
+            if let bookmark = quiz.sourceBookmark {
+                let name = quiz.sourceTitle ?? "Document"
+                return GenerationJob(title: title, source: .file(name: name, bookmark: bookmark, kind: quiz.sourceKind == .pdfFile ? .pdf : .markdown), regenerating: quiz.id)
+            }
+            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id) }
+        case .pastedText?, .scannedPages?:
+            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id) }
+        case nil:
+            return nil
         }
     }
 

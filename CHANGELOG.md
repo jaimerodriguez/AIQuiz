@@ -67,6 +67,16 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-23 (Phase 5)
+- **Phase 5 (ingestion and the generation queue), branch `phase-5-ingestion`, merge after Phase 4:**
+  - **Make quizzes from more sources:** the + menu has *From a web page*, *From a document* (PDF, Markdown or text), *From photos* (scan pages or pick photos), *From pasted text* and *Batch from a list of links*. Web pages are reduced to the article (menus, ads and comments dropped). PDFs are read page by page, with text recognition for scanned pages. Photos are read on the device.
+  - **Generation runs in the background:** Generate closes the sheet straight away; a *Generating (n)* section at the top of the library shows each job's progress, with cancel, retry and remove. Jobs survive quitting the app, and a notification says when a quiz is ready if you're elsewhere.
+  - **Batch from a list:** paste one link per line to make one quiz each, in order, while you keep studying.
+  - **Long sources** are split into parts and the cards merged, so a long PDF or page no longer fails as "too long".
+  - **Share to AIQuiz** from Safari, Files, Photos or any app: the page, text, PDF or image becomes a quiz the next time you open AIQuiz.
+  - **Regenerate from source** in a quiz's menu makes a fresh quiz from the same page, file or text, next to the original.
+  - Read Source Materials shows PDFs as PDFs, and the recognised text for photos.
+
 ### 2026-10-23
 - **Phase 4 (AI grading, explanations, hints, lint), branch `phase-4-ai-features`, merge after Phase 3:**
   - **Auto-grade (on by default, Settings › AI):** when you finish speaking, the app stops listening after two seconds of silence, asks the AI for a verdict and highlights its grade with a one-line reason. Tap any grade to decide; a different tap is saved as your override. If the AI is slow or fails, grading still works.
