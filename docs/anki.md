@@ -98,7 +98,9 @@ noticed. Each is a candidate for later work (§4).
 | A-10 | **Exports carry no review log.** | Only each card's current state is written. | None; Anki's schedule is right, only its history graphs start fresh. |
 | A-11 | **A cloze card's blanks export as one Anki card (all `c1`).** | AIQuiz asks a card's blanks together. Anki can't tell which blanks were meant as separate cards. | Renumber in Anki if you want one card per blank. |
 | A-12 | **Very large packages:** the collection inside must be under 1 GB compressed and 2 GB uncompressed. Media files are never read, so they don't count. | Safety limits against damaged files. | Export a single deck instead of the whole collection. |
-| A-13 | **"Open in AIQuiz" may not be offered for `.apkg` files on some devices.** | AIQuiz declares the type as `net.ankiweb.apkg`; with AnkiMobile installed, iOS may use AnkiMobile's identifier. Share and *Import Anki deck* still work. | Use Share › AIQuiz or the + menu. |
+| A-13 | **"Open in AIQuiz" may not be offered for `.apkg` files on some devices.** | AIQuiz declares the type as `net.ankiweb.apkg`. iOS may label the file with another app's type (AnkiMobile's), or a file provider may give it a generic one. | Use Share › AIQuiz or the + menu. |
+
+**Fixed 2026-10-23 (owner report):** *Import Anki deck* greyed out a `.apkg` in Edge's downloads folder. The picker accepted only AIQuiz's declared types, and that file had some other type; which one wasn't confirmed, for the reasons in A-13. The picker now accepts any file and checks the content, and a file that isn't a package gets "This isn't an Anki deck." |
 | A-14 | **zstd's compressor is compiled into the app but never used.** | The official package builds the whole library. | None; it only adds to the app's size. |
 
 Seen once while testing, not caused by this feature: in one full live API run, a model

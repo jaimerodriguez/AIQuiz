@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import AIQuizCore
 import SwiftData
 
@@ -149,7 +150,7 @@ struct LibraryView: View {
         }
         // A second importer on its own view: two on one view conflict (only one presents).
         .background {
-            Color.clear.fileImporter(isPresented: $importingAnki, allowedContentTypes: [.ankiPackage, .ankiCollection]) { result in
+            Color.clear.fileImporter(isPresented: $importingAnki, allowedContentTypes: UTType.ankiPickerTypes) { result in
                 switch result {
                 case .success(let url): ankiRouter.open(url, securityScoped: true)
                 case .failure(let error): importError = error.localizedDescription

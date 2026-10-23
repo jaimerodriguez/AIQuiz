@@ -11,6 +11,12 @@ extension UTType {
     static func isAnki(_ url: URL) -> Bool {
         ["apkg", "colpkg"].contains(url.pathExtension.lowercased())
     }
+
+    /// What *Import Anki deck* lets you pick: any file. iOS may label an `.apkg` with another
+    /// app's type, or a file provider (a browser's downloads folder) with a generic one, and a
+    /// picker limited to AIQuiz's own types then greys it out (docs/anki.md A-13). The
+    /// importer checks the content instead.
+    static let ankiPickerTypes: [UTType] = [.ankiPackage, .ankiCollection, .zip, .data]
 }
 
 /// One Anki file to import, however it arrived: the + menu, *Open in AIQuiz*, or Share (F-62).
@@ -153,6 +159,14 @@ struct AnkiImportView: View {
         }
     }
 
+    /// Any file can be picked, so a file that isn't a package says what to pick instead.
+    static func message(for error: Error) -> String {
+        if let zip = error as? ZipArchive.Failure, zip == .notAZip {
+            return "This isn't an Anki deck. Pick a .apkg or .colpkg file exported from Anki."
+        }
+        return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+    }
+
     private func skipped(_ icon: String, _ text: String) -> some View {
         Label(text, systemImage: icon)
             .foregroundStyle(.secondary)
@@ -179,7 +193,7 @@ struct AnkiImportView: View {
             phase = .done(result, dueNow: reviewsDue)
             Log.data.info("Anki import: \(result.quizzes.count) quizzes, \(result.cardCount) cards (\(result.format.rawValue))")
         } catch {
-            phase = .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            phase = .failed(Self.message(for: error))
             Log.data.error("Anki import failed: \(String(describing: error))")
         }
     }

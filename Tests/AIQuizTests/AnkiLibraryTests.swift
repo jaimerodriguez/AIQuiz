@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import UniformTypeIdentifiers
 import AIQuizCore
 @testable import AIQuiz
 
@@ -64,6 +65,18 @@ final class AnkiLibraryTests: XCTestCase {
         XCTAssertEqual(schedule.stability, 6, accuracy: 0.001)
         XCTAssertEqual(schedule.reps, 2)
         XCTAssertTrue(back.quizzes.first?.cards[1].schedule.isNew ?? false)
+    }
+
+    func testThePickerAcceptsAnyFileAndANonAnkiFileGetsAClearMessage() throws {
+        // A .apkg labelled with another app's or a generic type must not be greyed out (A-13).
+        for type in [UTType.data, .zip, UTType(filenameExtension: "apkg") ?? .data] {
+            XCTAssertTrue(UTType.ankiPickerTypes.contains { type.conforms(to: $0) }, "\(type.identifier) is selectable")
+        }
+        let notAnki = FileManager.default.temporaryDirectory.appending(path: "notes-\(UUID()).apkg")
+        try Data("plain text, not a package".utf8).write(to: notAnki)
+        XCTAssertThrowsError(try AnkiImporter.importPackage(at: notAnki)) { error in
+            XCTAssertEqual(AnkiImportView.message(for: error), "This isn't an Anki deck. Pick a .apkg or .colpkg file exported from Anki.")
+        }
     }
 
     func testAnAnkiDeckSharedToAIQuizGoesToTheImporterNotTheQueue() throws {
