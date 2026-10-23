@@ -68,7 +68,7 @@ public struct JudgeVerdict: Sendable, Hashable {
 }
 
 /// Wire shape of the judge response: `{"verdict":"correct|partial|wrong","reason":"..."}`.
-public struct JudgeJSON: Decodable, Sendable {
+public struct JudgeJSON: Decodable, Sendable, Equatable {
     public let verdict: String
     public let reason: String
 

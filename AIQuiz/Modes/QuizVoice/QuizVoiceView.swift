@@ -1,5 +1,6 @@
 import SwiftUI
 import AIQuizCore
+import LLMKit
 import SwiftData
 import AVFoundation
 import Speech
@@ -134,13 +135,14 @@ struct QuizVoiceView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
-    @Environment(ProviderRegistry.self) private var registry
+    @Environment(AIRouter.self) private var router
     @State private var player: QuizVoicePlayer
     @State private var showAbandonAlert = false
     @State private var sessionRecorded = false
     @State private var aiJudging = false
     @State private var aiError: String?
     @State private var showProviderSetup = false
+    @State private var setupIssue: String?
 
     init(quiz: QuizRecord) {
         self.quiz = quiz
@@ -185,7 +187,7 @@ struct QuizVoiceView: View {
             Text("Your progress in this session won't be saved.")
         }
         .sheet(isPresented: $showProviderSetup) {
-            NavigationStack { ProviderSettingsView() }
+            NavigationStack { EndpointsListView(setupIssue: setupIssue, showsDoneButton: true) }
         }
         .onChange(of: player.phase) { _, new in
             if new == .ended && !sessionRecorded {
@@ -422,26 +424,21 @@ struct QuizVoiceView: View {
     private func askAIToJudge() async {
         guard let card = player.deck.current else { return }
         aiError = nil
-        if let error = registry.validate(for: .grading) {
-            switch error {
-            case .missingAPIKey, .providerUnavailable, .noProviderConfigured:
-                showProviderSetup = true
-                return
-            default:
-                aiError = error.localizedDescription
-                return
-            }
+        if let issue = router.issue(for: .grading) {
+            setupIssue = issue.localizedDescription
+            showProviderSetup = true
+            return
         }
         aiJudging = true
         defer { aiJudging = false }
         do {
-            let provider = registry.provider(for: .grading)
-            let verdict = try await provider.judgeAnswer(JudgeRequest(
+            let client = try router.client(for: .grading)
+            let verdict = try await AnswerJudge.judge(JudgeRequest(
                 prompt: card.prompt,
                 userAnswer: player.transcript,
                 correctShort: card.shortAnswer,
                 correctLong: card.longAnswer
-            ))
+            ), using: client)
             player.aiVerdict = .init(verdict: verdict.verdict, reason: verdict.reason)
         } catch {
             aiError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

@@ -5,13 +5,15 @@ import Foundation
 ///
 /// Launch arguments:
 /// - `-UITestMode`            in-memory store, seeded fixtures, fake AI provider, throwaway defaults
-/// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`
+/// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`, `noEndpoints`
 struct AppEnvironment: Sendable {
     enum Scenario: String, Sendable, CaseIterable {
         case standard
         case emptyLibrary
         case endpointError
         case malformedJSON
+        /// No AI endpoint configured, to exercise the lazy setup sheet.
+        case noEndpoints
     }
 
     let isUITest: Bool

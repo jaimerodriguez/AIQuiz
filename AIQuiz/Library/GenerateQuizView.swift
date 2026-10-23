@@ -1,5 +1,6 @@
 import SwiftUI
 import AIQuizCore
+import LLMKit
 import SwiftData
 import UniformTypeIdentifiers
 
@@ -45,7 +46,7 @@ struct GenerateQuizView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @Environment(ProviderRegistry.self) private var registry
+    @Environment(AIRouter.self) private var router
 
     @State private var source: Source = .topic
     @State private var topic: String = ""
@@ -67,6 +68,7 @@ struct GenerateQuizView: View {
     @State private var generating = false
     @State private var errorMessage: String?
     @State private var showProviderSetup = false
+    @State private var setupIssue: String?
     @State private var generatedQuizId: UUID?
     @State private var exportingJSON: Data?
     @State private var exporting = false
@@ -123,7 +125,7 @@ struct GenerateQuizView: View {
             }
         }
         .sheet(isPresented: $showProviderSetup) {
-            NavigationStack { ProviderSettingsView() }
+            NavigationStack { EndpointsListView(setupIssue: setupIssue, showsDoneButton: true) }
         }
     }
 
@@ -247,7 +249,7 @@ struct GenerateQuizView: View {
         } header: {
             Text("Generate")
         } footer: {
-            Text("Provider: \(registry.generationProvider.label)")
+            Text("Endpoint: \(router.summary(for: .generation))")
                 .font(.footnote)
         }
     }
@@ -280,15 +282,10 @@ struct GenerateQuizView: View {
         generatedQuizId = nil
         exportingJSON = nil
 
-        if let validation = registry.validate(for: .generation) {
-            switch validation {
-            case .missingAPIKey, .providerUnavailable, .noProviderConfigured:
-                showProviderSetup = true
-                return
-            default:
-                errorMessage = validation.localizedDescription
-                return
-            }
+        if let issue = router.issue(for: .generation) {
+            setupIssue = issue.localizedDescription
+            showProviderSetup = true
+            return
         }
 
         let request: QuizGenRequest
@@ -302,8 +299,8 @@ struct GenerateQuizView: View {
         generating = true
         defer { generating = false }
         do {
-            let provider = registry.provider(for: .generation)
-            let payload = try await provider.generateQuiz(request)
+            let client = try router.client(for: .generation)
+            let payload = try await QuizGenerator.generate(request, using: client)
             try saveQuiz(payload)
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

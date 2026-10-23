@@ -1,6 +1,8 @@
 import Foundation
 
-// Prompt: quiz generation (SPEC F-19). Version 1 — carried over from v1 unchanged.
+// Prompt: quiz generation (SPEC F-19). Version 2 — 2026-10-22.
+// v2: optional fields are now `null` rather than omitted, matching the strict JSON schema in
+// QuizGenerator.schema. Wording otherwise unchanged from v1.
 // Output contract: QuizFile JSON (see Models/QuizPayload.swift).
 
 public enum PromptBuilder {}
@@ -16,8 +18,8 @@ public extension PromptBuilder {
           {
             "prompt": "front of the card (20-200 chars)",
             "long_answer": "fuller explanation (20-400 chars, can be multi-sentence)",
-            "short_answer": "optional one-line sharp answer",
-            "hint": "optional one-line hint"
+            "short_answer": "one-line sharp answer, or null",
+            "hint": "one-line hint, or null"
           }
         ]
       }
@@ -53,10 +55,5 @@ public extension PromptBuilder {
         }
         lines.append("\n" + quizSchemaInstruction)
         return lines.joined(separator: "\n")
-    }
-
-    /// Appended to the user message on the single retry after a decode failure.
-    static func retrySuffix(decodeError: String) -> String {
-        "\n\nThe previous response could not be decoded: \(decodeError). Return only the JSON object exactly matching the schema."
     }
 }

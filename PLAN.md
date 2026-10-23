@@ -13,8 +13,8 @@ How to use this document:
 
 | Phase | Title | Status | PR |
 |---|---|---|---|
-| 0 | Test scaffolding and packages | in review | phase-0-test-scaffolding |
-| 1 | LLMKit foundation and endpoint settings | not started | |
+| 0 | Test scaffolding and packages | in review | jaimerodriguez/AIQuiz#2 |
+| 1 | LLMKit foundation and endpoint settings | in review | phase-1-llmkit, stacked on #2 |
 | 2 | Schema v2 and migration | not started | |
 | 3 | Session UI consolidation and v1 drift fixes | not started | |
 | 4 | AI grading, explanations, hints, lint | not started | |
@@ -61,7 +61,7 @@ Launch argument `-UITestMode` makes the app:
 Additional arguments: `-UITestScenario <name>` selects alternative fixture sets (e.g. `endpointError`, `malformedJSON`, `emptyLibrary`, `largeLibrary`). `largeLibrary` generates 120 quizzes × 40 cards × 15 sessions in the in-memory store (synthetic text, deterministic seed) and is the fixture for every performance assertion (SPEC N-8).
 
 ### 1.6 Live tests (opt-in)
-`AIQUIZ_LIVE_TESTS=1` with `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in the environment enables a small suite in `LLMKit` that hits the real APIs once per client (complete, stream, structured). Never run in CI by default. Run before merging Phase 1 and whenever a wire format changes.
+`scripts/live-test.sh` reads `AIQuiz_Ant_test_key` and `AIQuiz_Oai_test_key` from the macOS login Keychain and sets `AIQUIZ_LIVE_TESTS=1`, enabling a small suite in `LLMKit` that hits the real APIs once per client (complete, stream, structured). Never run in CI by default. Run before merging Phase 1 and whenever a wire format changes.
 
 ---
 

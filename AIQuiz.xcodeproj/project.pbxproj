@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		111A951C0A759A20DDC66FE0 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2831E3E68BF01BD205EE511 /* OpenAIProvider.swift */; };
 		13B77D7963FFAE9206940AC5 /* UITestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E94536C0ACF306FCE75E451 /* UITestFixtures.swift */; };
 		1674AD05081D143C376007AB /* spanish-verbs.json in Resources */ = {isa = PBXBuildFile; fileRef = 14A785C67E043E17F6B2AF44 /* spanish-verbs.json */; };
+		1A6666D088CE483970C6D8EE /* LLMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6E718195306FF014125944A2 /* LLMKit */; };
 		1DF4139D5C094280C1C57394 /* AIQuizUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FFA22C64E3A5E405A779F23 /* AIQuizUITests.swift */; };
 		23C230AF668A597AE291A597 /* systems-design.json in Resources */ = {isa = PBXBuildFile; fileRef = D943CF0CB07C69203F58497B /* systems-design.json */; };
 		2450660CB86DA95F1B81ADB1 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2835F1C92830DEF63381F07A /* Log.swift */; };
@@ -21,34 +21,38 @@
 		34D72F1DEF4FFF77DC5155C0 /* SampleQuizzes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB6E1F1F443E71C0ABAB663 /* SampleQuizzes.swift */; };
 		3CCF180D2B0258BC5179FC25 /* roman-emperors.json in Resources */ = {isa = PBXBuildFile; fileRef = ECEAFF54AE993D686DF493F2 /* roman-emperors.json */; };
 		3F7BB38C541779AAFABA92FB /* SessionSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8191A1144BAADC3153A98C70 /* SessionSummaryView.swift */; };
+		4568CC325997FEFC4FBFB1A4 /* APIKeyCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BE4D6CC9743E90BB00C57D /* APIKeyCheck.swift */; };
 		464046413F12C094D240A53B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D7E7FB5A11CC559AE56B1C /* AppEnvironment.swift */; };
 		4BC701EF1B99D5EF89B06775 /* ScoreStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D710098B6CFC144216ED412E /* ScoreStoreTests.swift */; };
 		4CA5FD25A8FC381F599C6816 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AAFA9F08A6512D133406B57 /* SettingsView.swift */; };
 		572864DCE9C799882819930F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B623DE20D009FAD8896C90ED /* LibraryView.swift */; };
+		5C6350C1A7DDA704B0A27407 /* APIKeyCheckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 541A397422B6981E145E484F /* APIKeyCheckTests.swift */; };
+		5D1CF442E7B6C0B074B4F69C /* EndpointEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA07B697BEEDD4E950E89D0 /* EndpointEditView.swift */; };
+		5F4AF0C566D373163F1C35EF /* UITestAIFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13A177A8F04C18DBDD21BAB /* UITestAIFixtures.swift */; };
 		6C3A3DA34A24E4E2FE15D44A /* QuizVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A544B34F4F4FDB7EDD478EB /* QuizVoiceView.swift */; };
 		6D8567BCDCB7931BCE39E608 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D780954F58C8100BDC1F1 /* TTSService.swift */; };
-		729BA6F05183B64267F2015A /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2507EF3975ECB78EC71F69 /* ClaudeProvider.swift */; };
-		7BE59F488C2BCC594D34FC4C /* ProviderRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F14A4EB9DEBA8BCB72764778 /* ProviderRegistryTests.swift */; };
+		7828F7D55AD76BF1500D39F9 /* EndpointPresets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F4EA8F1E48287E617DC1158 /* EndpointPresets.swift */; };
 		7CC54AC36BBDD193496DC35D /* STTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92719B15C5532D95C306C7C8 /* STTService.swift */; };
 		7D20D99C54216543D52B6053 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6CFBCFD5B6AD4370CA3705F /* Persistence.swift */; };
-		7E9CB29AB838F60DDF1F6974 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A83F2C31093F9333BF9335E /* LLMProvider.swift */; };
 		86259955B06B104E704E1E71 /* FileImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB23430BBA58FF24DD911E47 /* FileImportService.swift */; };
 		87CAD7223D51D7CEF04A6222 /* AppEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBD62F8A74F06507E02F2170 /* AppEnvironmentTests.swift */; };
 		8BB8568BEE537E6858EA5610 /* QuizTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422A9FD2EBCA5C5E52FB748 /* QuizTypography.swift */; };
-		8D03FE8BB7171FBB281F860E /* FakeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D11E068607E1CF00412CFFE /* FakeProvider.swift */; };
 		8F423341D60B71C941FDB752 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79850B49D0CA55854ABFD654 /* KeychainStore.swift */; };
-		99ED43DD5E9CA1E6747D94B3 /* AppleFoundationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01F90813868FCC9989E5E94E /* AppleFoundationProvider.swift */; };
 		9BCD8E6D7D1C70AF855C84BA /* QuizDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8734106965FA216658B104D /* QuizDetailView.swift */; };
-		AFD34EA944E86552B27DFC3F /* ProviderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 387071C03B7350F7D5E38580 /* ProviderSettingsView.swift */; };
+		A196F5B1333A10B1EC9258EA /* AIRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E47022E7D7DAD97D78A2995 /* AIRouter.swift */; };
+		A2E7A349C3B063C2BEE02ABE /* EndpointsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4157E0D3C1A5DBF2D998691 /* EndpointsListView.swift */; };
+		B48FF7E78EF6023F67C56647 /* AppleOnDeviceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D28B72860AC6EBE457A07 /* AppleOnDeviceClient.swift */; };
 		C91BD863995F54DF7B6BDCD9 /* grading.json in Resources */ = {isa = PBXBuildFile; fileRef = 98B189EC9CF0F202745B2B7A /* grading.json */; };
 		CED4DB50FC862DA25E10C3F1 /* ScoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850836742A4B71B98D3FB498 /* ScoreStore.swift */; };
-		CF4B9042FFAFA9E23F45BA19 /* ProviderRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 707BD565E72C567529675A78 /* ProviderRegistry.swift */; };
+		D9B9F611E3A90131D5D3DAA3 /* LLMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 909590C8DC9A866B9F6C2E0B /* LLMKit */; };
+		DE6D783D916AC6B3A4347222 /* AIPurpose.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4128E1EDC648587162B4D3B2 /* AIPurpose.swift */; };
 		E0DA8B64E64AE7B43D91DC8C /* AIQuizApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A577377111DE03AACB1753DE /* AIQuizApp.swift */; };
 		E553E8C5D519B0702C151DFC /* AIQuizCore in Frameworks */ = {isa = PBXBuildFile; productRef = 22150C6B4BBE0C95A6C3BE8E /* AIQuizCore */; };
 		E6D73B4B9F8D4DA1FC1F124E /* AIQuizCore in Frameworks */ = {isa = PBXBuildFile; productRef = 70CB839EFBAF585F488E5069 /* AIQuizCore */; };
 		ED67EB9B19E3312215882781 /* StudyReadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06DC5F90D997F337147C60F2 /* StudyReadView.swift */; };
 		EF91A134A76EC6855FFEF5BD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBF322BC20DB68106549B7A /* RootView.swift */; };
 		F7340BEFE429C15DBB94212C /* HintButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B031457E7B2BAE9AE0EB6335 /* HintButton.swift */; };
+		FA880DE9D1AD5D178CB80008 /* AIRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6593A4AAA38E932190D4F4A /* AIRouterTests.swift */; };
 		FF238F421C7742CA0274B080 /* generation.json in Resources */ = {isa = PBXBuildFile; fileRef = B58FCC0C17E1E64BA7367EC2 /* generation.json */; };
 /* End PBXBuildFile section */
 
@@ -70,37 +74,41 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		01F90813868FCC9989E5E94E /* AppleFoundationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationProvider.swift; sourceTree = "<group>"; };
 		06DC5F90D997F337147C60F2 /* StudyReadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyReadView.swift; sourceTree = "<group>"; };
 		14A785C67E043E17F6B2AF44 /* spanish-verbs.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "spanish-verbs.json"; sourceTree = "<group>"; };
-		1A83F2C31093F9333BF9335E /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		1AD2805BC4EB7A5BC0F68AC6 /* AIQuizTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AIQuizTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1EEE8AAC9E0A9558F61270E3 /* GenerateQuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateQuizView.swift; sourceTree = "<group>"; };
 		2835F1C92830DEF63381F07A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		296ED178BCC9A487FF10EDB3 /* StudyVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyVoiceView.swift; sourceTree = "<group>"; };
 		2A544B34F4F4FDB7EDD478EB /* QuizVoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizVoiceView.swift; sourceTree = "<group>"; };
-		387071C03B7350F7D5E38580 /* ProviderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsView.swift; sourceTree = "<group>"; };
 		3CBF322BC20DB68106549B7A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		4128E1EDC648587162B4D3B2 /* AIPurpose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPurpose.swift; sourceTree = "<group>"; };
 		4E94536C0ACF306FCE75E451 /* UITestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestFixtures.swift; sourceTree = "<group>"; };
 		52D694C6C5C709DA726E9CF9 /* AIQuizUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AIQuizUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		541A397422B6981E145E484F /* APIKeyCheckTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyCheckTests.swift; sourceTree = "<group>"; };
 		6AAFA9F08A6512D133406B57 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		707BD565E72C567529675A78 /* ProviderRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistry.swift; sourceTree = "<group>"; };
+		6E47022E7D7DAD97D78A2995 /* AIRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRouter.swift; sourceTree = "<group>"; };
 		79850B49D0CA55854ABFD654 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		7F4EA8F1E48287E617DC1158 /* EndpointPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointPresets.swift; sourceTree = "<group>"; };
 		7FFA22C64E3A5E405A779F23 /* AIQuizUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIQuizUITests.swift; sourceTree = "<group>"; };
 		8191A1144BAADC3153A98C70 /* SessionSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryView.swift; sourceTree = "<group>"; };
 		850836742A4B71B98D3FB498 /* ScoreStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreStore.swift; sourceTree = "<group>"; };
 		92719B15C5532D95C306C7C8 /* STTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTService.swift; sourceTree = "<group>"; };
+		93BE4D6CC9743E90BB00C57D /* APIKeyCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyCheck.swift; sourceTree = "<group>"; };
 		9422A9FD2EBCA5C5E52FB748 /* QuizTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizTypography.swift; sourceTree = "<group>"; };
 		98B189EC9CF0F202745B2B7A /* grading.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = grading.json; sourceTree = "<group>"; };
-		9D11E068607E1CF00412CFFE /* FakeProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeProvider.swift; sourceTree = "<group>"; };
 		A577377111DE03AACB1753DE /* AIQuizApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIQuizApp.swift; sourceTree = "<group>"; };
 		A6CFBCFD5B6AD4370CA3705F /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		A6EC6D54D58161DF0A04E74D /* LLMKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LLMKit; path = Packages/LLMKit; sourceTree = SOURCE_ROOT; };
 		A8734106965FA216658B104D /* QuizDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizDetailView.swift; sourceTree = "<group>"; };
-		AD2507EF3975ECB78EC71F69 /* ClaudeProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeProvider.swift; sourceTree = "<group>"; };
 		B031457E7B2BAE9AE0EB6335 /* HintButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintButton.swift; sourceTree = "<group>"; };
 		B58FCC0C17E1E64BA7367EC2 /* generation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = generation.json; sourceTree = "<group>"; };
 		B623DE20D009FAD8896C90ED /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		B6593A4AAA38E932190D4F4A /* AIRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRouterTests.swift; sourceTree = "<group>"; };
 		BC2EE55841252B0D89E1E749 /* AIQuiz.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AIQuiz.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C13A177A8F04C18DBDD21BAB /* UITestAIFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestAIFixtures.swift; sourceTree = "<group>"; };
+		C4157E0D3C1A5DBF2D998691 /* EndpointsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointsListView.swift; sourceTree = "<group>"; };
+		C89D28B72860AC6EBE457A07 /* AppleOnDeviceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleOnDeviceClient.swift; sourceTree = "<group>"; };
 		CB6A37609DF37FF529F1AA69 /* VoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCatalog.swift; sourceTree = "<group>"; };
 		D710098B6CFC144216ED412E /* ScoreStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreStoreTests.swift; sourceTree = "<group>"; };
 		D943CF0CB07C69203F58497B /* systems-design.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "systems-design.json"; sourceTree = "<group>"; };
@@ -108,12 +116,11 @@
 		DBB6E1F1F443E71C0ABAB663 /* SampleQuizzes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleQuizzes.swift; sourceTree = "<group>"; };
 		DBD62F8A74F06507E02F2170 /* AppEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironmentTests.swift; sourceTree = "<group>"; };
 		E267656C01B185E7B08FF5CA /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		E2831E3E68BF01BD205EE511 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
 		E41FBEF8EC89B4E320F0C3DC /* AIQuizCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AIQuizCore; path = Packages/AIQuizCore; sourceTree = SOURCE_ROOT; };
 		E6D7E7FB5A11CC559AE56B1C /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		ECEAFF54AE993D686DF493F2 /* roman-emperors.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "roman-emperors.json"; sourceTree = "<group>"; };
-		F14A4EB9DEBA8BCB72764778 /* ProviderRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistryTests.swift; sourceTree = "<group>"; };
 		F6BA43C1EC8A709430C09F0A /* ContentExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentExtractor.swift; sourceTree = "<group>"; };
+		FDA07B697BEEDD4E950E89D0 /* EndpointEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointEditView.swift; sourceTree = "<group>"; };
 		FF4D780954F58C8100BDC1F1 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -123,6 +130,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6D73B4B9F8D4DA1FC1F124E /* AIQuizCore in Frameworks */,
+				D9B9F611E3A90131D5D3DAA3 /* LLMKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +139,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E553E8C5D519B0702C151DFC /* AIQuizCore in Frameworks */,
+				1A6666D088CE483970C6D8EE /* LLMKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,6 +237,7 @@
 			isa = PBXGroup;
 			children = (
 				E41FBEF8EC89B4E320F0C3DC /* AIQuizCore */,
+				A6EC6D54D58161DF0A04E74D /* LLMKit */,
 			);
 			path = Packages;
 			sourceTree = "<group>";
@@ -261,7 +271,7 @@
 				92719B15C5532D95C306C7C8 /* STTService.swift */,
 				FF4D780954F58C8100BDC1F1 /* TTSService.swift */,
 				CB6A37609DF37FF529F1AA69 /* VoiceCatalog.swift */,
-				E6674C0BEFF6E99B4B69C4B3 /* LLM */,
+				ED82C8F6C9BDD32B31123D59 /* AI */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -288,25 +298,14 @@
 		E104385BC516D51DC9DA5091 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				93BE4D6CC9743E90BB00C57D /* APIKeyCheck.swift */,
 				E267656C01B185E7B08FF5CA /* AppSettings.swift */,
+				FDA07B697BEEDD4E950E89D0 /* EndpointEditView.swift */,
+				C4157E0D3C1A5DBF2D998691 /* EndpointsListView.swift */,
 				79850B49D0CA55854ABFD654 /* KeychainStore.swift */,
-				387071C03B7350F7D5E38580 /* ProviderSettingsView.swift */,
 				6AAFA9F08A6512D133406B57 /* SettingsView.swift */,
 			);
 			path = Settings;
-			sourceTree = "<group>";
-		};
-		E6674C0BEFF6E99B4B69C4B3 /* LLM */ = {
-			isa = PBXGroup;
-			children = (
-				01F90813868FCC9989E5E94E /* AppleFoundationProvider.swift */,
-				AD2507EF3975ECB78EC71F69 /* ClaudeProvider.swift */,
-				9D11E068607E1CF00412CFFE /* FakeProvider.swift */,
-				1A83F2C31093F9333BF9335E /* LLMProvider.swift */,
-				E2831E3E68BF01BD205EE511 /* OpenAIProvider.swift */,
-				707BD565E72C567529675A78 /* ProviderRegistry.swift */,
-			);
-			path = LLM;
 			sourceTree = "<group>";
 		};
 		E736FF4DA7EB558F7934D116 /* Products */ = {
@@ -319,11 +318,24 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		ED82C8F6C9BDD32B31123D59 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				4128E1EDC648587162B4D3B2 /* AIPurpose.swift */,
+				6E47022E7D7DAD97D78A2995 /* AIRouter.swift */,
+				C89D28B72860AC6EBE457A07 /* AppleOnDeviceClient.swift */,
+				7F4EA8F1E48287E617DC1158 /* EndpointPresets.swift */,
+				C13A177A8F04C18DBDD21BAB /* UITestAIFixtures.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
 		F2DC64227D6049746EBC5CD9 /* AIQuizTests */ = {
 			isa = PBXGroup;
 			children = (
+				B6593A4AAA38E932190D4F4A /* AIRouterTests.swift */,
+				541A397422B6981E145E484F /* APIKeyCheckTests.swift */,
 				DBD62F8A74F06507E02F2170 /* AppEnvironmentTests.swift */,
-				F14A4EB9DEBA8BCB72764778 /* ProviderRegistryTests.swift */,
 				D710098B6CFC144216ED412E /* ScoreStoreTests.swift */,
 			);
 			path = AIQuizTests;
@@ -366,6 +378,7 @@
 			name = AIQuiz;
 			packageProductDependencies = (
 				70CB839EFBAF585F488E5069 /* AIQuizCore */,
+				909590C8DC9A866B9F6C2E0B /* LLMKit */,
 			);
 			productName = AIQuiz;
 			productReference = BC2EE55841252B0D89E1E749 /* AIQuiz.app */;
@@ -404,6 +417,7 @@
 			name = AIQuizTests;
 			packageProductDependencies = (
 				22150C6B4BBE0C95A6C3BE8E /* AIQuizCore */,
+				6E718195306FF014125944A2 /* LLMKit */,
 			);
 			productName = AIQuizTests;
 			productReference = 1AD2805BC4EB7A5BC0F68AC6 /* AIQuizTests.xctest */;
@@ -444,6 +458,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6329A78D6259447A74788D38 /* XCLocalSwiftPackageReference "Packages/AIQuizCore" */,
+				2430A4DC794A734E275522BA /* XCLocalSwiftPackageReference "Packages/LLMKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E736FF4DA7EB558F7934D116 /* Products */;
@@ -477,24 +492,24 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DE6D783D916AC6B3A4347222 /* AIPurpose.swift in Sources */,
 				E0DA8B64E64AE7B43D91DC8C /* AIQuizApp.swift in Sources */,
+				A196F5B1333A10B1EC9258EA /* AIRouter.swift in Sources */,
+				4568CC325997FEFC4FBFB1A4 /* APIKeyCheck.swift in Sources */,
 				464046413F12C094D240A53B /* AppEnvironment.swift in Sources */,
 				253FAAA3297A8BF4ACA38FC6 /* AppSettings.swift in Sources */,
-				99ED43DD5E9CA1E6747D94B3 /* AppleFoundationProvider.swift in Sources */,
-				729BA6F05183B64267F2015A /* ClaudeProvider.swift in Sources */,
+				B48FF7E78EF6023F67C56647 /* AppleOnDeviceClient.swift in Sources */,
 				27FB58B2ECB7B2752804FC9F /* ContentExtractor.swift in Sources */,
-				8D03FE8BB7171FBB281F860E /* FakeProvider.swift in Sources */,
+				5D1CF442E7B6C0B074B4F69C /* EndpointEditView.swift in Sources */,
+				7828F7D55AD76BF1500D39F9 /* EndpointPresets.swift in Sources */,
+				A2E7A349C3B063C2BEE02ABE /* EndpointsListView.swift in Sources */,
 				86259955B06B104E704E1E71 /* FileImportService.swift in Sources */,
 				31CC847629E35568C2D5F195 /* GenerateQuizView.swift in Sources */,
 				F7340BEFE429C15DBB94212C /* HintButton.swift in Sources */,
 				8F423341D60B71C941FDB752 /* KeychainStore.swift in Sources */,
-				7E9CB29AB838F60DDF1F6974 /* LLMProvider.swift in Sources */,
 				572864DCE9C799882819930F /* LibraryView.swift in Sources */,
 				2450660CB86DA95F1B81ADB1 /* Log.swift in Sources */,
-				111A951C0A759A20DDC66FE0 /* OpenAIProvider.swift in Sources */,
 				7D20D99C54216543D52B6053 /* Persistence.swift in Sources */,
-				CF4B9042FFAFA9E23F45BA19 /* ProviderRegistry.swift in Sources */,
-				AFD34EA944E86552B27DFC3F /* ProviderSettingsView.swift in Sources */,
 				9BCD8E6D7D1C70AF855C84BA /* QuizDetailView.swift in Sources */,
 				8BB8568BEE537E6858EA5610 /* QuizTypography.swift in Sources */,
 				6C3A3DA34A24E4E2FE15D44A /* QuizVoiceView.swift in Sources */,
@@ -507,6 +522,7 @@
 				ED67EB9B19E3312215882781 /* StudyReadView.swift in Sources */,
 				29C68614638BC6B1F59AC9C2 /* StudyVoiceView.swift in Sources */,
 				6D8567BCDCB7931BCE39E608 /* TTSService.swift in Sources */,
+				5F4AF0C566D373163F1C35EF /* UITestAIFixtures.swift in Sources */,
 				13B77D7963FFAE9206940AC5 /* UITestFixtures.swift in Sources */,
 				3438ACC07C701B14A9F29211 /* VoiceCatalog.swift in Sources */,
 			);
@@ -516,8 +532,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA880DE9D1AD5D178CB80008 /* AIRouterTests.swift in Sources */,
+				5C6350C1A7DDA704B0A27407 /* APIKeyCheckTests.swift in Sources */,
 				87CAD7223D51D7CEF04A6222 /* AppEnvironmentTests.swift in Sources */,
-				7BE59F488C2BCC594D34FC4C /* ProviderRegistryTests.swift in Sources */,
 				4BC701EF1B99D5EF89B06775 /* ScoreStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -835,6 +852,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		2430A4DC794A734E275522BA /* XCLocalSwiftPackageReference "Packages/LLMKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/LLMKit;
+		};
 		6329A78D6259447A74788D38 /* XCLocalSwiftPackageReference "Packages/AIQuizCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/AIQuizCore;
@@ -846,9 +867,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = AIQuizCore;
 		};
+		6E718195306FF014125944A2 /* LLMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LLMKit;
+		};
 		70CB839EFBAF585F488E5069 /* AIQuizCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AIQuizCore;
+		};
+		909590C8DC9A866B9F6C2E0B /* LLMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LLMKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

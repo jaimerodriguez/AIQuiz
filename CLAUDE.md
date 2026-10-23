@@ -28,6 +28,16 @@ Package tests alone (fast, macOS):
 ```bash
 swift test --package-path Packages/AIQuizCore
 ```
+```bash
+swift test --package-path Packages/LLMKit
+```
+
+Live API tests (spend real money, a few cents a run; never in CI). Keys live in the macOS login Keychain under `AIQuiz_Ant_test_key` and `AIQuiz_Oai_test_key`; the script reads them, never prints them, and skips a provider whose key is missing. OpenAI also needs a chat model because none is hardcoded:
+```bash
+scripts/live-test.sh
+```
+Defaults are `claude-sonnet-5-5` and `gpt-6-luna` (owner's choice); override with `-m <openai-model>` or `AIQuiz_Ant_test_model=<model>`.
+The owner stores the keys; agents never ask for them, read them, or type them anywhere. Run the live tests at the end of any phase that changes `Packages/LLMKit` or a client.
 
 App tests alone:
 ```bash
@@ -57,6 +67,10 @@ Voice capture (microphone + speech recognition) is only trusted on the physical 
 XCUITest gotchas seen in this project:
 - On iPad, form sheets (Generate quiz) are short and the keyboard shortens them further. `tap()` on an element below the fold does nothing and raises no error. Scroll first; `AIQuizUITests.scrollGenerateForm` drags on a static text in the form until the target is hittable. Never drag on a text field (it starts text selection).
 - A failing `waitForExistence` right after a tap usually means the tap did not land, not that the view is missing.
+- Tap through typed queries (`app.buttons["id"]`). `descendants(matching: .any)["id"]` can match a wrapper and its child; use `.matching(identifier:).firstMatch` for assertions only.
+- A SwiftUI `Label` with an identifier exposes the icon as its first match (label "Warning", "Selected"). Add `.accessibilityElement(children: .combine)` before the identifier when a test reads the text.
+- A `Menu` in a `Form` row only opens when its label content is hit; XCUITest taps the row's centre. Give the menu label `.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())`.
+- To read why a UI test failed, export the xcresult attachments: `xcrun xcresulttool export attachments --path <xcresult> --output-path <dir>`; the `.txt` files hold the element hierarchy at failure.
 - Test bundles need `GENERATE_INFOPLIST_FILE: YES` in `Project.yml`; the app target sets it to NO.
 - `scripts/test.sh` runs under macOS bash 3.2: expand optional arrays as `${ARR[@]+"${ARR[@]}"}` with `set -u`.
 

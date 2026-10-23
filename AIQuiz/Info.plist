@@ -20,6 +20,13 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>AIQuiz connects to AI model servers on your local network, such as Ollama or LM Studio, when you add one as an endpoint.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>AIQuiz uses the microphone so you can answer prompts by speaking.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
