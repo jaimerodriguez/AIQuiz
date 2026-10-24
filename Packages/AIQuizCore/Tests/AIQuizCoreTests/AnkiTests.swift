@@ -113,6 +113,21 @@ struct AnkiImportTests {
         }
     }
 
+    @Test("nested decks: shared levels are dropped except the closest; one deck keeps its path")
+    func names() {
+        let root = ["spanish 10 000 sentences", "Neri's Spanish Sentences [Part 1]"]
+        let paths = [root + ["b. Read Training", "2"], root + ["b. Read Training", "3"], root + ["c. Speak Training", "2"]]
+        #expect(AnkiImporter.quizPaths(paths) == [
+            ["Neri's Spanish Sentences [Part 1]", "b. Read Training", "2"],
+            ["Neri's Spanish Sentences [Part 1]", "b. Read Training", "3"],
+            ["Neri's Spanish Sentences [Part 1]", "c. Speak Training", "2"]
+        ])
+        #expect(AnkiImporter.quizPaths([["Spanish", "Verbs"]]) == [["Spanish", "Verbs"]], "one deck keeps its whole path")
+        #expect(AnkiImporter.quizPaths([["Spanish", "Verbs"], ["Geography"]]) == [["Spanish", "Verbs"], ["Geography"]], "nothing shared, nothing dropped")
+        #expect(AnkiImporter.quizPaths([["A", "B"], ["A", "B", "C"]]) == [["A", "B"], ["A", "B", "C"]], "a deck and its subdeck keep their names")
+        #expect(AnkiImporter.quizPaths([["A", "B", "X"], ["A", "B", "Y"]]) == [["B", "X"], ["B", "Y"]])
+    }
+
     @Test("a file without a collection, or not a zip, is a clear error")
     func badFiles() throws {
         let dir = FileManager.default.temporaryDirectory

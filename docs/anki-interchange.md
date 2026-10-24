@@ -49,6 +49,10 @@ implementation passes when it imports every package to exactly those quizzes.
 ### 2.1 Quizzes
 - One quiz per deck that has cards. A card in a filtered deck belongs to its `odid`.
 - Quiz name: the deck path joined with `" › "` (`Spanish::Verbs` → `Spanish › Verbs`).
+  - With several decks in one import, the leading levels they all share are dropped, except
+    the closest, which stays for context: `A::B::C::1` and `A::B::C::2` become `C › 1` and
+    `C › 2`.
+  - A single deck keeps its whole path, and the last level is never dropped.
 - Tag `anki`; origin `imported`.
 - Cards in order of note id, then template `ord`. One AIQuiz card per Anki card, so a
   "Basic (and reversed card)" note gives two.

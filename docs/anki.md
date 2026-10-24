@@ -92,7 +92,7 @@ noticed. Each is a candidate for later work (§4).
 | A-4 | **Note tags are dropped.** Quizzes get one tag, *anki*. | AIQuiz tags belong to quizzes, not cards. | Re-tag the quiz. |
 | A-5 | **Templates that build text with JavaScript, or use add-on filters, may read oddly.** | AIQuiz renders field references, `#`/`^` sections and the standard filters, and leaves out what Anki hides (anki-interchange §2.2). Text a script would write is missing; an unknown filter shows the raw field. | Edit the card in AIQuiz. |
 | A-15 | **Content Anki shows only after a click or hover is left out**, such as a "show more" panel or a hidden extra note. | It starts hidden, and AIQuiz has no scripts to reveal it. This keeps search-tool panels out of answers. | If that content matters, move it into a visible field in Anki before exporting. |
-| A-16 | **Nested decks give long quiz names.** "spanish 10 000 sentences… › Neri's Spanish Sentences [Part 1] › b. Read Training › 2" for a deck four levels down, and one quiz per subdeck. | The quiz name is the full deck path (anki-interchange §2.1). | Rename the quizzes; see §4 item 7. |
+| A-16 | **Nested decks still give one quiz per subdeck, and names can be long.** Shared levels are now dropped except the closest: "Neri's Spanish Sentences [Part 1] › b. Read Training › 2". | The quiz name is the deck path (anki-interchange §2.1). | Rename the quizzes; see §4 item 7. |
 | A-6 | **The schedule is close to Anki's, not identical.** Anki scheduler (SM-2 or FSRS-5/6) vs AIQuiz (FSRS-4.5). | Due dates and FSRS memory carry over exactly. Without FSRS, difficulty is estimated from ease. | None needed; it settles after a review or two. |
 | A-7 | **Due dates can shift by part of a day.** | Anki counts days from a rollover hour (4 am by default); AIQuiz from midnight. | None needed. |
 | A-8 | **Suspended and buried cards come in as normal cards.** | AIQuiz has no suspend. | Delete the cards you don't want. |
@@ -134,9 +134,7 @@ These were chosen for the first version and should be revisited (ADR-021):
    everywhere) or the current format.
 6. **Revisit the zstd dependency** if Apple's Compression framework adds Zstandard; it would
    then come out (N-5).
-7. **Names for nested decks (A-16).** Options:
-   - keep the full path (today);
-   - drop the levels every imported deck shares ("b. Read Training › 2");
-   - one quiz per top-level deck, with subdecks as tags.
-
-   Owner's call.
+7. **Names for nested decks (A-16).** Decided 2026-10-23 ("our reasonable best, nothing
+   risky"): drop the shared levels except the closest, and keep a single deck's whole path.
+   Still open: one quiz per top-level deck with subdecks as tags, if one quiz per subdeck
+   turns out to be too many.
