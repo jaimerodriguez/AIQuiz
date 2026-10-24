@@ -1,4 +1,5 @@
 import XCTest
+import AVFoundation
 @testable import AIQuiz
 
 /// S-18, S-19: auto-listen in Quiz — Voice.
@@ -21,6 +22,16 @@ final class HandsFreeSettingsTests: XCTestCase {
         let again = AppSettings(defaults: defaults)
         XCTAssertTrue(again.autoListen)
         XCTAssertEqual(again.autoListenSeconds, 12)
+    }
+
+    func testAVoiceNamedWithItsQualityShowsTheQualityOnce() {
+        let ava = VoiceInfo(identifier: "x", name: "Ava (Premium)", language: "en-US", qualityRaw: AVSpeechSynthesisVoiceQuality.premium.rawValue)
+        XCTAssertEqual(ava.label, "Ava (Premium)")
+        XCTAssertEqual(ava.shortName, "Ava")
+        let samantha = VoiceInfo(identifier: "y", name: "Samantha", language: "en-US", qualityRaw: AVSpeechSynthesisVoiceQuality.default.rawValue)
+        XCTAssertEqual(samantha.label, "Samantha (Default)")
+        let zoe = VoiceInfo(identifier: "z", name: "Zoe (Enhanced)", language: "en-US", qualityRaw: AVSpeechSynthesisVoiceQuality.enhanced.rawValue)
+        XCTAssertEqual(zoe.label, "Zoe (Enhanced)")
     }
 
     func testAStoredWaitOutsideOneToThirtyIsClamped() {

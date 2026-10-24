@@ -39,7 +39,6 @@ struct SettingsView: View {
         Form {
             aiSection
             appearanceSection
-            readingSizeSection
             voiceSection
             voiceTuningSection
             recognitionSection
@@ -68,48 +67,15 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// Theme and reading size live on their own page (owner request, CR-020).
     private var appearanceSection: some View {
-        @Bindable var settings = settings
-        return Section {
-            Picker("Theme", selection: $settings.appearanceMode) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
+        Section("Appearance") {
+            NavigationLink {
+                ThemeSettingsView()
+            } label: {
+                LabeledContent("Theme", value: "\(settings.appearanceMode.label) · \(settings.quizFontSize.label)")
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.appearance")
-        } header: {
-            Text("Appearance")
-        } footer: {
-            Text("System follows your device's Light/Dark setting. Pick Light or Dark to override it inside AIQuiz.")
-        }
-    }
-
-    private var readingSizeSection: some View {
-        @Bindable var settings = settings
-        return Section {
-            Picker("Size", selection: $settings.quizFontSize) {
-                ForEach(QuizFontSize.allCases) { size in
-                    Text(size.label).tag(size)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.readingSize")
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Sample prompt: who succeeded Augustus?")
-                    .font(settings.quizFontSize.promptFont)
-                Text("Tiberius")
-                    .font(settings.quizFontSize.emphasisFont)
-                    .foregroundStyle(.tint)
-                Text("Augustus's stepson, ruled 14–37 AD. He retired to Capri.")
-                    .font(settings.quizFontSize.bodyFont)
-            }
-            .padding(.vertical, 6)
-        } header: {
-            Text("Reading size")
-        } footer: {
-            Text("Controls text size in study and quiz screens. The library and settings keep the system size.")
+            .accessibilityIdentifier("settings.theme")
         }
     }
 
@@ -247,11 +213,11 @@ struct SettingsView: View {
     private var quizVoiceSection: some View {
         @Bindable var settings = settings
         return Section {
-            Toggle("Auto-listen in voice quiz", isOn: $settings.autoListen)
+            Toggle("Listen for answer automatically", isOn: $settings.autoListen)
                 .accessibilityIdentifier("settings.autoListen")
             if settings.autoListen {
                 Stepper(value: $settings.autoListenSeconds, in: 1...30, step: 1) {
-                    Text("Wait \(settings.autoListenSeconds) \(settings.autoListenSeconds == 1 ? "second" : "seconds") for answer")
+                    Text("Listen for answer after \(settings.autoListenSeconds) \(settings.autoListenSeconds == 1 ? "second" : "seconds")")
                 }
                 .accessibilityIdentifier("settings.autoListenDelay")
             }
@@ -373,10 +339,10 @@ struct SettingsView: View {
 
     private var currentVoiceLabel: String {
         if let id = settings.ttsVoiceIdentifier, let info = VoiceCatalog.info(forIdentifier: id) {
-            return "\(info.name) (\(info.qualityLabel))"
+            return info.label
         }
         if let best = VoiceCatalog.bestVoiceForCurrentLocale() {
-            return "Auto · \(best.name) (\(best.qualityLabel))"
+            return "Auto · \(best.label)"
         }
         return "System default"
     }
@@ -435,7 +401,7 @@ private struct VoicePickerView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(voice.name)
+                    Text(voice.shortName)
                     Text(voice.qualityLabel)
                         .font(.caption)
                         .foregroundStyle(qualityColor(voice.qualityRaw))
@@ -476,7 +442,7 @@ private struct VoicePickerView: View {
     private func buildDiagnostic(requested: String?, actual: String?) -> String {
         let actualName: String
         if let actual, let info = VoiceCatalog.info(forIdentifier: actual) {
-            actualName = "\(info.name) (\(info.qualityLabel))"
+            actualName = info.label
         } else if let actual {
             actualName = actual
         } else {
@@ -485,7 +451,7 @@ private struct VoicePickerView: View {
         if let requested {
             let requestedName: String
             if let info = VoiceCatalog.info(forIdentifier: requested) {
-                requestedName = "\(info.name) (\(info.qualityLabel))"
+                requestedName = info.label
             } else {
                 requestedName = requested
             }
@@ -496,6 +462,65 @@ private struct VoicePickerView: View {
             }
         } else {
             return "Played: \(actualName) (Automatic)"
+        }
+    }
+}
+
+/// Settings › Appearance › Theme: light or dark, and the reading size of study and quiz screens.
+private struct ThemeSettingsView: View {
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        Form {
+            appearanceSection
+            readingSizeSection
+        }
+        .navigationTitle("Theme")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var appearanceSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Picker("Theme", selection: $settings.appearanceMode) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.appearance")
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("System follows your device's Light/Dark setting. Pick Light or Dark to override it inside AIQuiz.")
+        }
+    }
+
+    private var readingSizeSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Picker("Size", selection: $settings.quizFontSize) {
+                ForEach(QuizFontSize.allCases) { size in
+                    Text(size.label).tag(size)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.readingSize")
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Sample prompt: who succeeded Augustus?")
+                    .font(settings.quizFontSize.promptFont)
+                Text("Tiberius")
+                    .font(settings.quizFontSize.emphasisFont)
+                    .foregroundStyle(.tint)
+                Text("Augustus's stepson, ruled 14–37 AD. He retired to Capri.")
+                    .font(settings.quizFontSize.bodyFont)
+            }
+            .padding(.vertical, 6)
+        } header: {
+            Text("Reading size")
+        } footer: {
+            Text("Controls text size in study and quiz screens. The library and settings keep the system size.")
         }
     }
 }

@@ -16,6 +16,16 @@ struct VoiceInfo: Identifiable, Hashable, Sendable {
         }
     }
 
+    /// The name without the quality iOS sometimes puts in it: "Ava (Premium)" is "Ava".
+    var shortName: String {
+        name.replacingOccurrences(of: #"\s*\((Premium|Enhanced|Default)\)\s*$"#, with: "", options: .regularExpression)
+    }
+
+    /// "Ava (Premium)": the quality once, however iOS names the voice.
+    var label: String {
+        "\(shortName) (\(qualityLabel))"
+    }
+
     var displayName: String {
         let locale = Locale(identifier: language)
         let languageLabel = locale.localizedString(forIdentifier: language) ?? language

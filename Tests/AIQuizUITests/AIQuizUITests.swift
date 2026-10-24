@@ -1135,10 +1135,12 @@ final class AIQuizUITests: XCTestCase {
         let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "5"])
         openQuiz(app, named: "UITest Deck")
         app.buttons["detail.mode.quizVoice"].tap()
-        let countdown = element(app, "quiz.countdown")
-        XCTAssertTrue(countdown.waitForExistence(timeout: timeout), "the card counts down")
-        XCTAssertTrue(countdown.label.contains("Listening in"), countdown.label)
-        XCTAssertTrue(["5", "4", "3"].contains { countdown.label.contains($0) }, "counts from the 5-second setting: \(countdown.label)")
+        // One button counts down and answers on a tap (CR-020).
+        let answer = app.buttons["quiz.tapToAnswer"]
+        XCTAssertTrue(answer.waitForExistence(timeout: timeout), "the card counts down")
+        XCTAssertTrue(answer.label.contains("Listening in"), answer.label)
+        XCTAssertTrue(["5", "4", "3"].contains { answer.label.contains($0) }, "counts from the 5-second setting: \(answer.label)")
+        XCTAssertTrue(answer.label.contains("tap to answer now"), answer.label)
         // Scripted speech answers "Fixture answer"; nothing is tapped.
         XCTAssertTrue(element(app, "quiz.transcript").waitForExistence(timeout: 15), "the microphone turned on by itself")
         XCTAssertTrue(app.buttons["quiz.grade.correct"].waitForExistence(timeout: timeout), "the answer is revealed after the pause")
@@ -1153,7 +1155,8 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertFalse(app.steppers["settings.autoListenDelay"].exists, "no wait setting while it's off")
         toggle.switches.firstMatch.tap()
         XCTAssertTrue(app.steppers["settings.autoListenDelay"].waitForExistence(timeout: timeout))
-        XCTAssertTrue(app.staticTexts["Wait 3 seconds for answer"].exists)
+        XCTAssertTrue(app.staticTexts["Listen for answer after 3 seconds"].exists)
+        XCTAssertTrue(app.staticTexts["Listen for answer automatically"].exists)
     }
 
     func testADeckWithoutHintsShowsNoHintButton() {
@@ -1164,5 +1167,51 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["detail.mode.studyRead"].tap()
         XCTAssertTrue(element(app, "session.card.prompt").waitForExistence(timeout: timeout))
         XCTAssertFalse(app.buttons["session.hint"].exists, "no Hint button in a deck without hints")
+    }
+
+    // MARK: Settings and session chrome (CR-020)
+
+    func testTheBackArrowAsksBeforeEndingASession() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["xmark.circle"].exists, "no separate End button")
+        let back = app.buttons["session.end"]
+        XCTAssertTrue(back.exists)
+        back.tap()
+        let alert = app.alerts["End session?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout), "back asks first")
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].exists, "Cancel stays in the session")
+        back.tap()
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout))
+        alert.buttons["End"].tap()
+        XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout), "End goes back to the quiz")
+    }
+
+    func testTheCountdownWaitsWhileEndSessionIsAsked() {
+        let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "2"])
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        app.buttons["session.end"].tap()
+        let alert = app.alerts["End session?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout))
+        sleep(4)
+        alert.buttons["Cancel"].tap()
+        XCTAssertFalse(element(app, "quiz.transcript").exists, "nothing listened behind the question")
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].label.contains("Listening in"), "Cancel restarts the countdown")
+    }
+
+    func testThemeAndReadingSizeLiveOnTheThemePage() {
+        let app = launch()
+        app.buttons["library.settings"].tap()
+        let theme = app.buttons["settings.theme"]
+        XCTAssertTrue(theme.waitForExistence(timeout: timeout))
+        XCTAssertFalse(element(app, "settings.readingSize").exists, "reading size moved off the main page")
+        theme.tap()
+        XCTAssertTrue(element(app, "settings.appearance").waitForExistence(timeout: timeout))
+        XCTAssertTrue(element(app, "settings.readingSize").exists)
     }
 }
