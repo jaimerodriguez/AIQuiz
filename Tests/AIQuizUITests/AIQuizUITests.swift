@@ -586,8 +586,11 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Large quiz 000"].exists)
         print("PERF search result visible after \(Int(Date().timeIntervalSince(searchStart) * 1000)) ms (includes XCUITest polling)")
 
-        let chip = app.buttons["library.tag.history"]
-        XCTAssertTrue(chip.exists || app.buttons["#history"].exists, "tag chips show above a library of more than 10 quizzes")
+        // Tags are found through search; there is no chip row (CR-021).
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library.tag.'")).firstMatch.exists, "no tag chips")
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "#history")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Large quiz'")).firstMatch.waitForExistence(timeout: 5), "#history finds the tagged quizzes")
     }
 
     // MARK: Phase 3: onboarding, modes end to end, practice missed, privacy
@@ -1233,4 +1236,19 @@ final class AIQuizUITests: XCTestCase {
         app.buttons["settings.page.appearance"].tap()
         XCTAssertTrue(element(app, "settings.appearance").waitForExistence(timeout: timeout))
     }
+
+    func testSearchingATagShowsOnlyThoseQuizzes() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        XCTAssertTrue(element(app, "anki.summary").waitForExistence(timeout: timeout))
+        app.buttons["anki.done"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        let search = searchField(app)
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("#anki")
+        XCTAssertTrue(app.staticTexts["Geography"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].exists)
+        XCTAssertFalse(app.staticTexts["UITest Deck"].exists, "quizzes without the tag are hidden")
+    }
 }
+

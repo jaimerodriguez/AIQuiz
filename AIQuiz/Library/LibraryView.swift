@@ -14,7 +14,6 @@ struct LibraryView: View {
     @Query(filter: #Predicate<QuizRecord> { $0.isArchived }) private var archivedQuizzes: [QuizRecord]
 
     @State private var searchText = ""
-    @State private var selectedTag: String?
     @State private var importing = false
     @State private var importingAnki = false
     @Environment(AnkiImportRouter.self) private var ankiRouter
@@ -26,8 +25,6 @@ struct LibraryView: View {
     @State private var actions = QuizActions()
     @State private var sourceStatus = SourceStatus()
 
-    /// Tag chips appear once the library is big enough to need them (F-1).
-    static let tagChipThreshold = 10
 
     var body: some View {
         Group {
@@ -44,9 +41,6 @@ struct LibraryView: View {
                     search: searchText,
                     // iPad: search sits in the header row next to sort (CR-012).
                     inlineSearch: sizeClass == .regular ? $searchText : nil,
-                    tag: selectedTag,
-                    tags: activeQuizzes.count > Self.tagChipThreshold ? allTags : [],
-                    selectedTag: $selectedTag,
                     actions: actions,
                     sourceStatus: sourceStatus
                 )
@@ -184,14 +178,6 @@ struct LibraryView: View {
         .accessibilityIdentifier(id)
     }
 
-    /// Every tag on an active quiz, most used first.
-    private var allTags: [String] {
-        var counts: [String: Int] = [:]
-        for quiz in activeQuizzes {
-            for tag in quiz.tags { counts[tag.lowercased(), default: 0] += 1 }
-        }
-        return counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
-    }
 }
 
 /// The list itself, re-queried whenever the sort, search or tag changes.
@@ -201,21 +187,18 @@ private struct LibraryList: View {
     @Binding var sortSelection: LibrarySort
     let inlineSearch: Binding<String>?
     private let searching: Bool
-    let tags: [String]
-    @Binding var selectedTag: String?
     let actions: QuizActions
     let sourceStatus: SourceStatus
     @State private var showArchived = false
     @State private var launchMilliseconds: Int?
 
-    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, inlineSearch: Binding<String>?, tag: String?, tags: [String], selectedTag: Binding<String?>, actions: QuizActions, sourceStatus: SourceStatus) {
+    /// Search covers names and tags: a quiz's search text is its name plus "#tag" for each
+    /// tag, so "#anki" finds quizzes tagged anki (F-1; the chip row was removed, CR-021).
+    init(sort: LibrarySort, sortSelection: Binding<LibrarySort>, search: String, inlineSearch: Binding<String>?, actions: QuizActions, sourceStatus: SourceStatus) {
         let term = search.trimmingCharacters(in: .whitespaces).lowercased()
-        let needle = tag.map(TagsSearch.needle(forTag:)) ?? ""
         _quizzes = Query(
             filter: #Predicate<QuizRecord> { quiz in
-                !quiz.isArchived
-                    && (term.isEmpty || quiz.tagsSearch.contains(term))
-                    && (needle.isEmpty || quiz.tagsSearch.contains(needle))
+                !quiz.isArchived && (term.isEmpty || quiz.tagsSearch.contains(term))
             },
             sort: Self.sortDescriptors(sort)
         )
@@ -225,11 +208,9 @@ private struct LibraryList: View {
             },
             sort: [SortDescriptor(\QuizRecord.name, comparator: .localizedStandard)]
         )
-        self.tags = tags
         _sortSelection = sortSelection
         self.inlineSearch = inlineSearch
         self.searching = !term.isEmpty
-        _selectedTag = selectedTag
         self.actions = actions
         self.sourceStatus = sourceStatus
     }
@@ -251,15 +232,12 @@ private struct LibraryList: View {
         List {
             DueTodayRow()
             GeneratingSection()
-            if !tags.isEmpty {
-                tagChips
-            }
             Section {
                 ForEach(quizzes) { quiz in
                     row(quiz)
                 }
-                if quizzes.isEmpty && (selectedTag != nil || searching) {
-                    Text(selectedTag == nil ? "No quizzes match your search." : "No quizzes with this tag match.")
+                if quizzes.isEmpty && searching {
+                    Text("No quizzes match your search.")
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("library.noMatches")
                 }
@@ -345,31 +323,6 @@ private struct LibraryList: View {
         }
         .font(.subheadline)
         .textCase(nil)
-    }
-
-    private var tagChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    let selected = selectedTag == tag
-                    Button {
-                        selectedTag = selected ? nil : tag
-                    } label: {
-                        Text("#\(tag)")
-                            .font(.subheadline)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.fill.tertiary), in: Capsule())
-                            .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("library.tag.\(tag)")
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                }
-            }
-            .padding(.vertical, 2)
-        }
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
     }
 }
 

@@ -74,6 +74,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - Quiz — Voice answer settings now read **Listen for answer automatically** and **Listen for answer after n seconds**.
   - In Quiz — Voice, the countdown is on the answer button itself: "Listening in 5 seconds, or tap to answer now".
   - Sessions have no separate End (X) button; the back arrow asks *End session?* instead.
+  - The tag chip row above the library is gone; search for `#tag` instead (for example `#anki`).
   - **Fixed:** leaving Quiz — Voice while it was listening left the microphone on in the background, which also silenced other speech in the app, including the voice Preview in Settings.
 
 ### 2026-10-23 (Phase 10)
