@@ -60,10 +60,18 @@ final class AIQuizUITests: XCTestCase {
 
     // MARK: AI endpoints (PLAN Phase 1)
 
-    /// Library → Settings → AI endpoints → Add → preset. Returns with the editor open.
-    private func openEndpointEditor(_ app: XCUIApplication, preset id: String, label: String) {
+    /// Library → Settings → one of its six pages (CR-020): ai, appearance, speech, modes, reviews, help.
+    private func openSettings(_ app: XCUIApplication, page: String) {
         XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
         app.buttons["library.settings"].tap()
+        let row = app.buttons["settings.page.\(page)"]
+        XCTAssertTrue(row.waitForExistence(timeout: timeout), "Settings page \(page)")
+        row.tap()
+    }
+
+    /// Library → Settings → AI → AI endpoints → Add → preset. Returns with the editor open.
+    private func openEndpointEditor(_ app: XCUIApplication, preset id: String, label: String) {
+        openSettings(app, page: "ai")
         let endpointsLink = button(app, id: "settings.endpoints", label: "AI endpoints")
         XCTAssertTrue(endpointsLink.waitForExistence(timeout: timeout))
         endpointsLink.tap()
@@ -729,8 +737,7 @@ final class AIQuizUITests: XCTestCase {
 
     func testClearQuizLibraryEmptiesTheLibrary() {
         let app = launch()
-        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
-        app.buttons["library.settings"].tap()
+        openSettings(app, page: "help")
         let clear = app.buttons["settings.clearLibrary"]
         for _ in 0..<8 where !(clear.exists && clear.isHittable) {
             app.swipeUp()
@@ -742,6 +749,9 @@ final class AIQuizUITests: XCTestCase {
         confirm.tap()
         XCTAssertTrue(app.buttons["OK"].waitForExistence(timeout: timeout))
         app.buttons["OK"].tap()
+        // Help & data → Settings → library.
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["settings.page.help"].waitForExistence(timeout: timeout))
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["No quizzes yet"].waitForExistence(timeout: timeout), "the library is empty, like the emptyLibrary scenario")
     }
@@ -1148,7 +1158,7 @@ final class AIQuizUITests: XCTestCase {
 
     func testSettingsShowTheWaitOnlyWhenAutoListenIsOn() {
         let app = launch()
-        app.buttons["library.settings"].tap()
+        openSettings(app, page: "modes")
         let toggle = app.switches["settings.autoListen"]
         for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
         XCTAssertTrue(toggle.waitForExistence(timeout: timeout))
@@ -1204,14 +1214,23 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(app.buttons["quiz.tapToAnswer"].label.contains("Listening in"), "Cancel restarts the countdown")
     }
 
-    func testThemeAndReadingSizeLiveOnTheThemePage() {
+    func testSettingsIsSixPagesEachWithItsControls() {
         let app = launch()
         app.buttons["library.settings"].tap()
-        let theme = app.buttons["settings.theme"]
-        XCTAssertTrue(theme.waitForExistence(timeout: timeout))
-        XCTAssertFalse(element(app, "settings.readingSize").exists, "reading size moved off the main page")
-        theme.tap()
+        let pages: [(String, String)] = [
+            ("ai", "settings.autoGrade"), ("appearance", "settings.readingSize"), ("speech", "settings.sttLanguage"),
+            ("modes", "settings.voiceHint"), ("reviews", "settings.sessionCap"), ("help", "settings.debugLogging")
+        ]
+        XCTAssertTrue(app.buttons["settings.page.ai"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(element(app, "settings.readingSize").exists, "the main page only lists pages")
+        for (page, control) in pages {
+            let row = app.buttons["settings.page.\(page)"]
+            XCTAssertTrue(row.waitForExistence(timeout: timeout), page)
+            row.tap()
+            XCTAssertTrue(element(app, control).waitForExistence(timeout: timeout), "\(control) on the \(page) page")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
+        app.buttons["settings.page.appearance"].tap()
         XCTAssertTrue(element(app, "settings.appearance").waitForExistence(timeout: timeout))
-        XCTAssertTrue(element(app, "settings.readingSize").exists)
     }
 }

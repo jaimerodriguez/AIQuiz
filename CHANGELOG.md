@@ -69,7 +69,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
 
 ### 2026-10-24 (Phase 11)
 - **Phase 11 (Settings and session clean-up), branch `phase-11-settings-ui`, merge after Phase 10:**
-  - **Settings › Appearance › Theme** is its own page with Light, Dark or System and the reading size.
+  - **Settings is six pages:** AI, Appearance, Voice & speech, Study & quiz, Reviews, and Help & data, each a row with an icon and its current state. Appearance holds Light, Dark or System and the reading size. The tip about Premium voices moved into the voice picker, and the long explanations are one line each.
   - A Premium or Enhanced voice no longer shows its quality twice ("Ava (Premium)").
   - Quiz — Voice answer settings now read **Listen for answer automatically** and **Listen for answer after n seconds**.
   - In Quiz — Voice, the countdown is on the answer button itself: "Listening in 5 seconds, or tap to answer now".
