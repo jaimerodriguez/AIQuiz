@@ -67,6 +67,9 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-24 (app icon)
+- **App icon (CR-023), branch `app-icon`:** AIQuiz has its own icon on the Home Screen, in Spotlight, in Settings and in the App Store slot: a friendly coral tutor pointing something out over an open book. Until now the app showed a blank placeholder.
+
 ### 2026-10-24 (Phase 11)
 - **Phase 11 (Settings and session clean-up), branch `phase-11-settings-ui`, merge after Phase 10:**
   - **Settings is six pages:** AI, Appearance, Voice & speech, Study & quiz, Reviews, and Help & data, each a row with an icon and its current state. Appearance holds Light, Dark or System and the reading size. The tip about Premium voices moved into the voice picker, and the long explanations are one line each.

@@ -1060,7 +1060,7 @@
 		7CB56D4C2C444FB4B3034CEB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AIQuiz/AIQuiz.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -1123,7 +1123,7 @@
 		B6D1A5487CE4A91ED6825C9B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AIQuiz/AIQuiz.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
