@@ -67,6 +67,11 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-23 (Phase 10)
+- **Phase 10 (hands-free answers), branch `phase-10-hands-free`, merge after Phase 9:**
+  - **Auto-listen in voice quiz** (Settings › Quiz — Voice answer, off by default): each card counts down ("Listening in 3"), then the microphone turns on by itself, so you can answer a whole quiz without tapping. *Wait n seconds for answer* sets the countdown, 1 to 30 seconds. Tap the mic to answer sooner.
+  - Decks without any hints, such as most Anki decks, no longer show a Hint button that can never be used.
+
 ### 2026-10-23 (Phase 9)
 - **Phase 9 (Anki import and export), branch `phase-9-anki`, merge after Phase 8:**
   - **Import Anki decks** from the + menu (*Import Anki deck*), from Files (*Open in AIQuiz*), or by sharing a `.apkg` to AIQuiz. Every Anki format works, including whole-collection backups (`.colpkg`).

@@ -70,6 +70,8 @@ final class AppSettings {
     private let kReminderOn = "reminderOn"
     private let kReminderMinutes = "reminderMinutes"
     private let kVoiceHint = "voiceHint"
+    private let kAutoListen = "autoListen"
+    private let kAutoListenSeconds = "autoListenSeconds"
 
     var studyReadStyle: StudyReadStyle {
         didSet { defaults.set(studyReadStyle.rawValue, forKey: kStudyReadStyle) }
@@ -87,6 +89,16 @@ final class AppSettings {
     /// the microphone.
     var voiceHint: Bool {
         didSet { defaults.set(voiceHint, forKey: kVoiceHint) }
+    }
+
+    /// Quiz — Voice listens on its own after a countdown (S-18, CR-019). Off by default.
+    var autoListen: Bool {
+        didSet { defaults.set(autoListen, forKey: kAutoListen) }
+    }
+
+    /// The countdown before listening starts, 1–30 seconds (S-19).
+    var autoListenSeconds: Int {
+        didSet { defaults.set(autoListenSeconds, forKey: kAutoListenSeconds) }
     }
 
     /// `nil` means "let the app pick the best installed voice for the current locale."
@@ -173,6 +185,9 @@ final class AppSettings {
         let pause = defaults.object(forKey: kStudyVoicePause) as? Double ?? 1.0
         self.studyVoicePauseSeconds = max(0.5, min(3.0, pause))
         self.voiceHint = defaults.bool(forKey: kVoiceHint)
+        self.autoListen = defaults.bool(forKey: kAutoListen)
+        // integer(forKey:) also reads a value given as text (launch arguments, older stores).
+        self.autoListenSeconds = min(30, max(1, defaults.object(forKey: kAutoListenSeconds) == nil ? 3 : defaults.integer(forKey: kAutoListenSeconds)))
         let savedVoice = defaults.string(forKey: kTTSVoiceIdentifier)
         // If the saved voice has been uninstalled or renamed, fall back to Auto so
         // we don't try to use an identifier that AVSpeech will silently ignore.

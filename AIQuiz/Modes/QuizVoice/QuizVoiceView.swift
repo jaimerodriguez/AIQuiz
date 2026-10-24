@@ -34,7 +34,8 @@ struct QuizVoiceView: View {
         let autoJudge: QuizVoicePlayer.Judge? = settings.autoGrade && router.issue(for: .grading) == nil
             ? { request in try await AnswerJudge.judge(request, using: try router.client(for: .grading)) }
             : nil
-        return QuizVoicePlayer(deck: deck, recognizer: speech.recognizer, locale: settings.sttLocale, autoJudge: autoJudge)
+        return QuizVoicePlayer(deck: deck, recognizer: speech.recognizer, locale: settings.sttLocale, autoJudge: autoJudge,
+                               autoListenSeconds: settings.autoListen ? settings.autoListenSeconds : nil)
     }
 }
 
@@ -71,7 +72,11 @@ private struct QuizVoiceSession: View {
             player.abandon()
             dismiss()
         }
-        .tutorChatButton(quiz: player.phase == .ended ? nil : quiz, card: player.deck.current, isEnabled: player.phase != .listening)
+        .tutorChatButton(quiz: player.phase == .ended ? nil : quiz, card: player.deck.current, isEnabled: player.phase != .listening,
+                         onOpen: player.pauseAutoListen, onClose: player.beginAutoListen)
+        // S-18: the first card's countdown; later cards start theirs as they come up.
+        .onAppear { player.beginAutoListen() }
+        .onDisappear { player.pauseAutoListen() }
         .aiSetupSheet(gate)
         .onChange(of: player.phase) { _, phase in
             if phase == .ended {
@@ -115,6 +120,22 @@ private struct QuizVoiceSession: View {
             controls
         }
         .padding()
+    }
+
+    /// S-18: "Listening in 3", counting down to the microphone turning on.
+    private func countdownLabel(_ seconds: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "mic")
+            Text("Listening in")
+            Text(verbatim: "\(seconds)")
+                .monospacedDigit()
+                .contentTransition(.numericText(countsDown: true))
+        }
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .animation(.default, value: seconds)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("quiz.countdown")
     }
 
     private var transcriptBlock: some View {
@@ -194,6 +215,9 @@ private struct QuizVoiceSession: View {
         switch player.phase {
         case .awaitingAnswer:
             VStack(spacing: 12) {
+                if let countdown = player.countdown {
+                    countdownLabel(countdown)
+                }
                 Button {
                     Task { await player.startListening() }
                 } label: {
@@ -204,7 +228,7 @@ private struct QuizVoiceSession: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("quiz.tapToAnswer")
                 HStack {
-                    HintButton(progress: player.hints, action: player.toggleHint)
+                    HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
                     Button(action: player.revealAnswerWithoutVoice) {
                         Label("Show answer", systemImage: "eye")
                             .frame(maxWidth: .infinity)

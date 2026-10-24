@@ -1127,4 +1127,42 @@ final class AIQuizUITests: XCTestCase {
             || app.buttons["Cancel"].waitForExistence(timeout: 2)
         XCTAssertTrue(appeared, "the file exporter appears with the .apkg")
     }
+
+    // MARK: Hands-free (CR-019)
+
+    func testAutoListenCountsDownThenListensWithoutATap() {
+        // Long enough that the countdown is still on screen when the test reads it.
+        let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "5"])
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        let countdown = element(app, "quiz.countdown")
+        XCTAssertTrue(countdown.waitForExistence(timeout: timeout), "the card counts down")
+        XCTAssertTrue(countdown.label.contains("Listening in"), countdown.label)
+        XCTAssertTrue(["5", "4", "3"].contains { countdown.label.contains($0) }, "counts from the 5-second setting: \(countdown.label)")
+        // Scripted speech answers "Fixture answer"; nothing is tapped.
+        XCTAssertTrue(element(app, "quiz.transcript").waitForExistence(timeout: 15), "the microphone turned on by itself")
+        XCTAssertTrue(app.buttons["quiz.grade.correct"].waitForExistence(timeout: timeout), "the answer is revealed after the pause")
+    }
+
+    func testSettingsShowTheWaitOnlyWhenAutoListenIsOn() {
+        let app = launch()
+        app.buttons["library.settings"].tap()
+        let toggle = app.switches["settings.autoListen"]
+        for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
+        XCTAssertTrue(toggle.waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.steppers["settings.autoListenDelay"].exists, "no wait setting while it's off")
+        toggle.switches.firstMatch.tap()
+        XCTAssertTrue(app.steppers["settings.autoListenDelay"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Wait 3 seconds for answer"].exists)
+    }
+
+    func testADeckWithoutHintsShowsNoHintButton() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        XCTAssertTrue(element(app, "anki.summary").waitForExistence(timeout: timeout))
+        app.buttons["anki.done"].tap()
+        openQuiz(app, named: "Spanish › Verbs")
+        app.buttons["detail.mode.studyRead"].tap()
+        XCTAssertTrue(element(app, "session.card.prompt").waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["session.hint"].exists, "no Hint button in a deck without hints")
+    }
 }

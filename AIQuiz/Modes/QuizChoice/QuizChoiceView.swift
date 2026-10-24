@@ -271,7 +271,7 @@ struct ChoiceSessionView: View {
         switch (player.stage, player.card?.kind) {
         case (.asking, .cloze?):
             HStack {
-                HintButton(progress: player.hints, action: player.toggleHint)
+                HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
                 Button("Check") { player.checkBlanks() }
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
@@ -280,7 +280,7 @@ struct ChoiceSessionView: View {
             }
         case (.asking, .recall?):
             HStack {
-                HintButton(progress: player.hints, action: player.toggleHint)
+                HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
                 Button { player.reveal() } label: {
                     Label("Show answer", systemImage: "eye").frame(maxWidth: .infinity)
                 }
@@ -288,7 +288,7 @@ struct ChoiceSessionView: View {
                 .accessibilityIdentifier("choice.reveal")
             }
         case (.asking, _):
-            HintButton(progress: player.hints, action: player.toggleHint)
+            HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
         case (.checked, .recall?):
             HStack(spacing: 8) {
                 gradeButton("Wrong", "xmark", .wrong)
