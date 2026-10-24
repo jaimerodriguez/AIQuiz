@@ -2,13 +2,14 @@ import Foundation
 import AIQuizCore
 
 /// Items the share extension leaves in the App Group (SPEC F-22). The app turns each into a
-/// generation job on launch and when it returns to the foreground.
+/// generation job on launch and when it returns to the foreground; an Anki deck goes to the
+/// importer instead (F-62).
 enum ShareInbox {
     static let groupID = "group.com.jaimerodriguez.aiquiz"
 
     /// One shared item, written by the extension as `<id>.json` next to its payload file.
     struct Item: Codable, Equatable {
-        enum Kind: String, Codable { case url, text, pdf, markdown, image }
+        enum Kind: String, Codable { case url, text, pdf, markdown, image, anki }
         var kind: Kind
         /// The URL or the text, for `url` and `text`.
         var value: String?
@@ -28,14 +29,14 @@ enum ShareInbox {
     }
 
     @MainActor
-    static func drain(into queue: GenerationQueue) {
+    static func drain(into queue: GenerationQueue, anki: (URL) -> Void) {
         guard let inbox = inboxURL else { return }
-        drain(from: inbox, keepFilesIn: keptFilesURL, into: queue)
+        drain(from: inbox, keepFilesIn: keptFilesURL, into: queue, anki: anki)
     }
 
     /// Enqueues every item in `inbox` and deletes it. Unreadable items are dropped with a log line.
     @MainActor
-    static func drain(from inbox: URL, keepFilesIn kept: URL, into queue: GenerationQueue) {
+    static func drain(from inbox: URL, keepFilesIn kept: URL, into queue: GenerationQueue, anki: (URL) -> Void = { _ in }) {
         let fm = FileManager.default
         guard let names = try? fm.contentsOfDirectory(atPath: inbox.path) else { return }
         for name in names.sorted() where name.hasSuffix(".json") {
@@ -47,6 +48,16 @@ enum ShareInbox {
             }
             let payload = item.file.map { inbox.appending(path: $0) }
             defer { if let payload { try? fm.removeItem(at: payload) } }
+            if item.kind == .anki {
+                // A copy the importer owns, since the inbox file goes away here.
+                guard let payload else { continue }
+                let copy = fm.temporaryDirectory.appending(path: "\(UUID().uuidString.prefix(8))-\(item.name ?? payload.lastPathComponent)")
+                if (try? fm.copyItem(at: payload, to: copy)) != nil {
+                    anki(copy)
+                    Log.app.info("Share inbox: an Anki deck to import")
+                }
+                continue
+            }
             if let job = job(for: item, payload: payload, keptFiles: kept, queue: queue) {
                 queue.enqueue(job)
                 Log.app.info("Share inbox: queued a \(item.kind.rawValue) item")
@@ -72,6 +83,8 @@ enum ShareInbox {
                   let bookmark = try? kept.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil) else { return nil }
             let name = item.name ?? payload.lastPathComponent
             return GenerationJob(title: name, source: .file(name: name, bookmark: bookmark, kind: item.kind == .pdf ? .pdf : .markdown))
+        case .anki:
+            return nil
         case .image:
             guard let payload else { return nil }
             let job = GenerationJob(title: item.name ?? "Shared image", source: .images([payload.lastPathComponent]))

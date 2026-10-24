@@ -34,10 +34,10 @@
 		3BF19B7B038F7FF5CAA94D18 /* SchemaV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895E8EFAB9524D36DBB934C /* SchemaV2.swift */; };
 		3CCF180D2B0258BC5179FC25 /* roman-emperors.json in Resources */ = {isa = PBXBuildFile; fileRef = ECEAFF54AE993D686DF493F2 /* roman-emperors.json */; };
 		3E1AE1B83122664143CC38D4 /* AIGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0525C74950CB4561EAF2FB3B /* AIGate.swift */; };
+		3E8A74C54121814157A92A74 /* AnkiImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC6F7908C99EBDBACB8AA5DF /* AnkiImportView.swift */; };
 		3F7BB38C541779AAFABA92FB /* SessionSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8191A1144BAADC3153A98C70 /* SessionSummaryView.swift */; };
 		4568CC325997FEFC4FBFB1A4 /* APIKeyCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93BE4D6CC9743E90BB00C57D /* APIKeyCheck.swift */; };
 		464046413F12C094D240A53B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D7E7FB5A11CC559AE56B1C /* AppEnvironment.swift */; };
-		46476BB61DAE8DDB508EAF7A /* QuizJSONDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB1AFC2BC67D6A2DFC2C6C1 /* QuizJSONDocument.swift */; };
 		472AC5D41BD4BD563B55F58D /* OriginalContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA88E141A89C65EC92EEACB /* OriginalContentTests.swift */; };
 		474201F854D1A8637B0A2231 /* SpeechServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE2D0E1076616946A592233 /* SpeechServices.swift */; };
 		4B8CCBDE126CD5D814E561D5 /* StoreLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA76A664DF5F6C80DFAC44C7 /* StoreLoader.swift */; };
@@ -53,6 +53,7 @@
 		5F4AF0C566D373163F1C35EF /* UITestAIFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13A177A8F04C18DBDD21BAB /* UITestAIFixtures.swift */; };
 		625F22390A57916160A68E9B /* MigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B03B3819E8AFA3696891A /* MigrationTests.swift */; };
 		670B8D5CA12389491A8A868F /* SourceExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64BD786F54BF17E44450B836 /* SourceExtractor.swift */; };
+		68911B0E2CCA991E1D9273F9 /* AnkiLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AAA09DAC0136D82F232E324 /* AnkiLibraryTests.swift */; };
 		6AFC8BEE8899E9E62CC86C90 /* SchemaV1.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29ADBB065883CDE82C92824 /* SchemaV1.swift */; };
 		6B2453E17B67258C68E9C7CB /* GenerationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF6755617F29361432AB03A /* GenerationViews.swift */; };
 		6C3A3DA34A24E4E2FE15D44A /* QuizVoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A544B34F4F4FDB7EDD478EB /* QuizVoiceView.swift */; };
@@ -77,6 +78,7 @@
 		B48FF7E78EF6023F67C56647 /* AppleOnDeviceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D28B72860AC6EBE457A07 /* AppleOnDeviceClient.swift */; };
 		B570928955CC17BE6008F911 /* MigrationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7AA54547B5C2D490C387D6 /* MigrationPlan.swift */; };
 		B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 775A3D3AB206AE6D55095940 /* Assets.xcassets */; };
+		B84D230568CF10F4F32ACB40 /* anki-latest.apkg in Resources */ = {isa = PBXBuildFile; fileRef = 4F8AC001202BE29C4657B788 /* anki-latest.apkg */; };
 		B9D576550FA3934444914E3F /* LibraryMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB829CAF9AB6CE095EC1B3D3 /* LibraryMaintenance.swift */; };
 		BA894BBE33B159191E92E348 /* convert.json in Resources */ = {isa = PBXBuildFile; fileRef = 3F34D2B69EE9E3FC275321B5 /* convert.json */; };
 		C12B92162884645720BF0823 /* hint.json in Resources */ = {isa = PBXBuildFile; fileRef = C1ACB64FC5BECE0DC3F1F10B /* hint.json */; };
@@ -85,6 +87,7 @@
 		C91BD863995F54DF7B6BDCD9 /* grading.json in Resources */ = {isa = PBXBuildFile; fileRef = 98B189EC9CF0F202745B2B7A /* grading.json */; };
 		C999AE4B600E07773495348D /* SessionComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91ABD131517F1A5D9E90DC36 /* SessionComponents.swift */; };
 		CED4DB50FC862DA25E10C3F1 /* ScoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850836742A4B71B98D3FB498 /* ScoreStore.swift */; };
+		D1BBC5DBF77040C293DE4F70 /* QuizFileDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3C874DF780139F153E63D8 /* QuizFileDocument.swift */; };
 		D3BEE3BA205F025A7BE0E645 /* TutorAndExamAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A34117F7F001671F7589658 /* TutorAndExamAppTests.swift */; };
 		D4D0C3D8AE73D619406CD609 /* whyWrong.json in Resources */ = {isa = PBXBuildFile; fileRef = BF14538EE822403D86D0747D /* whyWrong.json */; };
 		D8C0AC16E2D12039C194A259 /* LintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072375C1FAB74F331F7CCA98 /* LintView.swift */; };
@@ -180,12 +183,12 @@
 		4D1D0BA2B956F6FE2362B390 /* AIQuizShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AIQuizShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E94536C0ACF306FCE75E451 /* UITestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestFixtures.swift; sourceTree = "<group>"; };
 		4EA899CE6B6011BCEC7237AD /* GenerationQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationQueue.swift; sourceTree = "<group>"; };
+		4F8AC001202BE29C4657B788 /* anki-latest.apkg */ = {isa = PBXFileReference; path = "anki-latest.apkg"; sourceTree = "<group>"; };
 		501B03B3819E8AFA3696891A /* MigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationTests.swift; sourceTree = "<group>"; };
 		52D694C6C5C709DA726E9CF9 /* AIQuizUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AIQuizUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		541A397422B6981E145E484F /* APIKeyCheckTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyCheckTests.swift; sourceTree = "<group>"; };
 		5A34117F7F001671F7589658 /* TutorAndExamAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorAndExamAppTests.swift; sourceTree = "<group>"; };
 		5C9D780C4235C03BFE78571B /* OralExamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OralExamView.swift; sourceTree = "<group>"; };
-		5DB1AFC2BC67D6A2DFC2C6C1 /* QuizJSONDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizJSONDocument.swift; sourceTree = "<group>"; };
 		62C6349834F6D54DC3794C51 /* QuizImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizImporter.swift; sourceTree = "<group>"; };
 		638737B69F925AC8F076C118 /* difficulty.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = difficulty.json; sourceTree = "<group>"; };
 		64BD786F54BF17E44450B836 /* SourceExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceExtractor.swift; sourceTree = "<group>"; };
@@ -197,6 +200,7 @@
 		7862E67270BF62CAD90BE99E /* CardSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSheet.swift; sourceTree = "<group>"; };
 		7895E8EFAB9524D36DBB934C /* SchemaV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemaV2.swift; sourceTree = "<group>"; };
 		79850B49D0CA55854ABFD654 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		7AAA09DAC0136D82F232E324 /* AnkiLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiLibraryTests.swift; sourceTree = "<group>"; };
 		7F4EA8F1E48287E617DC1158 /* EndpointPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointPresets.swift; sourceTree = "<group>"; };
 		7FFA22C64E3A5E405A779F23 /* AIQuizUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIQuizUITests.swift; sourceTree = "<group>"; };
 		8191A1144BAADC3153A98C70 /* SessionSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryView.swift; sourceTree = "<group>"; };
@@ -224,6 +228,7 @@
 		BB829CAF9AB6CE095EC1B3D3 /* LibraryMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryMaintenance.swift; sourceTree = "<group>"; };
 		BB8EC7CA7F7EA1F07EB03CF1 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		BC2EE55841252B0D89E1E749 /* AIQuiz.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AIQuiz.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC6F7908C99EBDBACB8AA5DF /* AnkiImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkiImportView.swift; sourceTree = "<group>"; };
 		BF14538EE822403D86D0747D /* whyWrong.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = whyWrong.json; sourceTree = "<group>"; };
 		C0552EA25878445D1D1D479E /* lint.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = lint.json; sourceTree = "<group>"; };
 		C11F18C9C5D2E7F516859EB8 /* GenerationQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationQueueTests.swift; sourceTree = "<group>"; };
@@ -254,6 +259,7 @@
 		F6BA43C1EC8A709430C09F0A /* ContentExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentExtractor.swift; sourceTree = "<group>"; };
 		FADEF8DD904B25C9E53E67CA /* QuizChoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizChoiceView.swift; sourceTree = "<group>"; };
 		FDA07B697BEEDD4E950E89D0 /* EndpointEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointEditView.swift; sourceTree = "<group>"; };
+		FF3C874DF780139F153E63D8 /* QuizFileDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizFileDocument.swift; sourceTree = "<group>"; };
 		FF4D780954F58C8100BDC1F1 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -282,6 +288,7 @@
 		0B6AB723031761FAFAA2CC11 /* Library */ = {
 			isa = PBXGroup;
 			children = (
+				BC6F7908C99EBDBACB8AA5DF /* AnkiImportView.swift */,
 				1877AFD4C56657CBA3D61411 /* CardAssistant.swift */,
 				7862E67270BF62CAD90BE99E /* CardSheet.swift */,
 				1EEE8AAC9E0A9558F61270E3 /* GenerateQuizView.swift */,
@@ -292,7 +299,7 @@
 				19DE97A4BCD56CFEC2E67320 /* OriginalFileView.swift */,
 				93E844E12C1C3DA145638FC4 /* QuizActions.swift */,
 				A8734106965FA216658B104D /* QuizDetailView.swift */,
-				5DB1AFC2BC67D6A2DFC2C6C1 /* QuizJSONDocument.swift */,
+				FF3C874DF780139F153E63D8 /* QuizFileDocument.swift */,
 				DBB6E1F1F443E71C0ABAB663 /* SampleQuizzes.swift */,
 				45E08F624C4E300935A4F257 /* SourceLink.swift */,
 				4E94536C0ACF306FCE75E451 /* UITestFixtures.swift */,
@@ -482,6 +489,7 @@
 		DD6E65F6A9865A244CD1A7BA /* TestFixtures */ = {
 			isa = PBXGroup;
 			children = (
+				4F8AC001202BE29C4657B788 /* anki-latest.apkg */,
 				99D50B6A303B8F09511C4F7D /* chatCards.json */,
 				3F34D2B69EE9E3FC275321B5 /* convert.json */,
 				638737B69F925AC8F076C118 /* difficulty.json */,
@@ -560,6 +568,7 @@
 			isa = PBXGroup;
 			children = (
 				B6593A4AAA38E932190D4F4A /* AIRouterTests.swift */,
+				7AAA09DAC0136D82F232E324 /* AnkiLibraryTests.swift */,
 				541A397422B6981E145E484F /* APIKeyCheckTests.swift */,
 				DBD62F8A74F06507E02F2170 /* AppEnvironmentTests.swift */,
 				C11F18C9C5D2E7F516859EB8 /* GenerationQueueTests.swift */,
@@ -740,6 +749,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B754DCE389E18CF93FD895BF /* Assets.xcassets in Resources */,
+				B84D230568CF10F4F32ACB40 /* anki-latest.apkg in Resources */,
 				1D849F5C036F2E638F43E830 /* chatCards.json in Resources */,
 				BA894BBE33B159191E92E348 /* convert.json in Resources */,
 				FD693415A31D4311EE7A40AB /* difficulty.json in Resources */,
@@ -782,6 +792,7 @@
 				E0DA8B64E64AE7B43D91DC8C /* AIQuizApp.swift in Sources */,
 				A196F5B1333A10B1EC9258EA /* AIRouter.swift in Sources */,
 				4568CC325997FEFC4FBFB1A4 /* APIKeyCheck.swift in Sources */,
+				3E8A74C54121814157A92A74 /* AnkiImportView.swift in Sources */,
 				464046413F12C094D240A53B /* AppEnvironment.swift in Sources */,
 				253FAAA3297A8BF4ACA38FC6 /* AppSettings.swift in Sources */,
 				B48FF7E78EF6023F67C56647 /* AppleOnDeviceClient.swift in Sources */,
@@ -811,8 +822,8 @@
 				AD48888F65116ED762DCBDFC /* QuizActions.swift in Sources */,
 				F60E0E46B9D04C5F905BC66C /* QuizChoiceView.swift in Sources */,
 				9BCD8E6D7D1C70AF855C84BA /* QuizDetailView.swift in Sources */,
+				D1BBC5DBF77040C293DE4F70 /* QuizFileDocument.swift in Sources */,
 				A623D2EABB3D5ED11533DB42 /* QuizImporter.swift in Sources */,
-				46476BB61DAE8DDB508EAF7A /* QuizJSONDocument.swift in Sources */,
 				8BB8568BEE537E6858EA5610 /* QuizTypography.swift in Sources */,
 				6C3A3DA34A24E4E2FE15D44A /* QuizVoiceView.swift in Sources */,
 				EF91A134A76EC6855FFEF5BD /* RootView.swift in Sources */,
@@ -848,6 +859,7 @@
 			files = (
 				FA880DE9D1AD5D178CB80008 /* AIRouterTests.swift in Sources */,
 				5C6350C1A7DDA704B0A27407 /* APIKeyCheckTests.swift in Sources */,
+				68911B0E2CCA991E1D9273F9 /* AnkiLibraryTests.swift in Sources */,
 				87CAD7223D51D7CEF04A6222 /* AppEnvironmentTests.swift in Sources */,
 				1956689F3EA487C1B2559CAC /* GenerationQueueTests.swift in Sources */,
 				C468BFD511100035470AF527 /* LargeLibraryPerformanceTests.swift in Sources */,

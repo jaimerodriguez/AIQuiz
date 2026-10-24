@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import AIQuizCore
 
-/// Rename, Edit tags, Archive, Export JSON and Delete for a quiz (SPEC F-4, F-10). Shared by
+/// Rename, Edit tags, Archive, Export JSON, Export to Anki and Delete for a quiz (SPEC F-4, F-10, F-62). Shared by
 /// the library's context menu and the quiz screen's toolbar; `.quizActions(_:)` attaches
 /// the sheets and alerts.
 @Observable
@@ -17,7 +17,7 @@ final class QuizActions {
 
     var editing: EditRequest?
     var exporting = false
-    var exportDocument: QuizJSONDocument?
+    var exportDocument: QuizFileDocument?
     var exportName = "Quiz"
     var deleting: QuizRecord?
     var exportError: String?
@@ -71,6 +71,13 @@ final class QuizActions {
             Label("Export JSON", systemImage: "square.and.arrow.up")
         }
         .accessibilityIdentifier("\(idPrefix).export")
+        Button {
+            self.exportToAnki(quiz)
+        } label: {
+            Label("Export to Anki", systemImage: "rectangle.stack")
+        }
+        .disabled(quiz.cardCount == 0)
+        .accessibilityIdentifier("\(idPrefix).exportAnki")
         if includeDelete {
             Button(role: .destructive) {
                 self.confirmDelete(quiz)
@@ -108,8 +115,19 @@ final class QuizActions {
 
     func export(_ quiz: QuizRecord) {
         do {
-            exportDocument = QuizJSONDocument(data: try QuizDecoder.encode(quiz.payload))
-            exportName = QuizJSONDocument.fileName(for: quiz.name)
+            exportDocument = QuizFileDocument(data: try QuizDecoder.encode(quiz.payload))
+            exportName = QuizFileDocument.fileName(for: quiz.name)
+            exporting = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    /// F-62: an `.apkg` with the quiz's cards and schedules (docs/anki-interchange.md §3).
+    func exportToAnki(_ quiz: QuizRecord) {
+        do {
+            exportDocument = QuizFileDocument(data: try AnkiLibrary.package(for: quiz), contentType: .ankiPackage)
+            exportName = QuizFileDocument.fileName(for: quiz.name)
             exporting = true
         } catch {
             exportError = error.localizedDescription
@@ -155,7 +173,7 @@ private struct QuizActionsModifier: ViewModifier {
             .fileExporter(
                 isPresented: $actions.exporting,
                 document: actions.exportDocument,
-                contentType: .json,
+                contentType: actions.exportDocument?.contentType ?? .json,
                 defaultFilename: actions.exportName
             ) { result in
                 if case .failure(let error) = result {
