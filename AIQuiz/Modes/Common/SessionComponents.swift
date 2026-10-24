@@ -104,11 +104,20 @@ struct AnswerBlock: View {
 
 /// The Hint button every mode shows: each tap reveals the next hint (the author's, then
 /// stored AI hints, F-24); after the last, it hides them. Hints appear on the card face.
+/// In a deck where no card has a hint there is no button at all; where some cards do, it is
+/// disabled on the others, so the controls don't move from card to card.
 struct HintButton: View {
     let progress: HintProgress
+    let deck: SessionDeck
     let action: () -> Void
 
     var body: some View {
+        if deck.hasHints {
+            button
+        }
+    }
+
+    private var button: some View {
         Button(action: action) {
             Label(progress.buttonLabel, systemImage: "lightbulb")
                 .frame(maxWidth: .infinity)

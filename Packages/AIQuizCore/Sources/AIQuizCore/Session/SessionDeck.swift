@@ -33,6 +33,9 @@ public final class SessionDeck {
     public var atStart: Bool { index == 0 }
     public var atEnd: Bool { index >= cards.count - 1 }
     public var isEmpty: Bool { cards.isEmpty }
+    /// Whether any card has a hint (its own or a stored AI hint). Sessions show no Hint button
+    /// for a deck without any, such as most Anki imports.
+    public var hasHints: Bool { cards.contains { !$0.hints.isEmpty } }
     public var progress: (current: Int, total: Int) { (min(index + 1, cards.count), cards.count) }
 
     /// Record a verdict for the current card, with the AI's grade when there was one.

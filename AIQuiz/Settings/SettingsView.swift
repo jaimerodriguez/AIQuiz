@@ -43,6 +43,7 @@ struct SettingsView: View {
             voiceSection
             voiceTuningSection
             recognitionSection
+            quizVoiceSection
             reviewSection
             studyVoiceSection
             studyReadSection
@@ -239,6 +240,27 @@ struct SettingsView: View {
             Text("Speech recognition")
         } footer: {
             Text("The language Quiz — Voice answer listens for. Pick the quiz's language when it differs from your device's.")
+        }
+    }
+
+    /// S-18, S-19: hands-free answers in Quiz — Voice.
+    private var quizVoiceSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Toggle("Auto-listen in voice quiz", isOn: $settings.autoListen)
+                .accessibilityIdentifier("settings.autoListen")
+            if settings.autoListen {
+                Stepper(value: $settings.autoListenSeconds, in: 1...30, step: 1) {
+                    Text("Wait \(settings.autoListenSeconds) \(settings.autoListenSeconds == 1 ? "second" : "seconds") for answer")
+                }
+                .accessibilityIdentifier("settings.autoListenDelay")
+            }
+        } header: {
+            Text("Quiz — Voice answer")
+        } footer: {
+            Text(settings.autoListen
+                 ? "Each card counts down, then the microphone turns on by itself. Pause for two seconds when you've answered."
+                 : "Answer every card without tapping.")
         }
     }
 
