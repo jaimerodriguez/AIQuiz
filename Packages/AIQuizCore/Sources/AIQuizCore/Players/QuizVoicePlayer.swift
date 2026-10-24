@@ -100,6 +100,18 @@ public final class QuizVoicePlayer {
         countdown = nil
     }
 
+    /// The quiz screen went away: stop the countdown and, if listening, the microphone, and go
+    /// back to waiting on this card. Leaving while listening used to keep the recognizer, and
+    /// the record-only audio session, running in the background (known_issues §4).
+    public func suspend() {
+        pauseAutoListen()
+        guard phase == .listening else { return }
+        silenceTask?.cancel()
+        recognizer.stop()
+        transcript = ""
+        phase = .awaitingAnswer
+    }
+
     // MARK: Listening
 
     public func startListening() async {

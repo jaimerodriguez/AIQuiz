@@ -118,6 +118,22 @@ struct AutoListenTests {
         #expect(p.countdown == nil, "no new countdown after a failed attempt")
     }
 
+    @Test("leaving while listening stops the microphone and the countdown")
+    func suspendWhileListening() async {
+        let recognizer = ScriptedRecognizer(partial: "half an", final: "never", delay: .seconds(10))
+        let p = player(deck(1), recognizer, seconds: nil)
+        await p.startListening()
+        #expect(p.phase == .listening)
+        p.suspend()
+        #expect(recognizer.stopCount == 1, "the recognizer, and its record-only audio session, stop")
+        #expect(p.phase == .awaitingAnswer)
+        #expect(p.transcript.isEmpty)
+        let counting = player(deck(1), ScriptedRecognizer(), seconds: 2)
+        counting.beginAutoListen()
+        counting.suspend()
+        #expect(counting.countdown == nil)
+    }
+
     @Test("the setting is kept between 1 and 30 seconds")
     func clamped() {
         let recognizer = ScriptedRecognizer()

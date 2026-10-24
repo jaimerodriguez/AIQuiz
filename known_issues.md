@@ -174,6 +174,23 @@ Each `startListening` increments a `generation`; the `@Sendable` handler capture
 ### How to recognise it
 A recognition that stops by itself right after starting, only when the previous one stopped less than a second earlier.
 
+
+---
+
+## 4. Leaving Quiz — Voice while listening left the microphone on (Phase 11)
+
+### Symptom
+Settings › Speech rate › *Preview* (and any other speech) made no sound on the iPad. The debug log showed `audio: recording → playback failed: … OSStatus error 561017449` (`'!pri'`, insufficient priority) on every attempt.
+
+### Root cause
+The log showed a recognition that started at 06:16 and never stopped until another quiz began at 06:35. Leaving Quiz — Voice with the back arrow while it was listening didn't stop the recognizer. Its `AVAudioEngine` kept the microphone and the record-only session running in the background, and iOS refuses to switch a session to playback while its input is running.
+
+### Fix
+`QuizVoicePlayer.suspend()` runs when the screen disappears, by any route: it stops the countdown and the recognizer and goes back to waiting on the card. The back arrow now also asks *End session?*, and ending stops everything (CR-020).
+
+### How to recognise it
+In the debug log, an `STT: engine started` with no `recording → inactive` after it, followed by `recording → playback failed … 561017449`. The orange microphone dot stays on after leaving a quiz.
+
 ---
 
 ## Anki import and export: limits

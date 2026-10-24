@@ -68,7 +68,8 @@ private struct QuizVoiceSession: View {
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .endSessionConfirmation(isEnabled: player.phase != .ended) {
+        // The countdown waits while "End session?" is up, so the microphone can't start behind it.
+        .endSessionConfirmation(isEnabled: player.phase != .ended, onAsk: player.pauseAutoListen, onCancel: player.beginAutoListen) {
             player.abandon()
             dismiss()
         }
@@ -76,7 +77,8 @@ private struct QuizVoiceSession: View {
                          onOpen: player.pauseAutoListen, onClose: player.beginAutoListen)
         // S-18: the first card's countdown; later cards start theirs as they come up.
         .onAppear { player.beginAutoListen() }
-        .onDisappear { player.pauseAutoListen() }
+        // However the screen goes away, the countdown and the microphone stop.
+        .onDisappear { player.suspend() }
         .aiSetupSheet(gate)
         .onChange(of: player.phase) { _, phase in
             if phase == .ended {
@@ -122,20 +124,27 @@ private struct QuizVoiceSession: View {
         .padding()
     }
 
-    /// S-18: "Listening in 3", counting down to the microphone turning on.
-    private func countdownLabel(_ seconds: Int) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "mic")
-            Text("Listening in")
-            Text(verbatim: "\(seconds)")
-                .monospacedDigit()
-                .contentTransition(.numericText(countsDown: true))
+    @ViewBuilder
+    private var answerButtonLabel: some View {
+        if let seconds = player.countdown {
+            VStack(spacing: 2) {
+                HStack(spacing: 6) {
+                    Image(systemName: "mic.fill")
+                    Text("Listening in")
+                    // Only the digit animates; the words stay put.
+                    Text(verbatim: "\(seconds)")
+                        .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
+                        .animation(.default, value: seconds)
+                    Text(seconds == 1 ? "second" : "seconds")
+                }
+                Text("or tap to answer now")
+                    .font(.caption)
+                    .opacity(0.85)
+            }
+        } else {
+            Label("Tap to answer", systemImage: "mic.fill")
         }
-        .font(.title3.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .animation(.default, value: seconds)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("quiz.countdown")
     }
 
     private var transcriptBlock: some View {
@@ -215,13 +224,11 @@ private struct QuizVoiceSession: View {
         switch player.phase {
         case .awaitingAnswer:
             VStack(spacing: 12) {
-                if let countdown = player.countdown {
-                    countdownLabel(countdown)
-                }
+                // One button: it counts down to listening on its own (S-18), and a tap listens now.
                 Button {
                     Task { await player.startListening() }
                 } label: {
-                    Label("Tap to answer", systemImage: "mic.fill")
+                    answerButtonLabel
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                 }

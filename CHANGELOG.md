@@ -67,6 +67,16 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-24 (Phase 11)
+- **Phase 11 (Settings and session clean-up), branch `phase-11-settings-ui`, merge after Phase 10:**
+  - **Settings is six pages:** AI, Appearance, Voice & speech, Study & quiz, Reviews, and Help & data, each a row with an icon and its current state. Appearance holds Light, Dark or System and the reading size. The tip about Premium voices moved into the voice picker, and the long explanations are one line each.
+  - A Premium or Enhanced voice no longer shows its quality twice ("Ava (Premium)").
+  - Quiz — Voice answer settings now read **Listen for answer automatically** and **Listen for answer after n seconds**.
+  - In Quiz — Voice, the countdown is on the answer button itself: "Listening in 5 seconds, or tap to answer now".
+  - Sessions have no separate End (X) button; the back arrow asks *End session?* instead.
+  - The tag chip row above the library is gone; search for `#tag` instead (for example `#anki`).
+  - **Fixed:** leaving Quiz — Voice while it was listening left the microphone on in the background, which also silenced other speech in the app, including the voice Preview in Settings.
+
 ### 2026-10-23 (Phase 10)
 - **Phase 10 (hands-free answers), branch `phase-10-hands-free`, merge after Phase 9:**
   - **Auto-listen in voice quiz** (Settings › Quiz — Voice answer, off by default): each card counts down ("Listening in 3"), then the microphone turns on by itself, so you can answer a whole quiz without tapping. *Wait n seconds for answer* sets the countdown, 1 to 30 seconds. Tap the mic to answer sooner.

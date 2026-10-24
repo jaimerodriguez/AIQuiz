@@ -60,10 +60,18 @@ final class AIQuizUITests: XCTestCase {
 
     // MARK: AI endpoints (PLAN Phase 1)
 
-    /// Library → Settings → AI endpoints → Add → preset. Returns with the editor open.
-    private func openEndpointEditor(_ app: XCUIApplication, preset id: String, label: String) {
+    /// Library → Settings → one of its six pages (CR-020): ai, appearance, speech, modes, reviews, help.
+    private func openSettings(_ app: XCUIApplication, page: String) {
         XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
         app.buttons["library.settings"].tap()
+        let row = app.buttons["settings.page.\(page)"]
+        XCTAssertTrue(row.waitForExistence(timeout: timeout), "Settings page \(page)")
+        row.tap()
+    }
+
+    /// Library → Settings → AI → AI endpoints → Add → preset. Returns with the editor open.
+    private func openEndpointEditor(_ app: XCUIApplication, preset id: String, label: String) {
+        openSettings(app, page: "ai")
         let endpointsLink = button(app, id: "settings.endpoints", label: "AI endpoints")
         XCTAssertTrue(endpointsLink.waitForExistence(timeout: timeout))
         endpointsLink.tap()
@@ -578,8 +586,11 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Large quiz 000"].exists)
         print("PERF search result visible after \(Int(Date().timeIntervalSince(searchStart) * 1000)) ms (includes XCUITest polling)")
 
-        let chip = app.buttons["library.tag.history"]
-        XCTAssertTrue(chip.exists || app.buttons["#history"].exists, "tag chips show above a library of more than 10 quizzes")
+        // Tags are found through search; there is no chip row (CR-021).
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library.tag.'")).firstMatch.exists, "no tag chips")
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "#history")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Large quiz'")).firstMatch.waitForExistence(timeout: 5), "#history finds the tagged quizzes")
     }
 
     // MARK: Phase 3: onboarding, modes end to end, practice missed, privacy
@@ -729,8 +740,7 @@ final class AIQuizUITests: XCTestCase {
 
     func testClearQuizLibraryEmptiesTheLibrary() {
         let app = launch()
-        XCTAssertTrue(app.buttons["library.settings"].waitForExistence(timeout: timeout))
-        app.buttons["library.settings"].tap()
+        openSettings(app, page: "help")
         let clear = app.buttons["settings.clearLibrary"]
         for _ in 0..<8 where !(clear.exists && clear.isHittable) {
             app.swipeUp()
@@ -742,6 +752,9 @@ final class AIQuizUITests: XCTestCase {
         confirm.tap()
         XCTAssertTrue(app.buttons["OK"].waitForExistence(timeout: timeout))
         app.buttons["OK"].tap()
+        // Help & data → Settings → library.
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["settings.page.help"].waitForExistence(timeout: timeout))
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["No quizzes yet"].waitForExistence(timeout: timeout), "the library is empty, like the emptyLibrary scenario")
     }
@@ -1135,10 +1148,12 @@ final class AIQuizUITests: XCTestCase {
         let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "5"])
         openQuiz(app, named: "UITest Deck")
         app.buttons["detail.mode.quizVoice"].tap()
-        let countdown = element(app, "quiz.countdown")
-        XCTAssertTrue(countdown.waitForExistence(timeout: timeout), "the card counts down")
-        XCTAssertTrue(countdown.label.contains("Listening in"), countdown.label)
-        XCTAssertTrue(["5", "4", "3"].contains { countdown.label.contains($0) }, "counts from the 5-second setting: \(countdown.label)")
+        // One button counts down and answers on a tap (CR-020).
+        let answer = app.buttons["quiz.tapToAnswer"]
+        XCTAssertTrue(answer.waitForExistence(timeout: timeout), "the card counts down")
+        XCTAssertTrue(answer.label.contains("Listening in"), answer.label)
+        XCTAssertTrue(["5", "4", "3"].contains { answer.label.contains($0) }, "counts from the 5-second setting: \(answer.label)")
+        XCTAssertTrue(answer.label.contains("tap to answer now"), answer.label)
         // Scripted speech answers "Fixture answer"; nothing is tapped.
         XCTAssertTrue(element(app, "quiz.transcript").waitForExistence(timeout: 15), "the microphone turned on by itself")
         XCTAssertTrue(app.buttons["quiz.grade.correct"].waitForExistence(timeout: timeout), "the answer is revealed after the pause")
@@ -1146,14 +1161,15 @@ final class AIQuizUITests: XCTestCase {
 
     func testSettingsShowTheWaitOnlyWhenAutoListenIsOn() {
         let app = launch()
-        app.buttons["library.settings"].tap()
+        openSettings(app, page: "modes")
         let toggle = app.switches["settings.autoListen"]
         for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
         XCTAssertTrue(toggle.waitForExistence(timeout: timeout))
         XCTAssertFalse(app.steppers["settings.autoListenDelay"].exists, "no wait setting while it's off")
         toggle.switches.firstMatch.tap()
         XCTAssertTrue(app.steppers["settings.autoListenDelay"].waitForExistence(timeout: timeout))
-        XCTAssertTrue(app.staticTexts["Wait 3 seconds for answer"].exists)
+        XCTAssertTrue(app.staticTexts["Listen for answer after 3 seconds"].exists)
+        XCTAssertTrue(app.staticTexts["Listen for answer automatically"].exists)
     }
 
     func testADeckWithoutHintsShowsNoHintButton() {
@@ -1165,4 +1181,74 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(element(app, "session.card.prompt").waitForExistence(timeout: timeout))
         XCTAssertFalse(app.buttons["session.hint"].exists, "no Hint button in a deck without hints")
     }
+
+    // MARK: Settings and session chrome (CR-020)
+
+    func testTheBackArrowAsksBeforeEndingASession() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["xmark.circle"].exists, "no separate End button")
+        let back = app.buttons["session.end"]
+        XCTAssertTrue(back.exists)
+        back.tap()
+        let alert = app.alerts["End session?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout), "back asks first")
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].exists, "Cancel stays in the session")
+        back.tap()
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout))
+        alert.buttons["End"].tap()
+        XCTAssertTrue(app.buttons["detail.mode.quizVoice"].waitForExistence(timeout: timeout), "End goes back to the quiz")
+    }
+
+    func testTheCountdownWaitsWhileEndSessionIsAsked() {
+        let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "2"])
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].waitForExistence(timeout: timeout))
+        app.buttons["session.end"].tap()
+        let alert = app.alerts["End session?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: timeout))
+        sleep(4)
+        alert.buttons["Cancel"].tap()
+        XCTAssertFalse(element(app, "quiz.transcript").exists, "nothing listened behind the question")
+        XCTAssertTrue(app.buttons["quiz.tapToAnswer"].label.contains("Listening in"), "Cancel restarts the countdown")
+    }
+
+    func testSettingsIsSixPagesEachWithItsControls() {
+        let app = launch()
+        app.buttons["library.settings"].tap()
+        let pages: [(String, String)] = [
+            ("ai", "settings.autoGrade"), ("appearance", "settings.readingSize"), ("speech", "settings.sttLanguage"),
+            ("modes", "settings.voiceHint"), ("reviews", "settings.sessionCap"), ("help", "settings.debugLogging")
+        ]
+        XCTAssertTrue(app.buttons["settings.page.ai"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(element(app, "settings.readingSize").exists, "the main page only lists pages")
+        for (page, control) in pages {
+            let row = app.buttons["settings.page.\(page)"]
+            XCTAssertTrue(row.waitForExistence(timeout: timeout), page)
+            row.tap()
+            XCTAssertTrue(element(app, control).waitForExistence(timeout: timeout), "\(control) on the \(page) page")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
+        app.buttons["settings.page.appearance"].tap()
+        XCTAssertTrue(element(app, "settings.appearance").waitForExistence(timeout: timeout))
+    }
+
+    func testSearchingATagShowsOnlyThoseQuizzes() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        XCTAssertTrue(element(app, "anki.summary").waitForExistence(timeout: timeout))
+        app.buttons["anki.done"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        let search = searchField(app)
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("#anki")
+        XCTAssertTrue(app.staticTexts["Geography"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].exists)
+        XCTAssertFalse(app.staticTexts["UITest Deck"].exists, "quizzes without the tag are hidden")
+    }
 }
+

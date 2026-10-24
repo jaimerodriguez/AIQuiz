@@ -24,7 +24,8 @@ How to use this document:
 | 7 | FSRS scheduling, Due today, notifications, insights | merged into `claude` | jaimerodriguez/AIQuiz#11 |
 | 8 | Audio coordinator, tutor chat, oral exam | merged into `claude`; accepted on the iPad 2026-10-23 ("hint" and a 5-card oral exam with Anthropic, audio log clean) | jaimerodriguez/AIQuiz#12 |
 | 9 | Anki import and export (F-62, added by the owner) | in review | jaimerodriguez/AIQuiz#13 |
-| 10 | Hands-free Quiz — Voice and no empty Hint button (CR-019, owner requests) | in review | phase-10-hands-free (merge after #13) |
+| 10 | Hands-free Quiz — Voice and no empty Hint button (CR-019, owner requests) | in review | jaimerodriguez/AIQuiz#14 (merge after #13) |
+| 11 | Settings and session clean-up (CR-020, owner requests) | in review | phase-11-settings-ui (merge after #14) |
 
 Decisions already taken (change only with the owner's agreement):
 
