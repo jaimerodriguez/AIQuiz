@@ -35,80 +35,100 @@ struct SettingsView: View {
         }
     }
 
+    /// The six pages of Settings (owner request, CR-020).
+    enum Page: String, CaseIterable, Identifiable {
+        case ai, appearance, speech, modes, reviews, help
+        var id: String { rawValue }
+    }
+
     var body: some View {
-        Form {
-            aiSection
-            appearanceSection
-            readingSizeSection
-            voiceSection
-            voiceTuningSection
-            recognitionSection
-            reviewSection
-            studyVoiceSection
-            studyReadSection
-            debugSection
-            privacySection
-            introSection
+        List {
+            Section {
+                pageRow(.ai, icon: "sparkles", title: "AI", detail: router.summary(for: .generation))
+                pageRow(.appearance, icon: "paintpalette", title: "Appearance", detail: "\(settings.appearanceMode.label) · \(settings.quizFontSize.label)")
+                pageRow(.speech, icon: "waveform", title: "Voice & speech", detail: currentVoiceLabel)
+                pageRow(.modes, icon: "rectangle.stack", title: "Study & quiz", detail: settings.autoListen ? "Listens for answers automatically" : nil)
+                pageRow(.reviews, icon: "calendar.badge.clock", title: "Reviews", detail: reviewsSummary)
+                pageRow(.help, icon: "lifepreserver", title: "Help & data", detail: settings.debugLogging ? "Debug logging on" : nil)
+            }
         }
-        .alert(pendingClear?.title ?? "", isPresented: Binding(get: { pendingClear != nil }, set: { if !$0 { pendingClear = nil } }), presenting: pendingClear) { clear in
-            Button("Clear", role: .destructive) { perform(clear) }
-                .accessibilityIdentifier("settings.confirmClear")
-            Button("Cancel", role: .cancel) {}
-        } message: { clear in
-            Text(clear.message)
-        }
-        .alert("Done", isPresented: Binding(get: { clearResult != nil }, set: { if !$0 { clearResult = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(clearResult ?? "")
-        }
-        .onAppear { logSize = Log.file.size }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var appearanceSection: some View {
-        @Bindable var settings = settings
-        return Section {
-            Picker("Theme", selection: $settings.appearanceMode) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.appearance")
-        } header: {
-            Text("Appearance")
-        } footer: {
-            Text("System follows your device's Light/Dark setting. Pick Light or Dark to override it inside AIQuiz.")
-        }
+    private var reviewsSummary: String {
+        let cards = "\(settings.sessionCap) cards a session"
+        guard settings.reminderOn,
+              let time = Calendar.current.date(bySettingHour: settings.reminderMinutes / 60, minute: settings.reminderMinutes % 60, second: 0, of: .now) else { return cards }
+        return cards + " · reminder " + time.formatted(date: .omitted, time: .shortened)
     }
 
-    private var readingSizeSection: some View {
-        @Bindable var settings = settings
-        return Section {
-            Picker("Size", selection: $settings.quizFontSize) {
-                ForEach(QuizFontSize.allCases) { size in
-                    Text(size.label).tag(size)
+    private func pageRow(_ page: Page, icon: String, title: String, detail: String?) -> some View {
+        NavigationLink {
+            destination(page)
+        } label: {
+            HStack(spacing: 14) {
+                AccentIcon(systemName: icon, size: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    if let detail {
+                        Text(detail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.readingSize")
+            .padding(.vertical, 2)
+        }
+        .accessibilityIdentifier("settings.page.\(page.rawValue)")
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Sample prompt: who succeeded Augustus?")
-                    .font(settings.quizFontSize.promptFont)
-                Text("Tiberius")
-                    .font(settings.quizFontSize.emphasisFont)
-                    .foregroundStyle(.tint)
-                Text("Augustus's stepson, ruled 14–37 AD. He retired to Capri.")
-                    .font(settings.quizFontSize.bodyFont)
+    @ViewBuilder
+    private func destination(_ page: Page) -> some View {
+        switch page {
+        case .ai:
+            Form { aiSection }
+                .settingsPage("AI")
+        case .appearance:
+            ThemeSettingsView()
+        case .speech:
+            Form {
+                voiceSection
+                voiceTuningSection
+                recognitionSection
             }
-            .padding(.vertical, 6)
-        } header: {
-            Text("Reading size")
-        } footer: {
-            Text("Controls text size in study and quiz screens. The library and settings keep the system size.")
+            .settingsPage("Voice & speech")
+        case .modes:
+            Form {
+                studyVoiceSection
+                studyReadSection
+                quizVoiceSection
+            }
+            .settingsPage("Study & quiz")
+        case .reviews:
+            Form { reviewSection }
+                .settingsPage("Reviews")
+        case .help:
+            Form {
+                debugSection
+                privacySection
+                introSection
+            }
+            .settingsPage("Help & data")
+            .alert(pendingClear?.title ?? "", isPresented: Binding(get: { pendingClear != nil }, set: { if !$0 { pendingClear = nil } }), presenting: pendingClear) { clear in
+                Button("Clear", role: .destructive) { perform(clear) }
+                    .accessibilityIdentifier("settings.confirmClear")
+                Button("Cancel", role: .cancel) {}
+            } message: { clear in
+                Text(clear.message)
+            }
+            .alert("Done", isPresented: Binding(get: { clearResult != nil }, set: { if !$0 { clearResult = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(clearResult ?? "")
+            }
+            .onAppear { logSize = Log.file.size }
         }
     }
 
@@ -125,46 +145,24 @@ struct SettingsView: View {
         } header: {
             Text("AI")
         } footer: {
-            Text("Add Anthropic, OpenAI, local-network servers such as Ollama, or Apple on-device, then choose which one handles each task.")
+            Text("Anthropic, OpenAI, a local server such as Ollama, or Apple on-device.")
         }
     }
 
     private var voiceSection: some View {
         @Bindable var settings = settings
         return Section {
-            if !VoiceCatalog.hasAnyPremiumOrEnhanced {
-                premiumVoicesHint
-            }
-
             NavigationLink {
                 VoicePickerView(selection: $settings.ttsVoiceIdentifier)
             } label: {
                 LabeledContent("Voice", value: currentVoiceLabel)
             }
+            .accessibilityIdentifier("settings.voice")
         } header: {
-            Text("Speech")
+            Text("Voice")
         } footer: {
-            Text("Premium and Enhanced voices sound dramatically more natural than the default. Tap Voice and pick one — or download more in iOS Settings.")
+            Text("Premium and Enhanced voices sound most natural.")
         }
-    }
-
-    private var premiumVoicesHint: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("No Premium or Enhanced voices installed", systemImage: "exclamationmark.bubble")
-                .font(.subheadline.weight(.semibold))
-            Text("In iOS Settings → Accessibility → Spoken Content → Voices, pick a language and tap a voice to download a higher-quality version. They're free and work offline.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Button("Open iOS Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .padding(.top, 2)
-        }
-        .padding(.vertical, 4)
     }
 
     private var voiceTuningSection: some View {
@@ -218,7 +216,7 @@ struct SettingsView: View {
         } header: {
             Text("Reviews")
         } footer: {
-            Text("Quizzes ask the cards that are due or new, up to this many. The reminder says how many cards are due, and only when some are.")
+            Text("Quizzes ask due and new cards, up to this many. The reminder comes only when cards are due.")
         }
     }
 
@@ -238,7 +236,28 @@ struct SettingsView: View {
         } header: {
             Text("Speech recognition")
         } footer: {
-            Text("The language Quiz — Voice answer listens for. Pick the quiz's language when it differs from your device's.")
+            Text("The language Quiz — Voice listens for.")
+        }
+    }
+
+    /// S-18, S-19: hands-free answers in Quiz — Voice.
+    private var quizVoiceSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Toggle("Listen for answer automatically", isOn: $settings.autoListen)
+                .accessibilityIdentifier("settings.autoListen")
+            if settings.autoListen {
+                Stepper(value: $settings.autoListenSeconds, in: 1...30, step: 1) {
+                    Text("Listen for answer after \(settings.autoListenSeconds) \(settings.autoListenSeconds == 1 ? "second" : "seconds")")
+                }
+                .accessibilityIdentifier("settings.autoListenDelay")
+            }
+        } header: {
+            Text("Quiz — Voice answer")
+        } footer: {
+            Text(settings.autoListen
+                 ? "Pause for two seconds when you've answered."
+                 : "Answer every card without tapping.")
         }
     }
 
@@ -266,7 +285,7 @@ struct SettingsView: View {
         } header: {
             Text("Troubleshooting")
         } footer: {
-            Text("When on, AIQuiz keeps a log on this device that you can share when reporting a problem. It never includes API keys.")
+            Text("A log on this device to share when reporting a problem. Never includes API keys.")
         }
         .onChange(of: settings.debugLogging) { _, on in
             if on { Log.app.info("Debug logging turned on") }
@@ -286,7 +305,7 @@ struct SettingsView: View {
         } header: {
             Text("Privacy")
         } footer: {
-            Text("Each asks before deleting anything.")
+            Text("Each asks first.")
         }
     }
 
@@ -351,10 +370,10 @@ struct SettingsView: View {
 
     private var currentVoiceLabel: String {
         if let id = settings.ttsVoiceIdentifier, let info = VoiceCatalog.info(forIdentifier: id) {
-            return "\(info.name) (\(info.qualityLabel))"
+            return info.label
         }
         if let best = VoiceCatalog.bestVoiceForCurrentLocale() {
-            return "Auto · \(best.name) (\(best.qualityLabel))"
+            return "Auto · \(best.label)"
         }
         return "System default"
     }
@@ -368,6 +387,9 @@ private struct VoicePickerView: View {
 
     var body: some View {
         List {
+            if !VoiceCatalog.hasAnyPremiumOrEnhanced {
+                Section { premiumVoicesHint }
+            }
             if let diagnostic {
                 Section {
                     Text(diagnostic)
@@ -405,6 +427,25 @@ private struct VoicePickerView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private var premiumVoicesHint: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("No Premium or Enhanced voices installed", systemImage: "exclamationmark.bubble")
+                .font(.subheadline.weight(.semibold))
+            Text("In iOS Settings → Accessibility → Spoken Content → Voices, pick a language and tap a voice to download a higher-quality version. They're free and work offline.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Open iOS Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .padding(.top, 2)
+        }
+        .padding(.vertical, 4)
+    }
+
     @ViewBuilder
     private func voiceRow(_ voice: VoiceInfo) -> some View {
         Button {
@@ -413,7 +454,7 @@ private struct VoicePickerView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(voice.name)
+                    Text(voice.shortName)
                     Text(voice.qualityLabel)
                         .font(.caption)
                         .foregroundStyle(qualityColor(voice.qualityRaw))
@@ -454,7 +495,7 @@ private struct VoicePickerView: View {
     private func buildDiagnostic(requested: String?, actual: String?) -> String {
         let actualName: String
         if let actual, let info = VoiceCatalog.info(forIdentifier: actual) {
-            actualName = "\(info.name) (\(info.qualityLabel))"
+            actualName = info.label
         } else if let actual {
             actualName = actual
         } else {
@@ -463,7 +504,7 @@ private struct VoicePickerView: View {
         if let requested {
             let requestedName: String
             if let info = VoiceCatalog.info(forIdentifier: requested) {
-                requestedName = "\(info.name) (\(info.qualityLabel))"
+                requestedName = info.label
             } else {
                 requestedName = requested
             }
@@ -475,5 +516,72 @@ private struct VoicePickerView: View {
         } else {
             return "Played: \(actualName) (Automatic)"
         }
+    }
+}
+
+/// Settings › Appearance › Theme: light or dark, and the reading size of study and quiz screens.
+private struct ThemeSettingsView: View {
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        Form {
+            appearanceSection
+            readingSizeSection
+        }
+        .navigationTitle("Appearance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var appearanceSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Picker("Theme", selection: $settings.appearanceMode) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.appearance")
+        } header: {
+            Text("Theme")
+        } footer: {
+            Text("System follows your device's setting.")
+        }
+    }
+
+    private var readingSizeSection: some View {
+        @Bindable var settings = settings
+        return Section {
+            Picker("Size", selection: $settings.quizFontSize) {
+                ForEach(QuizFontSize.allCases) { size in
+                    Text(size.label).tag(size)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.readingSize")
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Sample prompt: who succeeded Augustus?")
+                    .font(settings.quizFontSize.promptFont)
+                Text("Tiberius")
+                    .font(settings.quizFontSize.emphasisFont)
+                    .foregroundStyle(.tint)
+                Text("Augustus's stepson, ruled 14–37 AD. He retired to Capri.")
+                    .font(settings.quizFontSize.bodyFont)
+            }
+            .padding(.vertical, 6)
+        } header: {
+            Text("Reading size")
+        } footer: {
+            Text("Text size in study and quiz screens.")
+        }
+    }
+}
+
+private extension View {
+    /// A Settings page's title bar.
+    func settingsPage(_ title: String) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
     }
 }

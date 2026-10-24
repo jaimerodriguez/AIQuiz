@@ -21,8 +21,11 @@ How to use this document:
 | 4 | AI grading, explanations, hints, lint | merged into `claude`; accepted on the iPad 2026-10-23 | jaimerodriguez/AIQuiz#8 |
 | 5 | Ingestion: notes, PDF, reader mode, photo, share | merged into `claude` | jaimerodriguez/AIQuiz#9 |
 | 6 | Card types and the Choice player | merged into `claude` | jaimerodriguez/AIQuiz#10 |
-| 7 | FSRS scheduling, Due today, notifications, insights | in review | jaimerodriguez/AIQuiz#11 |
-| 8 | Audio coordinator, tutor chat, oral exam | in review; accepted on the iPad 2026-10-23 ("hint" and a 5-card oral exam with Anthropic, audio log clean) | jaimerodriguez/AIQuiz#12 (merge after #11) |
+| 7 | FSRS scheduling, Due today, notifications, insights | merged into `claude` | jaimerodriguez/AIQuiz#11 |
+| 8 | Audio coordinator, tutor chat, oral exam | merged into `claude`; accepted on the iPad 2026-10-23 ("hint" and a 5-card oral exam with Anthropic, audio log clean) | jaimerodriguez/AIQuiz#12 |
+| 9 | Anki import and export (F-62, added by the owner) | in review | jaimerodriguez/AIQuiz#13 |
+| 10 | Hands-free Quiz — Voice and no empty Hint button (CR-019, owner requests) | in review | jaimerodriguez/AIQuiz#14 (merge after #13) |
+| 11 | Settings and session clean-up (CR-020, owner requests) | in review | phase-11-settings-ui (merge after #14) |
 
 Decisions already taken (change only with the owner's agreement):
 
@@ -283,6 +286,25 @@ Implements F-50, F-51 (coordinator part), F-12, F-30, F-45, F-52 optional.
 - `AIQuizUITests`: chat sheet streams fake reply and "Make cards" adds cards; oral exam runs on the fixture deck with fake speech (UI-test mode swaps in fake speech that emits scripted transcripts).
 
 **Acceptance**: on the iPad, study voice + "hint" works; oral exam completes 5 cards with Anthropic without audio-session errors in the device log.
+
+---
+
+### Phase 9 — Anki import and export (added 2026-10-23, CR-018)
+Implements F-62. The contract is `docs/anki-interchange.md`, with golden files made by Anki itself.
+
+**Tasks**
+1. In `AIQuizCore/Interchange/Anki`: ZIP read and write, zstd through Meta's library (ADR-021), SQLite, and both Anki schemas.
+2. Template rendering and HTML to text; mapping to quizzes with schedules and answer counts.
+3. The schema 11 writer with the "AIQuiz" note types.
+4. App: Add menu, *Open in*, Share, import sheet; *Export to Anki* in the quiz menu.
+
+**Tests**
+- `AIQuizCoreTests`: every fixture format maps to `expected.json`; history and FSRS memory; zip, zstd, protobuf, templates, cloze, HTML; export and re-import; a deck exported by Anki after an AIQuiz export.
+- `AIQuizTests`: saving into the library with schedules; export from a stored quiz; Share routing.
+- `AIQuizUITests`: the import sheet and library rows; the Add menu entry; Export to Anki opens the exporter.
+- `tools/anki/verify_export.py`: Anki's own engine imports an AIQuiz export and checks it.
+
+**Acceptance**: the owner imports a real deck of theirs on the iPad and finds its cards and due counts as in Anki.
 
 ---
 

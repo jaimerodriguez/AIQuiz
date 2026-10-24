@@ -104,11 +104,20 @@ struct AnswerBlock: View {
 
 /// The Hint button every mode shows: each tap reveals the next hint (the author's, then
 /// stored AI hints, F-24); after the last, it hides them. Hints appear on the card face.
+/// In a deck where no card has a hint there is no button at all; where some cards do, it is
+/// disabled on the others, so the controls don't move from card to card.
 struct HintButton: View {
     let progress: HintProgress
+    let deck: SessionDeck
     let action: () -> Void
 
     var body: some View {
+        if deck.hasHints {
+            button
+        }
+    }
+
+    private var button: some View {
         Button(action: action) {
             Label(progress.buttonLabel, systemImage: "lightbulb")
                 .frame(maxWidth: .infinity)
@@ -120,10 +129,12 @@ struct HintButton: View {
 }
 
 extension View {
-    /// An *End* toolbar button with the "End session?" confirmation (SPEC §5). Ending
-    /// discards the session.
-    func endSessionConfirmation(isEnabled: Bool = true, onEnd: @escaping () -> Void) -> some View {
-        modifier(EndSessionConfirmation(isEnabled: isEnabled, onEnd: onEnd))
+    /// The back arrow asks "End session?" while a session runs (SPEC §5, CR-020); ending
+    /// discards the session. Once it has ended (the summary), back simply goes back.
+    /// `onAsk` runs as the question appears (pause what would carry on behind it) and
+    /// `onCancel` when the user stays.
+    func endSessionConfirmation(isEnabled: Bool = true, onAsk: @escaping () -> Void = {}, onCancel: @escaping () -> Void = {}, onEnd: @escaping () -> Void) -> some View {
+        modifier(EndSessionConfirmation(isEnabled: isEnabled, onAsk: onAsk, onCancel: onCancel, onEnd: onEnd))
     }
 
     /// Swipe right for next, left for back (SPEC §5).
@@ -143,26 +154,34 @@ extension View {
 
 private struct EndSessionConfirmation: ViewModifier {
     let isEnabled: Bool
+    let onAsk: () -> Void
+    let onCancel: () -> Void
     let onEnd: () -> Void
     @State private var confirming = false
 
     func body(content: Content) -> some View {
         content
+            // The system back arrow (and the edge swipe) would leave without asking.
+            .navigationBarBackButtonHidden(isEnabled)
             .toolbar {
                 if isEnabled {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button(role: .destructive) {
+                        Button {
+                            onAsk()
                             confirming = true
                         } label: {
-                            Label("End", systemImage: "xmark.circle")
+                            Label("Back", systemImage: "chevron.backward")
+                                .labelStyle(.iconOnly)
                         }
+                        .accessibilityLabel("Back")
+                        .accessibilityHint("Ends the session")
                         .accessibilityIdentifier("session.end")
                     }
                 }
             }
             .alert("End session?", isPresented: $confirming) {
                 Button("End", role: .destructive, action: onEnd)
-                Button("Cancel", role: .cancel) {}
+                Button("Cancel", role: .cancel, action: onCancel)
             } message: {
                 Text("Your progress in this session won't be saved.")
             }

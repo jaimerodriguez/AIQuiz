@@ -94,6 +94,14 @@ SwiftData gotchas seen in this project:
 - UI-test mode uses `FakeSourceExtractor` (no network; host `fail.example` fails like a paywall) and a fresh job file per launch. `-UITestScenario slowGeneration` makes every AI call take 1.5 s.
 - The share extension target is `AIQuizShare`; it and the app share the App Group `group.com.jaimerodriguez.aiquiz` (entitlements in each target folder). Inbox items are `<id>.json` (`kind`, `value`, `file`, `name`) plus the payload file.
 
+## Anki interchange (F-62, ADR-021)
+- How to use it, the known issues (A-1…) and the decisions left open are in `docs/anki.md`. Add new limitations there.
+- The contract is `docs/anki-interchange.md`; the golden files are in `Packages/AIQuizCore/Tests/AIQuizCoreTests/Fixtures/Anki/`. Change the mapping in the doc and the fixtures' `expected.json` together.
+- Regenerate fixtures, and check exports with Anki's own engine (Python 3.10+, the official `anki` package pinned in the script):
+  `python3 -m venv /tmp/anki-venv && /tmp/anki-venv/bin/pip install anki==26.9.3`, then `/tmp/anki-venv/bin/python -I tools/anki/make_fixtures.py`. For an export: `AIQUIZ_ANKI_EXPORT=/tmp/aiquiz.apkg swift test --package-path Packages/AIQuizCore --filter writeForAnki`, then `/tmp/anki-venv/bin/python -I tools/anki/verify_export.py /tmp/aiquiz.apkg`.
+- Current Anki tables use a `unicase` collation; `SQLiteDatabase` registers one. Without it every query on them fails.
+- The app's copy of the import fixture is `AIQuiz/Resources/TestFixtures/anki-latest.apkg`; `-UITestAnkiImport anki-latest` imports it at launch.
+
 ## Visual design (SPEC N-9, ADR-016)
 - One accent color (`AccentColor`, blue). Use it for the single primary action on a screen (`primaryActionStyle()`, disabled and grey until it can run) and for feature icons (`AccentIcon`). Nowhere else.
 - Red, orange and green only when they mean something: destructive, recording, Wrong / Partial / Correct.
@@ -120,7 +128,7 @@ SwiftData gotchas seen in this project:
 - No new singletons. Dependencies come through `init` or `@Environment`. `.shared` is allowed only at the composition root in `AIQuizApp`.
 - Views are dumb; state machines live in `@Observable` players/models that take protocols (`LLMClient`, `SpeechSynthesizing`, `SpeechRecognizing`).
 - Non-UI logic goes in `Packages/AIQuizCore` or `Packages/LLMKit` so it is testable with `swift test`.
-- Third-party dependencies: `SwiftSoup` only. Ask before adding another.
+- Third-party dependencies: `SwiftSoup` and Meta's `zstd` (Anki packages, ADR-021) only. Ask before adding another.
 - Never log transcripts, source text or keys outside the opt-in debug file sink. Never show HTTP bodies to users.
 - Audio: only `AudioSessionCoordinator` touches `AVAudioSession` (after Phase 8). Closures that run on audio threads or recogniser callbacks are typed `@Sendable` and capture only Sendable boxes.
 - Prompts live in `AIQuizCore/Prompts/`, one file per feature, with a version comment. Every structured feature has a `JSONSchema` and a `Decodable` output type.

@@ -39,6 +39,7 @@ private struct StudyVoiceSession: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var resumeAfterChat = false
+    @State private var resumeAfterAsk = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -59,7 +60,14 @@ private struct StudyVoiceSession: View {
         .swipeToNavigate(onNext: player.skip, onBack: player.back)
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .endSessionConfirmation {
+        // Reading pauses while "End session?" is up, and carries on after Cancel.
+        .endSessionConfirmation(onAsk: {
+            resumeAfterAsk = player.state == .playing
+            player.pause()
+        }, onCancel: {
+            if resumeAfterAsk { player.resume() }
+            resumeAfterAsk = false
+        }) {
             player.abandon()
             dismiss()
         }
@@ -125,7 +133,7 @@ private struct StudyVoiceSession: View {
                 }
                 controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip", action: player.skip)
             }
-            HintButton(progress: player.hints, action: player.toggleHint)
+            HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
         }
     }
 

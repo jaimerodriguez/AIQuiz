@@ -34,7 +34,8 @@ struct QuizVoiceView: View {
         let autoJudge: QuizVoicePlayer.Judge? = settings.autoGrade && router.issue(for: .grading) == nil
             ? { request in try await AnswerJudge.judge(request, using: try router.client(for: .grading)) }
             : nil
-        return QuizVoicePlayer(deck: deck, recognizer: speech.recognizer, locale: settings.sttLocale, autoJudge: autoJudge)
+        return QuizVoicePlayer(deck: deck, recognizer: speech.recognizer, locale: settings.sttLocale, autoJudge: autoJudge,
+                               autoListenSeconds: settings.autoListen ? settings.autoListenSeconds : nil)
     }
 }
 
@@ -67,11 +68,17 @@ private struct QuizVoiceSession: View {
         }
         .navigationTitle(quiz.name)
         .navigationBarTitleDisplayMode(.inline)
-        .endSessionConfirmation(isEnabled: player.phase != .ended) {
+        // The countdown waits while "End session?" is up, so the microphone can't start behind it.
+        .endSessionConfirmation(isEnabled: player.phase != .ended, onAsk: player.pauseAutoListen, onCancel: player.beginAutoListen) {
             player.abandon()
             dismiss()
         }
-        .tutorChatButton(quiz: player.phase == .ended ? nil : quiz, card: player.deck.current, isEnabled: player.phase != .listening)
+        .tutorChatButton(quiz: player.phase == .ended ? nil : quiz, card: player.deck.current, isEnabled: player.phase != .listening,
+                         onOpen: player.pauseAutoListen, onClose: player.beginAutoListen)
+        // S-18: the first card's countdown; later cards start theirs as they come up.
+        .onAppear { player.beginAutoListen() }
+        // However the screen goes away, the countdown and the microphone stop.
+        .onDisappear { player.suspend() }
         .aiSetupSheet(gate)
         .onChange(of: player.phase) { _, phase in
             if phase == .ended {
@@ -115,6 +122,29 @@ private struct QuizVoiceSession: View {
             controls
         }
         .padding()
+    }
+
+    @ViewBuilder
+    private var answerButtonLabel: some View {
+        if let seconds = player.countdown {
+            VStack(spacing: 2) {
+                HStack(spacing: 6) {
+                    Image(systemName: "mic.fill")
+                    Text("Listening in")
+                    // Only the digit animates; the words stay put.
+                    Text(verbatim: "\(seconds)")
+                        .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
+                        .animation(.default, value: seconds)
+                    Text(seconds == 1 ? "second" : "seconds")
+                }
+                Text("or tap to answer now")
+                    .font(.caption)
+                    .opacity(0.85)
+            }
+        } else {
+            Label("Tap to answer", systemImage: "mic.fill")
+        }
     }
 
     private var transcriptBlock: some View {
@@ -194,17 +224,18 @@ private struct QuizVoiceSession: View {
         switch player.phase {
         case .awaitingAnswer:
             VStack(spacing: 12) {
+                // One button: it counts down to listening on its own (S-18), and a tap listens now.
                 Button {
                     Task { await player.startListening() }
                 } label: {
-                    Label("Tap to answer", systemImage: "mic.fill")
+                    answerButtonLabel
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("quiz.tapToAnswer")
                 HStack {
-                    HintButton(progress: player.hints, action: player.toggleHint)
+                    HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
                     Button(action: player.revealAnswerWithoutVoice) {
                         Label("Show answer", systemImage: "eye")
                             .frame(maxWidth: .infinity)

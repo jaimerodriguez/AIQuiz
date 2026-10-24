@@ -264,3 +264,30 @@ The files are used unmodified, next to the provider's name and only to identify 
 
 **Consequences.** (b) was rejected because it would route iPhone audio to the receiver unless forced to the speaker, and it would change Quiz — Voice, which the owner uses daily. The STT result handler now ignores callbacks from an earlier recognition, since voice hints start and stop listening every card. The coordinator is the place for audio-route handling if AirPods need it later.
 
+## ADR-021 — Anki interchange: Meta's zstd, a written contract, and Anki itself as the test oracle
+**Date:** 2026-10-23. **Status:** accepted (SPEC F-62, CR-018, docs/anki-interchange.md).
+
+**Conversation with the owner.** Asked whether to build Anki import, the owner said yes, and chose import and export, with review history carried over. Current Anki packages compress the collection with Zstandard, which iOS doesn't decode. Asked how to handle that, the owner said: "if the libraries are OSS and popular, I would rather go there; else writing our own decoder is OK." The owner also approved installing Anki's official engine (PyPI `anki` 26.9.3) in a throwaway environment to make test decks and check exports. Later the owner added that a companion website will import and export too.
+
+**Options.**
+- (a) Write a Zstandard decoder (about 1 000 lines, no dependency).
+- (b) Meta's official library, [facebook/zstd](https://github.com/facebook/zstd): about 28 000 stars, BSD or GPLv2, maintained by Meta, with its own Swift package.
+- (c) Read only older-format packages and ask users to tick "Support older Anki versions".
+
+For testing:
+- (d) Hand-made fixtures from the schema.
+- (e) Fixtures and checks from Anki's own engine.
+
+**Decision.** (b), pinned to exactly 1.5.7 and used under BSD; and (e).
+- **Fixtures:** `tools/anki/make_fixtures.py` builds decks covering every case in four package forms with real review history, and writes `expected.json`. `tools/anki/verify_export.py` imports an AIQuiz export with Anki's engine and checks decks, note types, rendering and schedule. It also re-exports the result, which became the fixture `aiquiz-via-anki.apkg`.
+- **Import:** renders each card's own templates rather than guessing fields, so any note type works.
+- **Export:** writes schema 11 (`collection.anki2`), the form every Anki version and AnkiDroid import, with "AIQuiz" note types whose fields keep everything, so a round trip is lossless.
+- **The contract:** the mapping lives in `docs/anki-interchange.md` with the golden files, so the website can implement it in any language and test against the same files.
+
+**Consequences.**
+- N-5 grows to two dependencies. zstd's compressor is compiled in but unused.
+- Images and audio are dropped until cards can hold media.
+- Export writes no review log, so Anki's statistics start at the export.
+- Regenerating the fixtures needs Python 3.10+ and the pinned `anki` package. They are committed, so the tests don't.
+- **Tracked for later:** the limits and the follow-up decisions live in `docs/anki.md` (§3 known issues A-1 to A-14, §4 open decisions). Revisit them when media support, re-import as update, or the website comes up.
+
