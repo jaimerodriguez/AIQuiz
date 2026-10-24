@@ -1085,4 +1085,46 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: 30), "saying hint reveals the hint (F-12)")
         app.buttons["studyVoice.pause"].tap()
     }
+
+    // MARK: Anki (F-62)
+
+    func testAnAnkiDeckImportsAsQuizzesWithASummary() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        let summary = element(app, "anki.summary")
+        XCTAssertTrue(summary.waitForExistence(timeout: timeout), "the import sheet reads the deck")
+        XCTAssertEqual(summary.label, "2 quizzes, 9 cards")
+        XCTAssertTrue(element(app, "anki.quiz.0").exists)
+        XCTAssertTrue(element(app, "anki.skipped").exists || app.staticTexts["1 image left out"].exists, "media is reported as left out")
+        app.buttons["anki.done"].tap()
+        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Geography"].exists)
+    }
+
+    func testTheAddMenuOffersAnkiImport() {
+        let app = launch()
+        let add = app.buttons["library.addButton"]
+        XCTAssertTrue(add.waitForExistence(timeout: timeout))
+        add.tap()
+        let anki = button(app, id: "library.importAnki", label: "Import Anki deck")
+        XCTAssertTrue(anki.waitForExistence(timeout: timeout))
+        anki.tap()
+        let appeared = app.buttons["Cancel"].waitForExistence(timeout: timeout) || app.navigationBars.buttons["Cancel"].waitForExistence(timeout: 2)
+        XCTAssertTrue(appeared, "the document picker opens")
+    }
+
+    func testExportToAnkiOpensTheFileExporter() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let more = app.buttons["detail.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: timeout))
+        more.tap()
+        let export = button(app, id: "detail.exportAnki", label: "Export to Anki")
+        XCTAssertTrue(export.waitForExistence(timeout: timeout))
+        export.tap()
+        let picker = app.buttons["Move"].exists ? app.buttons["Move"] : app.navigationBars.buttons["Save"]
+        let appeared = picker.waitForExistence(timeout: timeout)
+            || app.buttons["Save"].waitForExistence(timeout: 2)
+            || app.buttons["Cancel"].waitForExistence(timeout: 2)
+        XCTAssertTrue(appeared, "the file exporter appears with the .apkg")
+    }
 }
