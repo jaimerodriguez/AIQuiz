@@ -125,7 +125,7 @@ private struct StudyVoiceSession: View {
                 }
                 controlButton("Skip", systemImage: "forward.fill", id: "studyVoice.skip", action: player.skip)
             }
-            HintButton(progress: player.hints, action: player.toggleHint)
+            HintButton(progress: player.hints, deck: player.deck, action: player.toggleHint)
         }
     }
 

@@ -49,7 +49,7 @@ private struct StudyReadSession: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("studyRead.reveal")
                     }
-                    HintButton(progress: player.hints) {
+                    HintButton(progress: player.hints, deck: player.deck) {
                         withAnimation { player.toggleHint() }
                     }
                 }

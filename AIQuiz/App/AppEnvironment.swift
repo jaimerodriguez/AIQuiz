@@ -7,6 +7,7 @@ import Foundation
 /// - `-UITestMode`            in-memory store, seeded fixtures, fake AI provider, throwaway defaults
 /// - `-UITestOnboarding`     show onboarding (UI-test mode skips it otherwise)
 /// - `-UITestScenario <name>` one of `standard`, `emptyLibrary`, `endpointError`, `malformedJSON`, `noEndpoints`, `largeLibrary`
+/// - `-UITestAnkiImport <name>` import `TestFixtures/<name>.apkg` at launch, as if opened from Files (F-62)
 struct AppEnvironment: Sendable {
     enum Scenario: String, Sendable, CaseIterable {
         case standard
@@ -26,6 +27,8 @@ struct AppEnvironment: Sendable {
     let scenario: Scenario
     /// Onboarding (F-60) is skipped in UI-test mode unless a test asks for it.
     let allowsOnboarding: Bool
+    /// A bundled Anki fixture to import at launch (UI-test mode only).
+    let ankiFixture: String?
 
     static let current = AppEnvironment(arguments: ProcessInfo.processInfo.arguments)
 
@@ -57,6 +60,11 @@ struct AppEnvironment: Sendable {
             scenario = s
         } else {
             scenario = .standard
+        }
+        if isUITest, let i = arguments.firstIndex(of: "-UITestAnkiImport"), i + 1 < arguments.count {
+            ankiFixture = arguments[i + 1]
+        } else {
+            ankiFixture = nil
         }
     }
 }

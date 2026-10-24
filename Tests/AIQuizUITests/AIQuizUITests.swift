@@ -1085,4 +1085,84 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(element(app, "session.card.hint").waitForExistence(timeout: 30), "saying hint reveals the hint (F-12)")
         app.buttons["studyVoice.pause"].tap()
     }
+
+    // MARK: Anki (F-62)
+
+    func testAnAnkiDeckImportsAsQuizzesWithASummary() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        let summary = element(app, "anki.summary")
+        XCTAssertTrue(summary.waitForExistence(timeout: timeout), "the import sheet reads the deck")
+        XCTAssertEqual(summary.label, "2 quizzes, 9 cards")
+        XCTAssertTrue(element(app, "anki.quiz.0").exists)
+        XCTAssertTrue(element(app, "anki.skipped").exists || app.staticTexts["1 image left out"].exists, "media is reported as left out")
+        app.buttons["anki.done"].tap()
+        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Geography"].exists)
+    }
+
+    func testTheAddMenuOffersAnkiImport() {
+        let app = launch()
+        let add = app.buttons["library.addButton"]
+        XCTAssertTrue(add.waitForExistence(timeout: timeout))
+        add.tap()
+        let anki = button(app, id: "library.importAnki", label: "Import Anki deck")
+        XCTAssertTrue(anki.waitForExistence(timeout: timeout))
+        anki.tap()
+        let appeared = app.buttons["Cancel"].waitForExistence(timeout: timeout) || app.navigationBars.buttons["Cancel"].waitForExistence(timeout: 2)
+        XCTAssertTrue(appeared, "the document picker opens")
+    }
+
+    func testExportToAnkiOpensTheFileExporter() {
+        let app = launch()
+        openQuiz(app, named: "UITest Deck")
+        let more = app.buttons["detail.more"]
+        XCTAssertTrue(more.waitForExistence(timeout: timeout))
+        more.tap()
+        let export = button(app, id: "detail.exportAnki", label: "Export to Anki")
+        XCTAssertTrue(export.waitForExistence(timeout: timeout))
+        export.tap()
+        let picker = app.buttons["Move"].exists ? app.buttons["Move"] : app.navigationBars.buttons["Save"]
+        let appeared = picker.waitForExistence(timeout: timeout)
+            || app.buttons["Save"].waitForExistence(timeout: 2)
+            || app.buttons["Cancel"].waitForExistence(timeout: 2)
+        XCTAssertTrue(appeared, "the file exporter appears with the .apkg")
+    }
+
+    // MARK: Hands-free (CR-019)
+
+    func testAutoListenCountsDownThenListensWithoutATap() {
+        // Long enough that the countdown is still on screen when the test reads it.
+        let app = launch(extra: ["-autoListen", "YES", "-autoListenSeconds", "5"])
+        openQuiz(app, named: "UITest Deck")
+        app.buttons["detail.mode.quizVoice"].tap()
+        let countdown = element(app, "quiz.countdown")
+        XCTAssertTrue(countdown.waitForExistence(timeout: timeout), "the card counts down")
+        XCTAssertTrue(countdown.label.contains("Listening in"), countdown.label)
+        XCTAssertTrue(["5", "4", "3"].contains { countdown.label.contains($0) }, "counts from the 5-second setting: \(countdown.label)")
+        // Scripted speech answers "Fixture answer"; nothing is tapped.
+        XCTAssertTrue(element(app, "quiz.transcript").waitForExistence(timeout: 15), "the microphone turned on by itself")
+        XCTAssertTrue(app.buttons["quiz.grade.correct"].waitForExistence(timeout: timeout), "the answer is revealed after the pause")
+    }
+
+    func testSettingsShowTheWaitOnlyWhenAutoListenIsOn() {
+        let app = launch()
+        app.buttons["library.settings"].tap()
+        let toggle = app.switches["settings.autoListen"]
+        for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { app.swipeUp() }
+        XCTAssertTrue(toggle.waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.steppers["settings.autoListenDelay"].exists, "no wait setting while it's off")
+        toggle.switches.firstMatch.tap()
+        XCTAssertTrue(app.steppers["settings.autoListenDelay"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.staticTexts["Wait 3 seconds for answer"].exists)
+    }
+
+    func testADeckWithoutHintsShowsNoHintButton() {
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        XCTAssertTrue(element(app, "anki.summary").waitForExistence(timeout: timeout))
+        app.buttons["anki.done"].tap()
+        openQuiz(app, named: "Spanish › Verbs")
+        app.buttons["detail.mode.studyRead"].tap()
+        XCTAssertTrue(element(app, "session.card.prompt").waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["session.hint"].exists, "no Hint button in a deck without hints")
+    }
 }

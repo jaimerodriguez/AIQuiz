@@ -6,6 +6,10 @@ import Observation
 /// With auto-grade on (S-3), revealing a spoken answer asks the AI for a verdict in the
 /// background; the verdict pre-selects a grade, and the user's tap always wins. The AI never
 /// blocks grading: errors and slow replies leave the three grade buttons working.
+///
+/// With auto-listen (S-18), each card counts down `autoListenSeconds` and then listens, as if
+/// *Tap to answer* had been tapped (CR-019). Tapping earlier, showing the answer or ending
+/// stops the countdown; `pauseAutoListen()` stops it while something covers the screen.
 @Observable
 @MainActor
 public final class QuizVoicePlayer {
@@ -27,6 +31,8 @@ public final class QuizVoicePlayer {
     public private(set) var whyWrong: String?
     public private(set) var whyWrongLoading = false
     public private(set) var whyWrongError: String?
+    /// Seconds left before listening starts on its own (auto-listen), nil when not counting.
+    public private(set) var countdown: Int?
 
     /// Whether answers are graded automatically (S-3 on and a grading endpoint exists).
     public var autoGrades: Bool { autoJudge != nil }
@@ -35,27 +41,69 @@ public final class QuizVoicePlayer {
     private let locale: Locale
     private let autoJudge: Judge?
     private let silenceTimeout: Duration?
+    private let autoListenSeconds: Int?
+    private let tick: Duration
     private var judgeTask: Task<Void, Never>?
     private var silenceTask: Task<Void, Never>?
+    private var countdownTask: Task<Void, Never>?
 
     public init(
         deck: SessionDeck,
         recognizer: any SpeechRecognizing,
         locale: Locale = .current,
         autoJudge: Judge? = nil,
-        silenceTimeout: Duration? = .seconds(2)
+        silenceTimeout: Duration? = .seconds(2),
+        autoListenSeconds: Int? = nil,
+        tick: Duration = .seconds(1)
     ) {
         self.deck = deck
         self.recognizer = recognizer
         self.locale = locale
         self.autoJudge = autoJudge
         self.silenceTimeout = silenceTimeout
+        self.autoListenSeconds = autoListenSeconds.map { min(30, max(1, $0)) }
+        self.tick = tick
         hints = HintProgress(hints: deck.current?.hints ?? [])
+    }
+
+    // MARK: Auto-listen (S-18)
+
+    /// Whether this session listens on its own after a countdown.
+    public var autoListens: Bool { autoListenSeconds != nil }
+
+    /// Starts the countdown on a card waiting for an answer. Does nothing when auto-listen is
+    /// off, a countdown is running, or the last attempt to listen failed (no retry loop).
+    public func beginAutoListen() {
+        guard let seconds = autoListenSeconds, phase == .awaitingAnswer, countdownTask == nil, sttError == nil else { return }
+        let tick = self.tick
+        countdown = seconds
+        countdownTask = Task { [weak self] in
+            var remaining = seconds
+            while remaining > 0 {
+                try? await Task.sleep(for: tick)
+                if Task.isCancelled { return }
+                remaining -= 1
+                self?.countdown = remaining
+            }
+            // The player is held weakly: if the quiz screen has gone, nothing listens.
+            guard let self, self.phase == .awaitingAnswer else { return }
+            self.countdownTask = nil
+            self.countdown = nil
+            await self.startListening()
+        }
+    }
+
+    /// Stops the countdown (a sheet covers the quiz, or the screen goes away).
+    public func pauseAutoListen() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdown = nil
     }
 
     // MARK: Listening
 
     public func startListening() async {
+        pauseAutoListen()
         guard phase == .awaitingAnswer else { return }
         sttError = nil
         transcript = ""
@@ -111,6 +159,7 @@ public final class QuizVoicePlayer {
 
     /// *Show answer*: skip the voice step (F-14.5).
     public func revealAnswerWithoutVoice() {
+        pauseAutoListen()
         recognizer.stop()
         reveal()
     }
@@ -215,9 +264,11 @@ public final class QuizVoicePlayer {
         deck.next()
         hints = HintProgress(hints: deck.current?.hints ?? [])
         phase = deck.ended ? .ended : .awaitingAnswer
+        beginAutoListen()
     }
 
     public func abandon() {
+        pauseAutoListen()
         recognizer.stop()
         clearAI()
         silenceTask?.cancel()

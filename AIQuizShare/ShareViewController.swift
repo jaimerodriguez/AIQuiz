@@ -57,7 +57,7 @@ final class ShareViewController: UIViewController {
             detailLabel.text = "Open AIQuiz to make \(saved == 1 ? "the quiz" : "\(saved) quizzes"). It continues in the background."
         } else {
             titleLabel.text = "Nothing to save"
-            detailLabel.text = "AIQuiz can make quizzes from web pages, text, PDFs and photos."
+            detailLabel.text = "AIQuiz can make quizzes from web pages, text, PDFs and photos, and import Anki decks."
         }
         try? await Task.sleep(for: .seconds(1.6))
         extensionContext?.completeRequest(returningItems: nil)
@@ -79,6 +79,11 @@ final class ShareViewController: UIViewController {
             return (try? FileManager.default.copyItem(at: url, to: inbox.appending(path: name))) != nil ? name : nil
         }
 
+        // An Anki deck (.apkg, .colpkg) is imported, not generated from.
+        if let type = Self.ankiType(provider), let url = await fileURL(provider, type: type),
+           let file = copy(url, ext: url.pathExtension.lowercased().isEmpty ? "apkg" : url.pathExtension.lowercased()) {
+            return write(kind: "anki", file: file, name: url.lastPathComponent)
+        }
         if provider.hasItemConformingToTypeIdentifier(UTType.pdf.identifier),
            let url = await fileURL(provider, type: .pdf), let file = copy(url, ext: "pdf") {
             return write(kind: "pdf", file: file, name: url.lastPathComponent)
@@ -99,6 +104,19 @@ final class ShareViewController: UIViewController {
             return write(kind: "text", value: text, name: String(text.prefix(40)))
         }
         return false
+    }
+
+    /// The type to load an Anki package as: by its extension, since Anki's apps and AIQuiz
+    /// may declare different type identifiers for it.
+    private static func ankiType(_ provider: NSItemProvider) -> UTType? {
+        let isAnki = { (ext: String?) in ["apkg", "colpkg"].contains(ext?.lowercased() ?? "") }
+        for id in provider.registeredTypeIdentifiers {
+            if let type = UTType(id), isAnki(type.preferredFilenameExtension) { return type }
+        }
+        if let name = provider.suggestedName, isAnki((name as NSString).pathExtension) {
+            return provider.registeredTypeIdentifiers.first.flatMap { UTType($0) } ?? .data
+        }
+        return nil
     }
 
     private func fileURL(_ provider: NSItemProvider, type: UTType) async -> URL? {
