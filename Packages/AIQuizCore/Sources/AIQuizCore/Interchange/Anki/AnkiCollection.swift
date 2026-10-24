@@ -11,6 +11,8 @@ public struct AnkiCollection: Sendable, Equatable {
         /// Field names in order.
         public var fields: [String]
         public var templates: [Template]
+        /// The note type's styling, read for the rules that hide elements.
+        public var css: String = ""
     }
 
     public struct Template: Sendable, Equatable {
@@ -155,7 +157,8 @@ public enum AnkiPackage {
                                         question: t["qfmt"] as? String ?? "", answer: t["afmt"] as? String ?? "")
             }
             return AnkiCollection.Notetype(id: int64(model["id"]), name: model["name"] as? String ?? "",
-                                           isCloze: (model["type"] as? Int) == 1, fields: fields, templates: templates)
+                                           isCloze: (model["type"] as? Int) == 1, fields: fields, templates: templates,
+                                           css: model["css"] as? String ?? "")
         }
         let deckList: [AnkiCollection.Deck] = decks.values.compactMap { value in
             guard let deck = value as? [String: Any] else { return nil }
@@ -188,10 +191,12 @@ public enum AnkiPackage {
             ))
         }
         let notetypes = try db.query("select id, name, config from notetypes").map { row in
-            AnkiCollection.Notetype(
+            let config = Protobuf.fields(row[2].blob)
+            return AnkiCollection.Notetype(
                 id: row[0].int, name: row[1].text,
-                isCloze: Protobuf.fields(row[2].blob)[1]?.varint == 1,
-                fields: fields[row[0].int] ?? [], templates: templates[row[0].int] ?? []
+                isCloze: config[1]?.varint == 1,
+                fields: fields[row[0].int] ?? [], templates: templates[row[0].int] ?? [],
+                css: config[3]?.string ?? ""
             )
         }
         let decks = try db.query("select id, name from decks").map {
@@ -202,7 +207,7 @@ public enum AnkiPackage {
 }
 
 /// Reads the top-level fields of a protobuf message: enough for Anki's note type and
-/// template settings (kind = 1; q_format = 1, a_format = 2).
+/// template settings (kind = 1, css = 3; q_format = 1, a_format = 2).
 enum Protobuf {
     enum Value {
         case varint(UInt64)

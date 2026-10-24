@@ -109,8 +109,10 @@ public enum AnkiImporter {
             context.frontSide = ""
             answerHTML = AnkiTemplate.render(template.answer, context)
         }
-        let prompt = HTMLText.plain(questionHTML)
-        let longAnswer = HTMLText.plain(answerHTML)
+        // What Anki shows: the note type's CSS may hide elements too.
+        let hidden = HTMLText.hiddenSelectors(css: notetype.css)
+        let prompt = HTMLText.plain(questionHTML, hiding: hidden)
+        let longAnswer = HTMLText.plain(answerHTML, hiding: hidden)
         guard !prompt.isEmpty, !longAnswer.isEmpty else { return nil }
 
         if notetype.isCloze {
@@ -120,8 +122,8 @@ public enum AnkiImporter {
             var hints: [String] = []
             for name in clozeFields {
                 let parts = Cloze.anki(values[name] ?? "", number: card.ord + 1, side: .question)
-                answers += parts.answers.map(HTMLText.plain)
-                hints += parts.hints.map(HTMLText.plain)
+                answers += parts.answers.map { HTMLText.plain($0) }
+                hints += parts.hints.map { HTMLText.plain($0) }
             }
             guard prompt.contains(Cloze.marker), !answers.isEmpty else { return nil }
             return CardPayload(prompt: prompt, longAnswer: longAnswer, shortAnswer: answers.joined(separator: "|"),

@@ -47,6 +47,30 @@ def build(path, fsrs=False):
     cloze = models.by_name("Cloze")
     verbs = col.decks.id("Spanish::Verbs")
     geo = col.decks.id("Geography")
+    phrases = col.decks.id("Phrases")
+
+    # A shared-deck style note type (owner report, 2026-10-23): the answer has no
+    # <hr id=answer>, and carries a hidden field, a script, a "show more" control, a hidden
+    # tools panel, a block the note type's CSS hides, and a reveal button. Anki shows only
+    # the translation; so must an importer.
+    tools = models.new("Sentences (with tools)")
+    for name in ("Sentence", "English", "Language"):
+        models.add_field(tools, models.new_field(name))
+    template = models.new_template("Card 1")
+    template["qfmt"] = '<div class="center">{{Sentence}}</div>'
+    template["afmt"] = """{{FrontSide}}
+<!-- answer -->
+<div id="answer" class="center">{{English}}</div>
+<div id='get' style='display: none;'>{{Language}}</div>
+<script>document.getElementById('tools').style.display = '';</script>
+<div id="button" onMouseOver="show('tools')">show more</div>
+<div id="tools" style='display:none;'>Wiktionary search: {{Sentence}} <a href="https://en.wiktionary.org/">[wk]</a></div>
+<div class="extra">Kept out of sight by the note type's CSS</div>
+<p hidden>Hidden by the attribute</p>
+<button onclick="reveal()">Reveal</button>"""
+    models.add_template(tools, template)
+    tools["css"] = ".card { font-size: 20px; }\n/* hide the extras */\n.extra, .other { display: none; }\n.nightMode .center { color: white; }\n"
+    models.add(tools)
     col.media.write_data("perro.png", PNG)
     col.media.write_data("perro.mp3", MP3)
 
@@ -65,6 +89,7 @@ def build(path, fsrs=False):
     add(typein, verbs, {"Front": "ser (yo)", "Back": "soy"})
     add(cloze, geo, {"Text": "The capital of {{c1::France::country}} is {{c2::Paris}}.", "Back Extra": "Paris has been the capital since 987."})
     add(cloze, geo, {"Text": "{{c1::Canberra}} is the capital of Australia, and {{c1::Canberra}} was planned.", "Back Extra": ""})
+    add(models.by_name("Sentences (with tools)"), phrases, {"Sentence": "¿Qué tal?", "English": "How are you?", "Language": "Spanish"})
 
     # Real review history from Anki's scheduler.
     def answer(note, ease, ord_=0):
@@ -109,6 +134,9 @@ def expected(col):
             {"kind": "cloze", "prompt": "The capital of {{blank}} is Paris.", "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.", "short_answer": "France", "hint": "country"},
             {"kind": "cloze", "prompt": "The capital of France is {{blank}}.", "long_answer": "The capital of France is Paris.\nParis has been the capital since 987.", "short_answer": "Paris", "hint": None},
             {"kind": "cloze", "prompt": "{{blank}} is the capital of Australia, and {{blank}} was planned.", "long_answer": "Canberra is the capital of Australia, and Canberra was planned.", "short_answer": "Canberra|Canberra", "hint": None},
+        ],
+        "Phrases": [
+            {"kind": "recall", "prompt": "¿Qué tal?", "long_answer": "How are you?", "short_answer": None, "hint": None},
         ],
     }
     schedules = {}

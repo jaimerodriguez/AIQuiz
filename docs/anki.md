@@ -90,7 +90,9 @@ noticed. Each is a candidate for later work (§4).
 | A-2 | **Image Occlusion cards are skipped.** | They are a picture with boxes over it. | None. |
 | A-3 | **Importing the same deck twice makes a second copy.** No merge, no update. | Anki note IDs aren't stored on AIQuiz cards (would need a schema change). | Delete the older quiz. |
 | A-4 | **Note tags are dropped.** Quizzes get one tag, *anki*. | AIQuiz tags belong to quizzes, not cards. | Re-tag the quiz. |
-| A-5 | **Templates with JavaScript, custom CSS layouts or add-on filters may read oddly.** | AIQuiz renders field references, `#`/`^` sections and the standard filters only (anki-interchange §2.2). Anything else shows the raw field text. | Edit the card in AIQuiz. |
+| A-5 | **Templates that build text with JavaScript, or use add-on filters, may read oddly.** | AIQuiz renders field references, `#`/`^` sections and the standard filters, and leaves out what Anki hides (anki-interchange §2.2). Text a script would write is missing; an unknown filter shows the raw field. | Edit the card in AIQuiz. |
+| A-15 | **Content Anki shows only after a click or hover is left out**, such as a "show more" panel or a hidden extra note. | It starts hidden, and AIQuiz has no scripts to reveal it. This keeps search-tool panels out of answers. | If that content matters, move it into a visible field in Anki before exporting. |
+| A-16 | **Nested decks give long quiz names.** "spanish 10 000 sentences… › Neri's Spanish Sentences [Part 1] › b. Read Training › 2" for a deck four levels down, and one quiz per subdeck. | The quiz name is the full deck path (anki-interchange §2.1). | Rename the quizzes; see §4 item 7. |
 | A-6 | **The schedule is close to Anki's, not identical.** Anki scheduler (SM-2 or FSRS-5/6) vs AIQuiz (FSRS-4.5). | Due dates and FSRS memory carry over exactly. Without FSRS, difficulty is estimated from ease. | None needed; it settles after a review or two. |
 | A-7 | **Due dates can shift by part of a day.** | Anki counts days from a rollover hour (4 am by default); AIQuiz from midnight. | None needed. |
 | A-8 | **Suspended and buried cards come in as normal cards.** | AIQuiz has no suspend. | Delete the cards you don't want. |
@@ -99,6 +101,12 @@ noticed. Each is a candidate for later work (§4).
 | A-11 | **A cloze card's blanks export as one Anki card (all `c1`).** | AIQuiz asks a card's blanks together. Anki can't tell which blanks were meant as separate cards. | Renumber in Anki if you want one card per blank. |
 | A-12 | **Very large packages:** the collection inside must be under 1 GB compressed and 2 GB uncompressed. Media files are never read, so they don't count. | Safety limits against damaged files. | Export a single deck instead of the whole collection. |
 | A-13 | **"Open in AIQuiz" may not be offered for `.apkg` files on some devices.** | AIQuiz declares the type as `net.ankiweb.apkg`. iOS may label the file with another app's type (AnkiMobile's), or a file provider may give it a generic one. | Use Share › AIQuiz or the + menu. |
+
+**Fixed 2026-10-23 (owner report, "Spanish Sentences" shared deck):** long answers carried
+everything the note type hides: a language field, "show more", Wiktionary, Google Translate,
+DeepL and Reverso search tools, and a note about translations. AIQuiz removed scripts but kept
+hidden elements' text. It now leaves out what Anki keeps out of sight (A-15). The fixtures
+include a "Sentences (with tools)" note type like that deck's (deck "Phrases").
 
 **Fixed 2026-10-23 (owner report):** *Import Anki deck* greyed out a `.apkg` in Edge's downloads folder. The picker accepted only AIQuiz's declared types, and that file had some other type; which one wasn't confirmed, for the reasons in A-13. The picker now accepts any file and checks the content, and a file that isn't a package gets "This isn't an Anki deck." |
 | A-14 | **zstd's compressor is compiled into the app but never used.** | The official package builds the whole library. | None; it only adds to the app's size. |
@@ -126,3 +134,9 @@ These were chosen for the first version and should be revisited (ADR-021):
    everywhere) or the current format.
 6. **Revisit the zstd dependency** if Apple's Compression framework adds Zstandard; it would
    then come out (N-5).
+7. **Names for nested decks (A-16).** Options:
+   - keep the full path (today);
+   - drop the levels every imported deck shares ("b. Read Training › 2");
+   - one quiz per top-level deck, with subdecks as tags.
+
+   Owner's call.

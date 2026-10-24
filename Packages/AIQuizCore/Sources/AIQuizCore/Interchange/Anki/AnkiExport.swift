@@ -144,7 +144,7 @@ public enum AnkiExporter {
             let prompt = HTMLText.plain(parts.text)
             let filled = HTMLText.plain(Cloze.anki(values["Text"] ?? "", number: 1, side: .answer).text)
             return CardPayload(prompt: prompt, longAnswer: text("Back Extra") ?? filled,
-                               shortAnswer: parts.answers.map(HTMLText.plain).joined(separator: "|"),
+                               shortAnswer: parts.answers.map { HTMLText.plain($0) }.joined(separator: "|"),
                                hint: text("Hint"), kind: .cloze, explanation: text("Explanation"), mnemonic: text("Mnemonic"))
         }
         guard Set(basicFields).isSubset(of: notetype.fields), let prompt = text("Front") else { return nil }

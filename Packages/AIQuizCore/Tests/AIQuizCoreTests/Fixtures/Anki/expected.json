@@ -68,6 +68,15 @@
           "short_answer": "Canberra|Canberra",
           "hint": null
         }
+      ],
+      "Phrases": [
+        {
+          "kind": "recall",
+          "prompt": "¿Qué tal?",
+          "long_answer": "How are you?",
+          "short_answer": null,
+          "hint": null
+        }
       ]
     },
     "media": {
@@ -80,8 +89,8 @@
         "queue": 2,
         "reps": 1,
         "lapses": 0,
-        "ivl": 5,
-        "dueDayOffset": 5,
+        "ivl": 4,
+        "dueDayOffset": 4,
         "revlogEases": [
           4
         ]
@@ -151,6 +160,14 @@
         "revlogEases": []
       },
       "{{c1::Canberra}} is the capital of Australia, and {{c1::Canberra}} was planned.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "¿Qué tal?": {
         "type": 0,
         "queue": 0,
         "reps": 0,
@@ -228,6 +245,15 @@
           "short_answer": "Canberra|Canberra",
           "hint": null
         }
+      ],
+      "Phrases": [
+        {
+          "kind": "recall",
+          "prompt": "¿Qué tal?",
+          "long_answer": "How are you?",
+          "short_answer": null,
+          "hint": null
+        }
       ]
     },
     "media": {
@@ -240,8 +266,8 @@
         "queue": 2,
         "reps": 1,
         "lapses": 0,
-        "ivl": 10,
-        "dueDayOffset": 10,
+        "ivl": 6,
+        "dueDayOffset": 6,
         "stability": 8.2956,
         "difficulty": 1.0,
         "revlogEases": [
@@ -300,14 +326,6 @@
         "ivl": 0,
         "revlogEases": []
       },
-      "The capital of {{c1::France::country}} is {{c2::Paris}}.": {
-        "type": 0,
-        "queue": 0,
-        "reps": 0,
-        "lapses": 0,
-        "ivl": 0,
-        "revlogEases": []
-      },
       "The capital of {{c1::France::country}} is {{c2::Paris}}. #1": {
         "type": 0,
         "queue": 0,
@@ -316,7 +334,23 @@
         "ivl": 0,
         "revlogEases": []
       },
+      "The capital of {{c1::France::country}} is {{c2::Paris}}.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
       "{{c1::Canberra}} is the capital of Australia, and {{c1::Canberra}} was planned.": {
+        "type": 0,
+        "queue": 0,
+        "reps": 0,
+        "lapses": 0,
+        "ivl": 0,
+        "revlogEases": []
+      },
+      "¿Qué tal?": {
         "type": 0,
         "queue": 0,
         "reps": 0,

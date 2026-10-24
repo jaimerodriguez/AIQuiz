@@ -231,6 +231,43 @@ struct AnkiBuildingBlockTests {
         #expect(HTMLText.plain("<b>x</b>\n\n<i>y</i>") == "x y", "in HTML a newline is a space")
         #expect(HTMLText.media(#"<img src="a.png"> [sound:b.mp3] <img src="c.png">"#) == (images: 2, sounds: 1))
     }
+
+    @Test("what Anki keeps out of sight stays out: hidden elements, scripts, controls")
+    func hiddenContent() {
+        let answer = """
+        <div id="answer" class="center">How are you?</div>
+        <div id='get' style='display: none;'>Spanish</div>
+        <script>show()</script>
+        <div id="button" onMouseOver="show('tools')">show more</div>
+        <div id="tools" style="DISPLAY : NONE">Wiktionary search: ¿Qué tal? <a href="x">[wk]</a></div>
+        <span style="visibility:hidden">ghost</span>
+        <p hidden>Hidden by the attribute</p>
+        <button onclick="reveal()">Reveal</button><input value="typed">
+        <div class="extra">Hidden by CSS</div><div class="center other">Also by CSS</div>
+        """
+        #expect(HTMLText.plain(answer, hiding: [".extra", ".other"]) == "How are you?")
+        #expect(HTMLText.plain("<a href='https://example.com'>a link</a> stays") == "a link stays", "visible links keep their text")
+    }
+
+    @Test("the note type's CSS: selectors that hide outright, nothing else")
+    func cssSelectors() {
+        let css = """
+        .card { font-size: 20px; display: none; }
+        /* .commented { display: none; } */
+        .extra, #details { display:none }
+        .ghost { visibility : hidden; color: red }
+        .nightMode .center { display: none; }
+        .mobile .x { display: none; }
+        .shown { display: block; }
+        a:hover { display: none; }
+        @media (max-width: 600px) { .small { display: none; } }
+        """
+        let selectors = HTMLText.hiddenSelectors(css: css)
+        #expect(selectors.contains(".extra") && selectors.contains("#details") && selectors.contains(".ghost"))
+        #expect(!selectors.contains(".card") && !selectors.contains(".shown") && !selectors.contains(".commented"))
+        #expect(!selectors.contains { $0.contains("nightMode") || $0.contains("mobile") || $0.contains(":hover") })
+        #expect(!selectors.contains(".small"), "rules inside @media apply only sometimes")
+    }
 }
 
 @Suite("Anki export (docs/anki-interchange.md §3)")

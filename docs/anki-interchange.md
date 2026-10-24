@@ -70,6 +70,19 @@ Render the card's template as Anki does, then convert HTML to text.
 - **Prompt:** the rendered question.
 - **Long answer:** the rendered answer after `<hr id=answer>`; if the template has no such
   rule, the answer rendered with an empty `{{FrontSide}}`.
+- **What Anki shows:** before converting to text, remove what Anki keeps out of sight.
+  Shared decks often put search links, "show more" controls and script-filled panels in
+  their templates.
+  - `<script>`, `<style>`, `<noscript>`, `<template>`, and form controls (`button`, `input`,
+    `select`, `textarea`).
+  - Elements hidden inline (`style` with `display: none` or `visibility: hidden`, any case
+    or spacing) or by the `hidden` attribute.
+  - Elements matched by a note type CSS rule that sets `display: none` or
+    `visibility: hidden`. Left alone: rules inside `@media` or other at-rules, rules on
+    `.card`, `.nightMode` or `.mobile`, and selectors with pseudo-classes.
+  - Elements with an event-handler attribute (`onclick`, `onmouseover`, …): controls that
+    only work with scripts.
+  - Then convert to text.
 - **HTML to text:**
   - `<br>` is a line break (each counts).
   - Block elements (`div`, `p`, `li`, `h1`–`h6`, `tr`, `table`, `blockquote`, `pre`, `hr`)

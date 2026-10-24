@@ -73,6 +73,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - Each deck becomes a quiz named after it ("Spanish › Verbs"), tagged *anki*. Cards keep their Anki history, so what was due in Anki is due here and the rest comes back when Anki would have shown it.
   - Cloze cards become fill-in-the-blank cards, with their hints. Reversed cards come in as their own cards.
   - Images and sounds are left out (cards are text only), and the summary says how many.
+  - Cards from shared decks no longer carry what Anki hides: search-tool panels, "show more" buttons, hidden fields and scripts.
   - *Import Anki deck* lets you pick any file, so a `.apkg` in a browser's downloads folder isn't greyed out; a file that isn't a deck says so.
   - **Export to Anki** in a quiz's menu saves a `.apkg` that Anki opens. Every field and the review schedule go with it, and a deck sent to Anki and back comes back the same.
   - The format is written down in `docs/anki-interchange.md`, with test decks made by Anki itself, for the companion website. How-to, known issues and the decisions left open are in `docs/anki.md`.

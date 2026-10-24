@@ -172,25 +172,77 @@ extension Cloze {
     }
 }
 
-/// HTML from Anki fields as plain text: line breaks kept, entities decoded, media removed.
+/// HTML from Anki fields as plain text: what Anki shows, without media. Line breaks are kept
+/// and entities decoded. Hidden elements and interactive controls are left out, since card
+/// templates often carry search links, "show more" buttons and script-filled panels that Anki
+/// keeps out of sight (docs/anki-interchange.md §2.2).
 enum HTMLText {
     /// Characters SwiftSoup's whitespace normalisation leaves alone: a `<br>` (each one a
     /// line break) and a block boundary (any number of them make one line break).
     private static let lineBreak = "\u{2028}"
     private static let blockBreak = "\u{2029}"
 
-    static func plain(_ html: String) -> String {
+    static func plain(_ html: String, hiding hiddenSelectors: [String] = []) -> String {
         guard html.contains("<") || html.contains("&") || html.contains("[sound:") else {
             return tidy(html)
         }
-        var marked = html.replacingOccurrences(of: #"\[sound:[^\]]*\]"#, with: "", options: .regularExpression)
-        marked = marked.replacingOccurrences(of: #"(?i)<br\s*/?>"#, with: lineBreak, options: .regularExpression)
+        let withoutSounds = html.replacingOccurrences(of: #"\[sound:[^\]]*\]"#, with: "", options: .regularExpression)
+        // First what Anki wouldn't show, on the parsed page; then line breaks, on what is left.
+        guard let shown = visibleHTML(withoutSounds, hiding: hiddenSelectors) else { return tidy(withoutSounds) }
+        var marked = shown.replacingOccurrences(of: #"(?i)<br\s*/?>"#, with: lineBreak, options: .regularExpression)
         marked = marked.replacingOccurrences(of: #"(?i)</?(div|p|li|ul|ol|h[1-6]|tr|table|blockquote|pre)(\s[^>]*)?>|<hr[^>]*>"#, with: blockBreak, options: .regularExpression)
-        guard let document = try? SwiftSoup.parseBodyFragment(marked), let body = document.body() else { return tidy(html) }
-        _ = try? body.select("style, script").remove()
+        guard let document = try? SwiftSoup.parseBodyFragment(marked), let body = document.body() else { return tidy(shown) }
         var text = ((try? body.text()) ?? "").replacingOccurrences(of: lineBreak, with: "\n")
         text = text.replacingOccurrences(of: "[ \t]*\n*\u{2029}[\u{2029}\n \t]*", with: "\n", options: .regularExpression)
         return tidy(text)
+    }
+
+    /// The fragment without what Anki keeps out of sight: scripts and styles, form controls,
+    /// elements hidden inline, by the `hidden` attribute or by the note type's CSS, and
+    /// controls that only work with scripts ("show more", reveal buttons).
+    private static func visibleHTML(_ html: String, hiding hiddenSelectors: [String]) -> String? {
+        guard let document = try? SwiftSoup.parseBodyFragment(html), let body = document.body() else { return nil }
+        _ = try? body.select("style, script, noscript, template, button, input, select, textarea").remove()
+        if let styled = try? body.select("[style]") {
+            for element in styled.array() {
+                let style = ((try? element.attr("style")) ?? "").lowercased().filter { !$0.isWhitespace }
+                if style.contains("display:none") || style.contains("visibility:hidden") { _ = try? element.remove() }
+            }
+        }
+        _ = try? body.select("[hidden]").remove()
+        for selector in hiddenSelectors {
+            _ = try? body.select(selector).remove()
+        }
+        if let all = try? body.getAllElements() {
+            for element in all.array() where element !== body {
+                let handlers = element.getAttributes()?.asList().contains { $0.getKey().lowercased().hasPrefix("on") } ?? false
+                if handlers { _ = try? element.remove() }
+            }
+        }
+        return try? body.html()
+    }
+
+    /// Selectors the CSS hides outright (`display: none`, `visibility: hidden`), such as
+    /// `.extra` or `#details`. Rules inside `@media` and the like are left alone.
+    static func hiddenSelectors(css: String) -> [String] {
+        var withoutComments = css.replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: "", options: .regularExpression)
+        // @media, @supports and similar blocks only apply sometimes: leave their rules out.
+        withoutComments = withoutComments.replacingOccurrences(of: #"@[^{;]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}"#, with: "", options: .regularExpression)
+        guard let regex = try? NSRegularExpression(pattern: #"([^{}@]+)\{([^{}]*)\}"#) else { return [] }
+        let source = withoutComments as NSString
+        var selectors: [String] = []
+        for match in regex.matches(in: withoutComments, range: NSRange(location: 0, length: source.length)) {
+            let body = source.substring(with: match.range(at: 2)).lowercased().filter { !$0.isWhitespace }
+            guard body.contains("display:none") || body.contains("visibility:hidden") else { continue }
+            for selector in source.substring(with: match.range(at: 1)).components(separatedBy: ",") {
+                let trimmed = selector.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Anki wraps the card in `.card`; rules about the whole card or night mode don't apply.
+                if !trimmed.isEmpty, !trimmed.contains(":"), !trimmed.hasPrefix(".card"), !trimmed.contains(".nightMode"), !trimmed.contains(".mobile") {
+                    selectors.append(trimmed)
+                }
+            }
+        }
+        return selectors
     }
 
     /// Trims every line, turns no-break spaces into spaces, drops blank lines at the ends
