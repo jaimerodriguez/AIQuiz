@@ -121,6 +121,8 @@ private struct JobRow: View {
 
 /// *Batch from list* (F-61): one web address per line, one quiz each.
 struct BatchFromListView: View {
+    /// Where the new quizzes go (F-63); nil is the top level.
+    var folderID: UUID? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(GenerationQueue.self) private var queue
     @Environment(AIRouter.self) private var router
@@ -175,7 +177,7 @@ struct BatchFromListView: View {
     private func add() {
         guard gate.client(.generation, from: router) != nil else { return }
         for url in parsed.urls {
-            queue.enqueue(GenerationJob(title: url.host.map { "\($0)\(url.path)" } ?? url.absoluteString, source: .url(url)))
+            queue.enqueue(GenerationJob(title: url.host.map { "\($0)\(url.path)" } ?? url.absoluteString, source: .url(url), folderID: folderID))
         }
         Notifier.requestPermissionIfNeeded()
         dismiss()

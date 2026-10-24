@@ -27,6 +27,8 @@ struct AnkiImportRequest: Identifiable {
     var securityScoped = false
     /// A copy that belongs to AIQuiz (Share, *Open in*'s Inbox), removed once read.
     var deleteAfter = false
+    /// The folder the decks go into (F-63); nil is the top level.
+    var folderID: UUID? = nil
 }
 
 /// Hands Anki files to the library, which shows the import sheet.
@@ -35,8 +37,8 @@ struct AnkiImportRequest: Identifiable {
 final class AnkiImportRouter {
     var pending: AnkiImportRequest?
 
-    func open(_ url: URL, securityScoped: Bool = false, deleteAfter: Bool = false) {
-        pending = AnkiImportRequest(url: url, securityScoped: securityScoped, deleteAfter: deleteAfter)
+    func open(_ url: URL, securityScoped: Bool = false, deleteAfter: Bool = false, folderID: UUID? = nil) {
+        pending = AnkiImportRequest(url: url, securityScoped: securityScoped, deleteAfter: deleteAfter, folderID: folderID)
     }
 }
 
@@ -44,11 +46,15 @@ final class AnkiImportRouter {
 @MainActor
 enum AnkiLibrary {
     /// Saves each deck as a quiz tagged `anki`, with its cards' schedules and answer counts.
+    /// Parent decks become folders under `folder` and the deck itself the quiz (F-63):
+    /// "Spanish::Verbs" is a quiz "Verbs" in a folder "Spanish".
     @discardableResult
-    static func save(_ result: AnkiImportResult, into context: ModelContext) throws -> [QuizRecord] {
+    static func save(_ result: AnkiImportResult, into context: ModelContext, folder: UUID? = nil) throws -> [QuizRecord] {
         var saved: [QuizRecord] = []
         for quiz in result.quizzes where !quiz.cards.isEmpty {
-            let record = QuizRecord.make(from: QuizPayload(name: quiz.name, tags: ["anki"], cards: quiz.cards.map(\.payload)), origin: .imported)
+            let parent = try FolderStore.folderID(forPath: Array(quiz.path.dropLast()), under: folder, context: context)
+            let record = QuizRecord.make(from: QuizPayload(name: quiz.path.last ?? quiz.name, tags: ["anki"], cards: quiz.cards.map(\.payload)), origin: .imported)
+            record.folderID = parent
             for (card, imported) in zip(record.sortedCards, quiz.cards) {
                 card.schedule = imported.schedule
                 card.correctCount = imported.correct
@@ -64,9 +70,12 @@ enum AnkiLibrary {
         return saved
     }
 
-    /// The quiz as an `.apkg`, cards in deck order with their schedules.
+    /// The quiz as an `.apkg`, cards in deck order with their schedules. The deck is named
+    /// with the folder path, so Anki shows it as nested decks (F-63).
     static func package(for quiz: QuizRecord) throws -> Data {
-        try AnkiExporter.package(quizName: quiz.name, cards: quiz.sortedCards.map { AnkiExporter.Card(payload: $0.payload, schedule: $0.schedule) })
+        let folders = quiz.modelContext.map { FolderStore.path(to: quiz.folderID, in: $0) } ?? []
+        return try AnkiExporter.package(quizName: (folders + [quiz.name]).joined(separator: AnkiImporter.separator),
+                                        cards: quiz.sortedCards.map { AnkiExporter.Card(payload: $0.payload, schedule: $0.schedule) })
     }
 }
 
@@ -188,7 +197,7 @@ struct AnkiImportView: View {
                 phase = .failed("There are no cards AIQuiz can show in this deck.")
                 return
             }
-            let saved = try AnkiLibrary.save(result, into: context)
+            let saved = try AnkiLibrary.save(result, into: context, folder: request.folderID)
             let reviewsDue = saved.flatMap(\.cards).filter { !$0.isNewCard && ($0.dueAt ?? .distantFuture) <= .now }.count
             phase = .done(result, dueNow: reviewsDue)
             Log.data.info("Anki import: \(result.quizzes.count) quizzes, \(result.cardCount) cards (\(result.format.rawValue))")

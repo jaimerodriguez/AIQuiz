@@ -23,12 +23,14 @@ enum QuizImporter {
     /// Imports every readable file and returns the new quizzes. Throws the first error after
     /// saving the ones that worked.
     @discardableResult
-    static func importFiles(_ urls: [URL], into context: ModelContext) throws -> [QuizRecord] {
+    /// Imports into `folder` (F-63); a file that carries a folder path recreates it there.
+    static func importFiles(_ urls: [URL], into context: ModelContext, folder: UUID? = nil) throws -> [QuizRecord] {
         var firstError: Error?
         var imported: [QuizRecord] = []
         for url in urls {
             do {
-                let record = try makeRecord(from: url)
+                let (record, path) = try makeRecord(from: url)
+                record.folderID = try FolderStore.folderID(forPath: path, under: folder, context: context) ?? folder
                 context.insert(record)
                 imported.append(record)
             } catch {
@@ -40,7 +42,8 @@ enum QuizImporter {
         return imported
     }
 
-    static func makeRecord(from url: URL) throws -> QuizRecord {
+    /// The quiz and the folder path its file carries.
+    static func makeRecord(from url: URL) throws -> (QuizRecord, [String]) {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
@@ -52,7 +55,7 @@ enum QuizImporter {
         }
         let payload = try decode(data, from: url)
         let bookmark = try? url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        return QuizRecord.make(from: payload, origin: .imported, sourceBookmark: bookmark)
+        return (QuizRecord.make(from: payload, origin: .imported, sourceBookmark: bookmark), payload.folder)
     }
 
     static func decode(_ data: Data, from url: URL) throws -> QuizPayload {

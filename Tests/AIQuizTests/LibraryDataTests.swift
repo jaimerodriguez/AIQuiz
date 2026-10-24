@@ -133,7 +133,7 @@ final class LibraryRulesTests: XCTestCase {
         let library = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appending(path: "AIQuiz/Library")
-        for file in ["LibraryView.swift", "QuizActions.swift"] {
+        for file in ["LibraryView.swift", "LibraryList.swift", "FolderViews.swift", "QuizActions.swift"] {
             let source = try String(contentsOf: library.appending(path: file), encoding: .utf8)
             for (number, line) in source.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let code = line.split(separator: "//", maxSplits: 1).first.map(String.init) ?? ""

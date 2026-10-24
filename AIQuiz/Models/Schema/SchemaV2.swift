@@ -2,8 +2,7 @@ import Foundation
 import SwiftData
 import AIQuizCore
 
-/// The current store (SPEC §3). The app uses these types through the `QuizRecord`,
-/// `CardRecord` and `SessionRecord` aliases. Every attribute added since v1 is optional or
+/// The v2 store (SPEC §3), frozen; the app now uses SchemaV3. Every attribute added since v1 is optional or
 /// has a default, so the database change is lightweight; `AIQuizMigrationPlan` fills
 /// derived values afterwards.
 enum SchemaV2: VersionedSchema {

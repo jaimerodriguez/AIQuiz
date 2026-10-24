@@ -13,7 +13,7 @@ enum StoreLoader {
         let recoveredFromFailure: URL?
     }
 
-    static let currentVersion = "\(SchemaV2.versionIdentifier)"
+    static let currentVersion = "\(SchemaV3.versionIdentifier)"
     static let versionKey = "store.schemaVersion"
 
     /// Where SwiftData keeps the default store; the same file as before Phase 2.
@@ -22,7 +22,7 @@ enum StoreLoader {
     }
 
     static func makeContainer(storeURL: URL?, defaults: UserDefaults, keepBackups: Int = 3) throws -> Result {
-        let schema = Schema(versionedSchema: SchemaV2.self)
+        let schema = Schema(versionedSchema: SchemaV3.self)
         guard let storeURL else {
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             let container = try ModelContainer(for: schema, migrationPlan: AIQuizMigrationPlan.self, configurations: config)

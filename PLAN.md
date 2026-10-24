@@ -23,9 +23,10 @@ How to use this document:
 | 6 | Card types and the Choice player | merged into `claude` | jaimerodriguez/AIQuiz#10 |
 | 7 | FSRS scheduling, Due today, notifications, insights | merged into `claude` | jaimerodriguez/AIQuiz#11 |
 | 8 | Audio coordinator, tutor chat, oral exam | merged into `claude`; accepted on the iPad 2026-10-23 ("hint" and a 5-card oral exam with Anthropic, audio log clean) | jaimerodriguez/AIQuiz#12 |
-| 9 | Anki import and export (F-62, added by the owner) | in review | jaimerodriguez/AIQuiz#13 |
-| 10 | Hands-free Quiz — Voice and no empty Hint button (CR-019, owner requests) | in review | jaimerodriguez/AIQuiz#14 (merge after #13) |
-| 11 | Settings and session clean-up (CR-020, owner requests) | in review | phase-11-settings-ui (merge after #14) |
+| 9 | Anki import and export (F-62, added by the owner) | merged into `claude` | jaimerodriguez/AIQuiz#13 |
+| 10 | Hands-free Quiz — Voice and no empty Hint button (CR-019, owner requests) | merged into `claude` | jaimerodriguez/AIQuiz#14 |
+| 11 | Settings and session clean-up (CR-020, CR-021, owner requests) | merged into `claude` | jaimerodriguez/AIQuiz#15 |
+| 12 | Folders (F-63, CR-022) | in review | phase-12-folders |
 
 Decisions already taken (change only with the owner's agreement):
 
@@ -305,6 +306,23 @@ Implements F-62. The contract is `docs/anki-interchange.md`, with golden files m
 - `tools/anki/verify_export.py`: Anki's own engine imports an AIQuiz export and checks it.
 
 **Acceptance**: the owner imports a real deck of theirs on the iPad and finds its cards and due counts as in Anki.
+
+### Phase 12 — Folders (added 2026-10-24, CR-022)
+Implements F-63; design in ADR-022.
+
+**Tasks**
+1. Schema V3: `FolderRecord` (id, name, parentID, createdAt) and `QuizRecord.folderID`, both indexed; a lightweight V2 → V3 stage; aliases moved to V3.
+2. `AIQuizCore` `FolderTree`: paths, descendants, move checks, unique names, Anki deck paths to folders.
+3. `FolderStore`: create, rename, move, delete with contents, counts from stored counters.
+4. Split `LibraryView.swift`; folder navigation, folder rows, New folder, Move to…, delete confirmation; search across the library with paths.
+5. New quizzes land in the current folder (Generate, JSON import, Anki import builds folders); JSON and Anki export carry the path.
+
+**Tests**
+- `AIQuizCoreTests`: `FolderTree`, Anki deck paths, payload folder path round trip.
+- `AIQuizTests`: V2 store opens as V3; `FolderStore` create, rename, move with loop refusal, delete with contents, counts; a copy of the iPad store migrates (`TEST_RUNNER_AIQUIZ_REAL_STORES`).
+- `AIQuizUITests`: create a folder, move a quiz into it, open it, search shows the path, delete it with confirmation.
+
+**Acceptance**: the owner's iPad library opens with nothing lost; the owner sorts some quizzes into folders.
 
 ---
 
