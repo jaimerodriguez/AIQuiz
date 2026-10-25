@@ -67,6 +67,9 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-24 (app icon)
+- **App icon (CR-023), branch `app-icon`:** AIQuiz has its own icon on the Home Screen, in Spotlight, in Settings and in the App Store slot: a friendly coral tutor pointing something out over an open book, with blue sparkles that match the app's accent. Until now the app showed a blank placeholder.
+
 ### 2026-10-24 (Phase 12)
 - **Phase 12 (folders), branch `phase-12-folders`, merge after Phase 11:**
   - **Folders (CR-022):** group quizzes into folders, and folders inside folders. + › *New folder* makes one where you are; opening a folder lists its subfolders, then its quizzes. Each folder row shows how many quizzes it holds and how many cards are due, at any depth.
