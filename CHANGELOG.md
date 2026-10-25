@@ -68,7 +68,7 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
 ### 2026-10-24 (app icon)
-- **App icon (CR-023), branch `app-icon`:** AIQuiz has its own icon on the Home Screen, in Spotlight, in Settings and in the App Store slot: a friendly coral tutor pointing something out over an open book. Until now the app showed a blank placeholder.
+- **App icon (CR-023), branch `app-icon`:** AIQuiz has its own icon on the Home Screen, in Spotlight, in Settings and in the App Store slot: a friendly coral tutor pointing something out over an open book, with blue sparkles that match the app's accent. Until now the app showed a blank placeholder.
 
 ### 2026-10-24 (Phase 11)
 - **Phase 11 (Settings and session clean-up), branch `phase-11-settings-ui`, merge after Phase 10:**
