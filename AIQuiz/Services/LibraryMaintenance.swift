@@ -32,6 +32,9 @@ enum LibraryMaintenance {
         for quiz in try context.fetch(FetchDescriptor<QuizRecord>()) {
             context.delete(quiz)
         }
+        for folder in try context.fetch(FetchDescriptor<FolderRecord>()) {
+            context.delete(folder)
+        }
         try context.save()
         Log.data.info("Cleared the quiz library")
     }

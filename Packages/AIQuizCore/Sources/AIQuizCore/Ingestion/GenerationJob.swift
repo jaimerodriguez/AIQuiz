@@ -69,8 +69,11 @@ public struct GenerationJob: Codable, Identifiable, Sendable, Equatable {
     public var createdAt: Date
     /// Set for *Regenerate from source* (F-4): the quiz being regenerated.
     public var regenerating: UUID?
+    /// The folder the new quiz goes into (F-63); nil is the top level. Older job files
+    /// without it decode as nil.
+    public var folderID: UUID?
 
-    public init(id: UUID = UUID(), title: String, source: Source, createdAt: Date = .now, regenerating: UUID? = nil) {
+    public init(id: UUID = UUID(), title: String, source: Source, createdAt: Date = .now, regenerating: UUID? = nil, folderID: UUID? = nil) {
         self.id = id
         self.title = title
         self.source = source
@@ -79,6 +82,7 @@ public struct GenerationJob: Codable, Identifiable, Sendable, Equatable {
         self.progress = 0
         self.createdAt = createdAt
         self.regenerating = regenerating
+        self.folderID = folderID
     }
 
     public var isFinished: Bool {

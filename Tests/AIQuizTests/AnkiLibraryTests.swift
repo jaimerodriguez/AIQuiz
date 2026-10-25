@@ -22,8 +22,11 @@ final class AnkiLibraryTests: XCTestCase {
     func testImportedDecksBecomeTaggedQuizzesWithTheirHistory() throws {
         let result = try AnkiImporter.importPackage(at: fixture())
         let saved = try AnkiLibrary.save(result, into: context)
-        XCTAssertEqual(Set(saved.map(\.name)), ["Spanish › Verbs", "Geography"])
-        let verbs = try XCTUnwrap(saved.first { $0.name == "Spanish › Verbs" })
+        // Parent decks become folders (F-63): "Spanish::Verbs" is "Verbs" in a folder "Spanish".
+        XCTAssertEqual(Set(saved.map(\.name)), ["Verbs", "Geography"])
+        let verbs = try XCTUnwrap(saved.first { $0.name == "Verbs" })
+        XCTAssertEqual(FolderStore.path(to: verbs.folderID, in: context), ["Spanish"])
+        XCTAssertNil(saved.first { $0.name == "Geography" }?.folderID, "a top-level deck stays at the top")
         XCTAssertEqual(verbs.tags, ["anki"])
         XCTAssertEqual(verbs.origin, .imported)
         XCTAssertEqual(verbs.sortedCards.map(\.prompt), ["hablar", "comer", "vivir", "to live", "¿Qué es esto?", "ser (yo)"])
@@ -42,6 +45,28 @@ final class AnkiLibraryTests: XCTestCase {
         XCTAssertEqual(geography.sortedCards.map(\.cardKind), [.cloze, .cloze, .cloze])
         XCTAssertEqual(geography.sortedCards.first?.hint, "country")
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<QuizRecord>()), 2)
+    }
+
+    func testImportingIntoAFolderPutsTheDeckFoldersInsideIt() throws {
+        let home = try FolderStore.create(named: "Classes", in: nil, context: context)
+        let saved = try AnkiLibrary.save(try AnkiImporter.importPackage(at: fixture()), into: context, folder: home.id)
+        let verbs = try XCTUnwrap(saved.first { $0.name == "Verbs" })
+        XCTAssertEqual(FolderStore.path(to: verbs.folderID, in: context), ["Classes", "Spanish"])
+        XCTAssertEqual(saved.first { $0.name == "Geography" }?.folderID, home.id)
+        // Importing again reuses the folder rather than making "Spanish 2".
+        _ = try AnkiLibrary.save(try AnkiImporter.importPackage(at: fixture()), into: context, folder: home.id)
+        XCTAssertEqual(FolderTree.children(of: home.id, in: FolderStore.nodes(in: context)).map(\.name), ["Spanish"])
+    }
+
+    func testAnAnkiExportNamesTheDeckWithTheFolderPath() throws {
+        let folder = try FolderStore.create(named: "Biology", in: nil, context: context)
+        let quiz = QuizRecord.make(from: QuizPayload(name: "Cells", cards: [CardPayload(prompt: "ATP?", longAnswer: "Energy.")]), origin: .topic)
+        quiz.folderID = folder.id
+        context.insert(quiz)
+        try context.save()
+        let file = FileManager.default.temporaryDirectory.appending(path: "folder-export-\(UUID()).apkg")
+        try AnkiLibrary.package(for: quiz).write(to: file)
+        XCTAssertEqual(try AnkiImporter.importPackage(at: file).quizzes.map(\.path), [["Biology", "Cells"]])
     }
 
     func testAQuizExportsToAnkiAndReadsBackTheSame() throws {

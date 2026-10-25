@@ -1109,7 +1109,8 @@ final class AIQuizUITests: XCTestCase {
         XCTAssertTrue(element(app, "anki.quiz.0").exists)
         XCTAssertTrue(element(app, "anki.skipped").exists || app.staticTexts["1 image left out"].exists, "media is reported as left out")
         app.buttons["anki.done"].tap()
-        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].waitForExistence(timeout: timeout))
+        // Parent decks become folders (F-63): "Spanish::Verbs" is a quiz "Verbs" in "Spanish".
+        XCTAssertTrue(app.buttons["library.folder.Spanish"].waitForExistence(timeout: timeout))
         XCTAssertTrue(app.staticTexts["Geography"].exists)
     }
 
@@ -1176,7 +1177,8 @@ final class AIQuizUITests: XCTestCase {
         let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
         XCTAssertTrue(element(app, "anki.summary").waitForExistence(timeout: timeout))
         app.buttons["anki.done"].tap()
-        openQuiz(app, named: "Spanish › Verbs")
+        app.buttons["library.folder.Spanish"].tap()
+        openQuiz(app, named: "Verbs")
         app.buttons["detail.mode.studyRead"].tap()
         XCTAssertTrue(element(app, "session.card.prompt").waitForExistence(timeout: timeout))
         XCTAssertFalse(app.buttons["session.hint"].exists, "no Hint button in a deck without hints")
@@ -1247,8 +1249,153 @@ final class AIQuizUITests: XCTestCase {
         search.tap()
         search.typeText("#anki")
         XCTAssertTrue(app.staticTexts["Geography"].waitForExistence(timeout: timeout))
-        XCTAssertTrue(app.staticTexts["Spanish › Verbs"].exists)
+        XCTAssertTrue(app.staticTexts["Verbs"].exists, "search covers folders too")
         XCTAssertFalse(app.staticTexts["UITest Deck"].exists, "quizzes without the tag are hidden")
     }
-}
 
+    // MARK: Folders (F-63)
+
+    private func newFolder(_ app: XCUIApplication, named name: String) {
+        let add = app.buttons["library.addButton"]
+        XCTAssertTrue(add.waitForExistence(timeout: timeout))
+        add.tap()
+        let item = button(app, id: "library.newFolder", label: "New folder")
+        XCTAssertTrue(item.waitForExistence(timeout: timeout))
+        item.tap()
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: timeout))
+        field.typeText(name)
+        // Like a confirmationDialog's, an alert button matches twice.
+        app.alerts.buttons.matching(identifier: "folder.create").firstMatch.tap()
+        XCTAssertTrue(app.buttons["library.folder.\(name)"].waitForExistence(timeout: timeout), "folder \(name) appears")
+    }
+
+    func testFoldersCreateMoveOpenSearchAndDelete() {
+        let app = launch()
+        newFolder(app, named: "Languages")
+
+        // Move a quiz in.
+        longPress(app, quiz: "UITest Deck")
+        let move = button(app, id: "library.move", label: "Move to…")
+        XCTAssertTrue(move.waitForExistence(timeout: timeout))
+        move.tap()
+        let target = app.buttons["move.to.Languages"]
+        XCTAssertTrue(target.waitForExistence(timeout: timeout))
+        target.tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForNonExistence(timeout: timeout), "it left the top level")
+
+        // Open the folder: the quiz is there; a folder inside it works too.
+        app.buttons["library.folder.Languages"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.navigationBars["Languages"].exists)
+        newFolder(app, named: "Spanish")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Search finds it from the top level and shows where it is.
+        let search = searchField(app)
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("UITest Deck")
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        XCTAssertTrue(element(app, "library.row.path").label.contains("Languages"))
+        // The list redraws for search results and the field can lose focus; take it back.
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 12))
+        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
+
+        // Delete the folder: it asks, says what goes, and takes its contents.
+        let folder = app.buttons["library.folder.Languages"]
+        XCTAssertTrue(folder.waitForExistence(timeout: timeout))
+        folder.press(forDuration: 1.2)
+        let delete = button(app, id: "library.folder.delete", label: "Delete")
+        XCTAssertTrue(delete.waitForExistence(timeout: timeout))
+        delete.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '1 folder and 1 quiz'")).firstMatch.waitForExistence(timeout: timeout), "the confirmation says what goes")
+        app.buttons.matching(identifier: "library.folder.confirmDelete").firstMatch.tap()
+        XCTAssertTrue(folder.waitForNonExistence(timeout: timeout))
+        XCTAssertFalse(app.staticTexts["UITest Deck"].exists, "its quiz went with it")
+    }
+
+    func testAFolderCannotMoveIntoItself() {
+        let app = launch()
+        newFolder(app, named: "Outer")
+        app.buttons["library.folder.Outer"].tap()
+        newFolder(app, named: "Inner")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let outer = app.buttons["library.folder.Outer"]
+        XCTAssertTrue(outer.waitForExistence(timeout: timeout))
+        outer.press(forDuration: 1.2)
+        button(app, id: "library.folder.move", label: "Move to…").tap()
+        XCTAssertTrue(app.buttons["move.to.Top level"].waitForExistence(timeout: timeout))
+        XCTAssertFalse(app.buttons["move.to.Outer"].exists, "not into itself")
+        XCTAssertFalse(app.buttons["move.to.Inner"].exists, "not into its own subfolder")
+        app.buttons["move.cancel"].tap()
+    }
+
+    /// PR screenshots of the folder screens. Runs only with
+    /// `TEST_RUNNER_AIQUIZ_SCREENSHOTS=1`; export them from the xcresult's attachments.
+    func testFolderScreenshots() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["AIQUIZ_SCREENSHOTS"] == "1", "screenshots only on request")
+        let device = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
+        let app = launch(extra: ["-UITestAnkiImport", "anki-latest"])
+        func shot(_ name: String) {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "\(device)-\(name)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        XCTAssertTrue(app.buttons["anki.done"].waitForExistence(timeout: timeout))
+        app.buttons["anki.done"].tap()
+
+        // New folder, with its name typed.
+        app.buttons["library.addButton"].tap()
+        button(app, id: "library.newFolder", label: "New folder").tap()
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: timeout))
+        field.typeText("Languages")
+        shot("2-new-folder")
+        app.alerts.buttons.matching(identifier: "folder.create").firstMatch.tap()
+
+        // Move the Spanish folder into it.
+        let spanish = app.buttons["library.folder.Spanish"]
+        XCTAssertTrue(spanish.waitForExistence(timeout: timeout))
+        spanish.press(forDuration: 1.2)
+        button(app, id: "library.folder.move", label: "Move to…").tap()
+        XCTAssertTrue(app.buttons["move.to.Languages"].waitForExistence(timeout: timeout))
+        shot("3-move-to")
+        app.buttons["move.to.Languages"].tap()
+
+        // And a quiz.
+        longPress(app, quiz: "UITest Deck")
+        button(app, id: "library.move", label: "Move to…").tap()
+        XCTAssertTrue(app.buttons["move.to.Languages"].waitForExistence(timeout: timeout))
+        app.buttons["move.to.Languages"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForNonExistence(timeout: timeout))
+        shot("1-top-level")
+
+        // Inside the folder: its subfolder, then its quizzes.
+        app.buttons["library.folder.Languages"].tap()
+        XCTAssertTrue(app.staticTexts["UITest Deck"].waitForExistence(timeout: timeout))
+        shot("4-inside-folder")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Search from the top shows each result's folder.
+        let search = searchField(app)
+        XCTAssertTrue(search.waitForExistence(timeout: timeout))
+        search.tap()
+        search.typeText("Verbs")
+        XCTAssertTrue(element(app, "library.row.path").waitForExistence(timeout: timeout))
+        shot("5-search-paths")
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5))
+        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
+
+        // Deleting a folder says what goes with it.
+        let languages = app.buttons["library.folder.Languages"]
+        XCTAssertTrue(languages.waitForExistence(timeout: timeout))
+        languages.press(forDuration: 1.2)
+        button(app, id: "library.folder.delete", label: "Delete").tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "library.folder.confirmDelete").firstMatch.waitForExistence(timeout: timeout))
+        shot("6-delete-confirm")
+    }
+}

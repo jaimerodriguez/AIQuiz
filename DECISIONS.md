@@ -291,3 +291,29 @@ For testing:
 - Regenerating the fixtures needs Python 3.10+ and the pinned `anki` package. They are committed, so the tests don't.
 - **Tracked for later:** the limits and the follow-up decisions live in `docs/anki.md` (§3 known issues A-1 to A-14, §4 open decisions). Revisit them when media support, re-import as update, or the website comes up.
 
+## ADR-022 — Folders as a parent id, not a SwiftData relationship
+**Date:** 2026-10-24. **Status:** accepted (SPEC F-63, CR-022).
+
+**Conversation with the owner.** The owner asked whether folders would be a big change and whether the code would stay well factored, setting backwards compatibility aside. The answer was a medium change: the players, AI, scheduling and sessions only ever see a quiz. The owner chose:
+- folders that nest;
+- one folder per quiz;
+- deleting a folder deletes its contents, with a confirmation;
+- archive kept separate;
+- folder paths in the interchange formats;
+- *Review this folder* left optional.
+
+**Options.**
+- (a) SwiftData relationships: `FolderRecord.children`, `FolderRecord.quizzes` and `QuizRecord.folder`, with cascade delete.
+- (b) Plain ids: `FolderRecord.parentID` and `QuizRecord.folderID`, both indexed, with deletion and paths done in code.
+
+**Decision.** (b).
+- Library queries filter quizzes by folder on every render. `#Predicate` comparisons on optional to-one relationships are fragile in SwiftData, while an indexed UUID compares cleanly. That's the same reason `tagsSearch` is a stored field (D-11).
+- Paths, descendants, move checks and Anki deck paths are pure logic in `AIQuizCore` (`FolderTree`), tested with `swift test`.
+- `FolderStore` (app) does the database work: create, rename, move, delete (descendants and their quizzes), and counts read from stored counters only (N-8).
+- The migration from V2 is lightweight: a new entity and an optional attribute. It's kept, despite the owner's leave to break compatibility, because it costs one stage and one test, and the iPad library must survive (CLAUDE.md).
+- `LibraryView.swift` was split into the screen, the list and the folder views at the same time, so the screen doesn't grow past what one file should hold.
+
+**Consequences.**
+- Nothing in the store enforces that a folder id exists. `FolderStore` deletes a folder's quizzes with it, and at launch `repairMissingFolders` moves any quiz with a missing folder back to the top level.
+- SwiftData can't generate SQL for "an optional id is in this set" (found by the first `FolderStore` test), so the contents of a subtree are read with one indexed `folderID == id` query per folder. Exporting a whole folder as one Anki package is still open (docs/anki.md §4 item 4).
+

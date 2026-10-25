@@ -12,9 +12,13 @@ public struct AnkiImportResult: Sendable {
     }
 
     public struct Quiz: Sendable, Equatable {
-        /// The deck path joined with " › ", e.g. "Spanish › Verbs".
-        public var name: String
+        /// The deck path, top level first: ["Spanish", "Verbs"]. An app with folders makes
+        /// folders of all but the last level and names the quiz after the last (F-63).
+        public var path: [String]
         public var cards: [Card]
+
+        /// The whole path for display, e.g. "Spanish › Verbs".
+        public var name: String { path.joined(separator: AnkiImporter.separator) }
     }
 
     public var format: AnkiPackage.Format
@@ -75,23 +79,10 @@ public enum AnkiImporter {
             if byDeck[card.deckId] == nil { order.append(card.deckId) }
             byDeck[card.deckId, default: []].append(imported)
         }
-        let paths = quizPaths(order.map { decks[$0]?.path ?? ["Default"] })
-        result.quizzes = zip(order, paths).map { id, path in
-            AnkiImportResult.Quiz(name: path.joined(separator: separator), cards: byDeck[id] ?? [])
+        result.quizzes = order.map { id in
+            AnkiImportResult.Quiz(path: decks[id]?.path ?? ["Default"], cards: byDeck[id] ?? [])
         }
         return result
-    }
-
-    /// Quiz names for the imported decks (anki-interchange §2.1): with several decks, the
-    /// levels they all share are dropped except the closest one, which stays for context
-    /// ("A › B › C › 1" and "A › B › C › 2" become "C › 1" and "C › 2"). One deck keeps its
-    /// whole path, and no name is ever shortened to nothing.
-    static func quizPaths(_ paths: [[String]]) -> [[String]] {
-        guard paths.count > 1, let shortest = paths.map(\.count).min() else { return paths }
-        var shared = 0
-        while shared < shortest - 1, Set(paths.map { $0[shared] }).count == 1 { shared += 1 }
-        let drop = max(0, shared - 1)
-        return paths.map { Array($0.dropFirst(drop)) }
     }
 
     // MARK: Content

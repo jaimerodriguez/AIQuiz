@@ -80,8 +80,12 @@ struct GenerateQuizView: View {
     @State private var errorMessage: String?
     @State private var gate = AIGate()
 
-    init(initialSource: Source = .topic) {
+    /// Where the new quiz goes (F-63); nil is the top level.
+    let folderID: UUID?
+
+    init(initialSource: Source = .topic, folderID: UUID? = nil) {
         _source = State(initialValue: initialSource)
+        self.folderID = folderID
     }
 
     var body: some View {
@@ -381,7 +385,9 @@ struct GenerateQuizView: View {
             let text = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
             job = GenerationJob(title: String(text.prefix(40)), source: .text(text))
         }
-        queue.enqueue(job)
+        var queued = job
+        queued.folderID = folderID
+        queue.enqueue(queued)
         Notifier.requestPermissionIfNeeded()
         dismiss()
     }

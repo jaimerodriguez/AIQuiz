@@ -48,11 +48,13 @@ implementation passes when it imports every package to exactly those quizzes.
 
 ### 2.1 Quizzes
 - One quiz per deck that has cards. A card in a filtered deck belongs to its `odid`.
-- Quiz name: the deck path joined with `" › "` (`Spanish::Verbs` → `Spanish › Verbs`).
-  - With several decks in one import, the leading levels they all share are dropped, except
-    the closest, which stays for context: `A::B::C::1` and `A::B::C::2` become `C › 1` and
-    `C › 2`.
-  - A single deck keeps its whole path, and the last level is never dropped.
+- Folders (updated 2026-10-24, CR-022): the deck's parent levels become folders and the
+  last level names the quiz. `Spanish::Verbs` is the quiz `Verbs` in folder `Spanish`.
+  - Folders are created inside the folder the import started from, or at the top level.
+  - An existing folder with the same name (case-insensitive) at that level is reused, so
+    two imports of the same deck share their folders.
+  - A deck with no parent (`Default`, `Verbs`) is a quiz in the starting folder.
+  - This replaces the Phase 9 rule that dropped shared levels from long quiz names.
 - Tag `anki`; origin `imported`.
 - Cards in order of note id, then template `ord`. One AIQuiz card per Anki card, so a
   "Basic (and reversed card)" note gives two.
@@ -130,7 +132,9 @@ Render the card's template as Anki does, then convert HTML to text.
 
 - A schema 11 collection named `collection.anki2`, plus a `media` entry `{}`. This is the
   form every Anki version and AnkiDroid imports.
-- One deck per quiz: `" › "` becomes `::`, and parent decks are created.
+- One deck per quiz, named with the quiz's folder path and then its name joined by `::`
+  (quiz `Verbs` in folder `Spanish` → `Spanish::Verbs`). Parent decks are created. A `" › "`
+  left in an older quiz name also becomes `::`.
 - `col.crt` is the local start of the earliest due day, or of today, so every due day is ≥ 0.
 - **Note type "AIQuiz"** for recall, multiple-choice and true-or-false cards.
   - Fields: Front, Back, Short Answer, Hint, Options, Explanation, Mnemonic, Kind.
@@ -156,3 +160,17 @@ Render the card's template as Anki does, then convert HTML to text.
     - `data` = `{"s": stability, "d": difficulty, "lrt": last review}`, so Anki with FSRS on
       keeps the memory state.
   - No review log is written.
+
+## 4. AIQuiz JSON and folders
+
+The AIQuiz JSON format (`QuizPayload`) has an optional `folder` key: the folder path from
+the top level, outermost first.
+
+```json
+{ "name": "Verbs", "folder": ["Languages", "Spanish"], "cards": [ ... ] }
+```
+
+- Export writes it only when the quiz is in a folder.
+- Import trims each name, drops empty ones, and finds or creates the folders inside the
+  folder the import started from. A file without the key lands in that folder.
+- The companion website should read and write the same key.
