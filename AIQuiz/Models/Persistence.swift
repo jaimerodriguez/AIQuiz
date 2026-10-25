@@ -3,9 +3,10 @@ import SwiftData
 import AIQuizCore
 
 // The app works with the current schema's types (DECISIONS ADR-014).
-typealias QuizRecord = SchemaV2.QuizRecord
-typealias CardRecord = SchemaV2.CardRecord
-typealias SessionRecord = SchemaV2.SessionRecord
+typealias QuizRecord = SchemaV3.QuizRecord
+typealias CardRecord = SchemaV3.CardRecord
+typealias SessionRecord = SchemaV3.SessionRecord
+typealias FolderRecord = SchemaV3.FolderRecord
 
 extension CardRecord {
     var cardKind: CardKind {

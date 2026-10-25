@@ -24,6 +24,8 @@ final class QuizActions {
     /// The quiz whose source file is being re-linked (F-5).
     var relinking: QuizRecord?
     var relinkError: String?
+    /// *Move to…* (F-63).
+    var moving: MoveTarget?
     /// Told when a quiz was re-linked, so the library rechecks it.
     var sourceStatus: SourceStatus?
     /// Where *Regenerate from source* sends its job (F-4).
@@ -60,6 +62,12 @@ final class QuizActions {
         }
         .accessibilityIdentifier("\(idPrefix).editTags")
         Button {
+            self.moving = .quiz(quiz)
+        } label: {
+            Label("Move to…", systemImage: "folder")
+        }
+        .accessibilityIdentifier("\(idPrefix).move")
+        Button {
             self.toggleArchive(quiz)
         } label: {
             Label(quiz.isArchived ? "Unarchive" : "Archive", systemImage: quiz.isArchived ? "tray.and.arrow.up" : "archivebox")
@@ -94,15 +102,15 @@ final class QuizActions {
         switch quiz.sourceKind {
         case .webPage?:
             guard let url = quiz.sourceURL else { return nil }
-            return GenerationJob(title: title, source: .url(url), regenerating: quiz.id)
+            return GenerationJob(title: title, source: .url(url), regenerating: quiz.id, folderID: quiz.folderID)
         case .markdownFile?, .pdfFile?:
             if let bookmark = quiz.sourceBookmark {
                 let name = quiz.sourceTitle ?? "Document"
-                return GenerationJob(title: title, source: .file(name: name, bookmark: bookmark, kind: quiz.sourceKind == .pdfFile ? .pdf : .markdown), regenerating: quiz.id)
+                return GenerationJob(title: title, source: .file(name: name, bookmark: bookmark, kind: quiz.sourceKind == .pdfFile ? .pdf : .markdown), regenerating: quiz.id, folderID: quiz.folderID)
             }
-            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id) }
+            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id, folderID: quiz.folderID) }
         case .pastedText?, .scannedPages?:
-            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id) }
+            return quiz.sourceText.map { GenerationJob(title: title, source: .text($0), regenerating: quiz.id, folderID: quiz.folderID) }
         case nil:
             return nil
         }
@@ -115,7 +123,10 @@ final class QuizActions {
 
     func export(_ quiz: QuizRecord) {
         do {
-            exportDocument = QuizFileDocument(data: try QuizDecoder.encode(quiz.payload))
+            // The folder path travels with the quiz (F-63), for another app to rebuild the tree.
+            var payload = quiz.payload
+            if let context = quiz.modelContext { payload.folder = FolderStore.path(to: quiz.folderID, in: context) }
+            exportDocument = QuizFileDocument(data: try QuizDecoder.encode(payload))
             exportName = QuizFileDocument.fileName(for: quiz.name)
             exporting = true
         } catch {
@@ -169,6 +180,9 @@ private struct QuizActionsModifier: ViewModifier {
                 NavigationStack {
                     QuizDetailsEditor(quiz: request.quiz, focus: request.focus)
                 }
+            }
+            .sheet(item: $actions.moving) { target in
+                MoveToFolderView(target: target)
             }
             .fileExporter(
                 isPresented: $actions.exporting,

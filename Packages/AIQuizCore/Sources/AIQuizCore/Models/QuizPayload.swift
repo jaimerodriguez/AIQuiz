@@ -15,13 +15,17 @@ public struct QuizPayload: Codable, Hashable, Sendable {
     public var description: String?
     public var tags: [String]
     public var language: String?
+    /// The folders the quiz sits in, top level first (F-63); empty at the top level. Written
+    /// as `"folder": ["Languages", "Spanish"]` so another app can rebuild the same tree.
+    public var folder: [String]
     public var cards: [CardPayload]
 
-    public init(name: String, description: String? = nil, tags: [String] = [], language: String? = nil, cards: [CardPayload]) {
+    public init(name: String, description: String? = nil, tags: [String] = [], language: String? = nil, folder: [String] = [], cards: [CardPayload]) {
         self.name = name
         self.description = description
         self.tags = tags
         self.language = language
+        self.folder = folder
         self.cards = cards
     }
 
@@ -31,6 +35,8 @@ public struct QuizPayload: Codable, Hashable, Sendable {
         description = try? c.decodeIfPresent(String.self, forKey: AnyKey("description"))
         tags = ((try? c.decodeIfPresent([String].self, forKey: AnyKey("tags"))) ?? nil) ?? []
         language = try? c.decodeIfPresent(String.self, forKey: AnyKey("language"))
+        folder = (((try? c.decodeIfPresent([String].self, forKey: AnyKey("folder"))) ?? nil) ?? [])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         cards = try c.decode([CardPayload].self, forKey: AnyKey("cards"))
     }
 
@@ -40,6 +46,7 @@ public struct QuizPayload: Codable, Hashable, Sendable {
         try c.encodeIfPresent(description, forKey: AnyKey("description"))
         if !tags.isEmpty { try c.encode(tags, forKey: AnyKey("tags")) }
         try c.encodeIfPresent(language, forKey: AnyKey("language"))
+        if !folder.isEmpty { try c.encode(folder, forKey: AnyKey("folder")) }
         try c.encode(cards, forKey: AnyKey("cards"))
     }
 }

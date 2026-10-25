@@ -53,6 +53,7 @@ struct AIQuizApp: App {
                         SampleQuizzes.seedOnFirstLaunch(in: container.mainContext, defaults: AppEnvironment.defaults)
                     }
                     QuizStats.refreshStale(in: container.mainContext)
+                    FolderStore.repairMissingFolders(in: container.mainContext)
                     ShareInbox.drain(into: queue, anki: { ankiRouter.open($0, deleteAfter: true) })
                     queue.start()
                     UNUserNotificationCenter.current().delegate = reviewRouter
@@ -113,6 +114,8 @@ extension GenerationQueue {
     /// Saves a finished job as a quiz with its original content (CR-007).
     static func saveQuiz(_ output: GenerationOutput, job: GenerationJob, in context: ModelContext) throws -> UUID {
         let record = QuizRecord.make(from: output.payload, origin: output.origin, source: output.original)
+        // Into the folder it was asked from, unless that folder has gone meanwhile (F-63).
+        record.folderID = FolderStore.exists(job.folderID, in: context) ? job.folderID : nil
         record.generatedByEndpointName = output.endpoint.name
         record.generatedByModel = output.endpoint.model
         context.insert(record)

@@ -27,7 +27,7 @@ final class Phase3Tests: XCTestCase {
 
     private func importedQuiz(from file: URL) throws -> QuizRecord {
         try Data(#"{"quiz":{"name":"Imported","cards":[{"prompt":"p","long_answer":"l"}]}}"#.utf8).write(to: file)
-        let quiz = try QuizImporter.makeRecord(from: file)
+        let (quiz, _) = try QuizImporter.makeRecord(from: file)
         context.insert(quiz)
         try context.save()
         return quiz

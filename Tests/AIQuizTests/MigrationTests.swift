@@ -168,6 +168,54 @@ final class MigrationTests: XCTestCase {
                                                "2026-03-01T000000-before-v2", "2026-04-01T000000-before-v2"])
     }
 
+    // MARK: v2 → v3 (folders, F-63)
+
+    func testV2LibraryOpensWithEveryQuizAtTheTopLevel() throws {
+        let schema = Schema(versionedSchema: SchemaV2.self)
+        do {
+            let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, url: storeURL))
+            let context = ModelContext(container)
+            let quiz = SchemaV2.QuizRecord(name: "Spanish", importedAt: t0, origin: .imported)
+            quiz.tags = ["anki"]
+            quiz.tagsSearch = " spanish #anki "
+            quiz.cardCount = 2
+            quiz.dueCount = 1
+            context.insert(quiz)
+            for i in 0..<2 {
+                let card = SchemaV2.CardRecord(prompt: "Q\(i)", longAnswer: "A\(i)", orderIndex: i)
+                card.stability = Double(i) * 4
+                card.dueAt = t0.addingTimeInterval(Double(i) * 86_400)
+                card.quiz = quiz
+            }
+            let session = SchemaV2.SessionRecord(mode: "quizVoice", startedAt: t0, endedAt: t0.addingTimeInterval(60), scorePercent: 0.5)
+            session.quiz = quiz
+            try context.save()
+        }
+        defaults.set("\(SchemaV2.versionIdentifier)", forKey: StoreLoader.versionKey)
+
+        let result = try StoreLoader.makeContainer(storeURL: storeURL, defaults: defaults)
+        XCTAssertNil(result.recoveredFromFailure)
+        let context = ModelContext(result.container)
+        let quizzes = try context.fetch(FetchDescriptor<QuizRecord>())
+        XCTAssertEqual(quizzes.count, 1)
+        let quiz = try XCTUnwrap(quizzes.first)
+        XCTAssertNil(quiz.folderID, "every quiz starts at the top level")
+        XCTAssertEqual(quiz.tags, ["anki"])
+        XCTAssertEqual(quiz.cards.count, 2)
+        XCTAssertEqual(quiz.cards.map(\.stability).sorted(), [0, 4], "schedules survive")
+        XCTAssertEqual(quiz.sessions.count, 1)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<FolderRecord>()), 0)
+        XCTAssertEqual(try backups().count, 1, "the store was backed up before the upgrade")
+
+        // Folders work in the migrated store.
+        let folder = FolderRecord(name: "Languages")
+        context.insert(folder)
+        quiz.folderID = folder.id
+        try context.save()
+        let folderID = folder.id
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<QuizRecord>(predicate: #Predicate { $0.folderID == folderID })), 1)
+    }
+
     // MARK: Real libraries copied from the owner's iPad
 
     /// Opens copies of real stores listed in `AIQUIZ_REAL_STORES` (folders separated by `:`,
@@ -201,6 +249,7 @@ final class MigrationTests: XCTestCase {
             XCTAssertEqual(try context.fetchCount(FetchDescriptor<SessionRecord>()), before.sessions, source.lastPathComponent)
             XCTAssertEqual(quizzes.map(\.cardCount).reduce(0, +), before.cards, "counters match the cards")
             XCTAssertTrue(quizzes.allSatisfy { $0.createdAt == $0.importedAt && !$0.tagsSearch.isEmpty })
+            XCTAssertTrue(quizzes.allSatisfy { $0.folderID == nil }, "every quiz starts at the top level")
             print("REAL-STORE \(source.lastPathComponent): \(before.quizzes) quizzes, \(before.cards) cards, \(before.sessions) sessions → migrated; origins \(quizzes.map(\.originRaw).sorted())")
             realDefaults.removePersistentDomain(forName: suiteName)
         }

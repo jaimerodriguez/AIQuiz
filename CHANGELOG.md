@@ -67,6 +67,17 @@ All notable changes to AIQuiz. Format follows [Keep a Changelog](https://keepach
   - **Generate quiz:** *Cancel* is top left and *Generate* top right. Generate stays grey until there's something to generate from, then turns blue. The bottom of the form only says "We keep a link to the original file (or page) so you can review it later", or "We keep the original text…" for pasted text, and which endpoint is used. The Markdown picker reads *Pick a markdown file*.
   - The three study and quiz screens share one card face, progress header, Hint button, End confirmation and swipe gesture, and each runs on a player that is unit-tested with scripted speech (ADR-015). The three screens went from 960 to 429 lines.
 
+### 2026-10-24 (Phase 12)
+- **Phase 12 (folders), branch `phase-12-folders`, merge after Phase 11:**
+  - **Folders (CR-022):** group quizzes into folders, and folders inside folders. + › *New folder* makes one where you are; opening a folder lists its subfolders, then its quizzes. Each folder row shows how many quizzes it holds and how many cards are due, at any depth.
+  - **Move to…** in a quiz's menu and a folder's menu moves it to any folder or the top level. A folder can't move into itself or one of its own subfolders.
+  - **Deleting a folder** asks first and says exactly what goes ("This also deletes the 1 folder and 3 quizzes inside it…"), then deletes its contents.
+  - **Search** covers the whole library from inside any folder, and each result shows its folder path.
+  - New quizzes from Generate, Batch, JSON import and Anki import land in the folder you're in. Due today, the generation queue and Archived stay at the top level; archived quizzes keep their folder.
+  - **Anki import** turns parent decks into folders and names each quiz after its own deck: `Spanish::Verbs` becomes the quiz *Verbs* in folder *Spanish*. Replaces the shortened "A › B" names from Phase 9.
+  - **Export:** JSON quizzes carry a `folder` path, and Anki export names the deck with the folder path (`Spanish::Verbs`), so a round trip keeps the structure.
+  - Your library moves to the new storage on first launch with every quiz at the top level, after an automatic backup (ADR-022).
+
 ### 2026-10-24 (Phase 11)
 - **Phase 11 (Settings and session clean-up), branch `phase-11-settings-ui`, merge after Phase 10:**
   - **Settings is six pages:** AI, Appearance, Voice & speech, Study & quiz, Reviews, and Help & data, each a row with an icon and its current state. Appearance holds Light, Dark or System and the reading size. The tip about Premium voices moved into the voice picker, and the long explanations are one line each.
